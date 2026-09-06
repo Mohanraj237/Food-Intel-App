@@ -1,6 +1,20 @@
 # Project State
 
-**Last updated:** 2026-09-06 (Phase 6 hardening sprint, this entry's author). Added 30 new
+**Last updated:** 2026-09-06 (UI/UX revamp, Step 1 of 14 — this entry's author). A full
+consumer-grade UI/UX revamp was commissioned; full detail and remaining sequence in
+`.claude/current-task.md`'s top entry. This step built the shared design-system foundation
+(`Card`, `ProductImage`, `SearchBar`) and migrated the four screens that had independently
+duplicated the same bordered-card CSS. Confirmed via audit: zero product-image infrastructure
+exists anywhere in the app today (backend or frontend) — that is Step 2, not yet started.
+Also reconciled three prior sessions' fully-tested, uncommitted work (catalogue import,
+ops-review, recommendation, activity modules) into two coherent commits, at the user's
+explicit instruction, since it was interleaved in files this step needed to touch. Working
+tree is clean. Verified: frontend `npm run typecheck` clean, `npm run test` 8/8; backend
+untouched this step (unchanged at 204/204 per the commit that landed the prior sessions).
+
+---
+
+**Previous entry (2026-09-06, Phase 6 hardening sprint, this entry's author). Added 30 new
 backend tests for the three modules the feature-completion sprint left untested
 (`recommendation`, `activity`, ops-review) and found + fixed 4 real defects along the way —
 see `.claude/current-task.md`'s top section for the full list (one was a P1: a whole-number

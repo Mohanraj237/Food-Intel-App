@@ -1,7 +1,68 @@
 # Current Task
 
-**As of:** 2026-09-06 (Phase 6 hardening sprint, this entry's author). Full detail in the
-final session report given to the user; this is the durable summary.
+**As of:** 2026-09-06 (UI/UX revamp, Step 1 of 14 — this entry's author).
+
+## UI/UX revamp — Step 1: design-system foundation
+
+**Objective:** a full consumer-grade UI/UX revamp was commissioned (referencing Zomato/
+Blinkit/Flipkart/HealthifyMe interaction patterns only, never their branding/layout), to be
+done in 14 sequenced steps, each a coherent commit, never a big-bang rewrite. Full sequence
+lives in the session transcript; this file tracks progress step by step.
+
+**Before writing any code:** a full read-only audit of every frontend screen, design-system
+component, the app shell, and the design docs was run (a general-purpose subagent). Key
+findings that reshaped the plan: (1) a "Zomato/Blinkit-grade rework" of cards/rails/categories
+already happened in a prior session (`tokens.css`'s own doc-comment says so) — Home/Search/
+Product/Compare are real, tested, and already implement the documented information order
+(D-003), not blank screens; (2) **zero product-image infrastructure exists anywhere** —
+`imageUrl` is unused plumbing on every DTO/type, `AppProperties.Storage` is dead S3-shaped
+config with no client/consumer anywhere, `product_contribution` has no image column — this is
+the one genuinely new piece of work in the whole revamp, not a redesign; (3) no shared `Card`/
+`Panel` component existed — the bordered-card block was copy-pasted per feature.
+
+**What was built (Step 1 of the sequence):**
+- `design-system/Card.tsx`/`.css` — the one bordered-surface primitive, replacing four
+  independent copies of the same rule (`family__panel`/`family__section`,
+  `settings__section`, `scanpage__panel`, `alternatives__card`).
+- `design-system/ProductImage.tsx` — the real-image/fallback branch, previously duplicated
+  inline (with no `onError` handling) in both `ProductCard` and `ProductScreen`. Deliberately
+  owns no sizing — the caller's existing box decides that via a `classNames` prop — so this is
+  a zero-visual-diff refactor today (`imageUrl` is still always `null` from the API).
+- `design-system/SearchBar.tsx`/`.css` — extracted from `AppShell`'s inline JSX, which
+  rendered identical markup twice (mobile header, desktop top bar). Incidentally fixed a
+  pre-existing duplicate-id/duplicate-label defect (both renders shared the literal id
+  `global-search` simultaneously in the DOM).
+- Migrated onto `Card`: `FamilyScreen`, `SettingsScreen`, `ScanScreen`, `AlternativesSection`.
+  Migrated onto `ProductImage`: `ProductCard`, `ProductScreen`.
+- Deliberately not built yet, no consumer needs them: `Panel`/`Section` (Card already covers
+  the role), `PageHeader`, `Badge`, `Avatar`, `Tabs`, `Drawer`, `Modal`, `BottomSheet` — build
+  each when its screen's own step in the sequence reaches it, not speculatively now.
+
+**Verified:** `npm run typecheck` clean, `npm run test` 8/8 passing. No backend touched this
+step, so no backend test run was needed.
+
+**Git note (read before your next commit):** the working tree already held several prior
+sessions' fully-tested, uncommitted work (catalogue import/ops-review/recommendation/activity
+backend modules, and their frontend wiring) layered into the very files this step needed to
+touch. Per explicit user decision, that work was committed alongside this step's own changes
+rather than held back further — three commits, in order: `feat: catalog import, ops-review,
+recommendation and activity modules` (backend+tooling+docs, 100% prior-session content),
+`feat(ui): wire ops console, recommendation, and activity into the frontend` (prior-session
+frontend, untouched by this step), `feat(ui): establish shared design system (...)` (this
+step's actual work). The working tree is clean as of this entry.
+
+**Next step (Step 2 of 14): product image infrastructure.** New `product_image` table
+(separate from `label_image`, which stays exactly as-is — private, retention-bound,
+OCR-capture-only — merging them would fight `label_image`'s own retention/purpose
+constraints). A real object-storage client wired to the currently-dead
+`AppProperties.Storage` config, but a **separate bucket** from `label-images`'s scope for
+public catalogue imagery. Backend populates `imageUrl` for real, sourced first from
+re-ingesting Open Food Facts' image URLs for the 893 already-imported products (respecting
+OFF's attribution/licensing terms — store + attribute, never hotlink). Has not been started.
+
+---
+
+**Previous entry (2026-09-06, Phase 6 hardening sprint).**
 
 ## Phase 6 hardening — tests for the three untested modules, 4 real defects found and fixed
 
