@@ -371,6 +371,8 @@
   "profile.conditionsPlaceholder": "e.g. lactose intolerance, on a doctor's advice to reduce sodium",
   "profile.conditionsHint": "Separate more than one with a comma.",
   "profile.ageBandRequired": "Pick an age band to save this profile.",
+  "settings.intro": "Your account, and what this app knows about your household.",
+  "settings.privacyHeading": "Privacy & data",
   "auth.accountHeading": "Account",
   "auth.signedIn": "You are signed in.",
   "auth.confirmPassword": "Confirm password",

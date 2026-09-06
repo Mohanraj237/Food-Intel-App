@@ -1,3 +1,32 @@
+.settings__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings__lede {
+  color: var(--text-secondary);
+}
+
+.settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.settings__group--privacy {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.settings__group-heading {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .settings__h2 { font-size: var(--text-h2); }
 
 .settings__signedin { color: var(--text-secondary); }

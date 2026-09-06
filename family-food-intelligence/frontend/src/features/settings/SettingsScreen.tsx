@@ -25,11 +25,23 @@ export function SettingsScreen() {
 
   return (
     <div className="page">
-      <h1>{t('nav.settings')}</h1>
-      {signedIn ? <AccountPanel /> : <AuthPanel />}
-      {signedIn && <ConsentPanel />}
-      {signedIn && <DataRightsPanel />}
-      {signedIn && <OpsAccessPanel />}
+      <div className="settings__intro">
+        <h1>{t('nav.settings')}</h1>
+        <p className="settings__lede">{t('settings.intro')}</p>
+      </div>
+
+      <div className="settings__group">
+        {signedIn ? <AccountPanel /> : <AuthPanel />}
+      </div>
+
+      {signedIn && (
+        <div className="settings__group settings__group--privacy">
+          <h2 className="settings__group-heading">{t('settings.privacyHeading')}</h2>
+          <ConsentPanel />
+          <DataRightsPanel />
+          <OpsAccessPanel />
+        </div>
+      )}
     </div>
   );
 }
@@ -124,18 +136,22 @@ function AuthPanel() {
     <Card as="section" className="settings__section" aria-labelledby="auth-heading">
       <div className="settings__switch" role="tablist" aria-label={t('auth.accountHeading')}>
         <button
+          id="auth-tab-signin"
           type="button"
           role="tab"
           aria-selected={mode === 'signin'}
+          aria-controls="auth-tabpanel"
           className={mode === 'signin' ? 'settings__tab settings__tab--active' : 'settings__tab'}
           onClick={() => switchMode('signin')}
         >
           {t('auth.signInHeading')}
         </button>
         <button
+          id="auth-tab-signup"
           type="button"
           role="tab"
           aria-selected={mode === 'signup'}
+          aria-controls="auth-tabpanel"
           className={mode === 'signup' ? 'settings__tab settings__tab--active' : 'settings__tab'}
           onClick={() => switchMode('signup')}
         >
@@ -143,56 +159,58 @@ function AuthPanel() {
         </button>
       </div>
 
-      <h2 id="auth-heading" className="sr-only">
-        {mode === 'signin' ? t('auth.signInHeading') : t('auth.signUpHeading')}
-      </h2>
+      <div id="auth-tabpanel" role="tabpanel" aria-labelledby={`auth-tab-${mode}`}>
+        <h2 id="auth-heading" className="sr-only">
+          {mode === 'signin' ? t('auth.signInHeading') : t('auth.signUpHeading')}
+        </h2>
 
-      <form className="settings__form" onSubmit={submit}>
-        <label className="field">
-          <span className="field__label">{t('auth.email')}</span>
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-
-        <label className="field">
-          <span className="field__label">{t('auth.password')}</span>
-          <input
-            type="password"
-            required
-            minLength={mode === 'signup' ? 12 : undefined}
-            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {mode === 'signup' && <span className="field__hint">{t('auth.passwordHint')}</span>}
-        </label>
-
-        {mode === 'signup' && (
+        <form className="settings__form" onSubmit={submit}>
           <label className="field">
-            <span className="field__label">{t('auth.confirmPassword')}</span>
+            <span className="field__label">{t('auth.email')}</span>
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
+
+          <label className="field">
+            <span className="field__label">{t('auth.password')}</span>
             <input
               type="password"
               required
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              minLength={mode === 'signup' ? 12 : undefined}
+              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
+            {mode === 'signup' && <span className="field__hint">{t('auth.passwordHint')}</span>}
           </label>
-        )}
 
-        {errorMessage && (
-          <p className="form-error" role="alert">{errorMessage}</p>
-        )}
+          {mode === 'signup' && (
+            <label className="field">
+              <span className="field__label">{t('auth.confirmPassword')}</span>
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </label>
+          )}
 
-        <Button type="submit" fullWidth loading={mutation.isPending}>
-          {mode === 'signin' ? t('action.signIn') : t('action.signUp')}
-        </Button>
-      </form>
+          {errorMessage && (
+            <p className="form-error" role="alert">{errorMessage}</p>
+          )}
+
+          <Button type="submit" fullWidth loading={mutation.isPending}>
+            {mode === 'signin' ? t('action.signIn') : t('action.signUp')}
+          </Button>
+        </form>
+      </div>
     </Card>
   );
 }
