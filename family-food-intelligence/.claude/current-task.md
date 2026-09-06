@@ -109,13 +109,53 @@ Decisions) with zero gamification, reusing `HomeScreen`'s exact query pattern an
 inconsistency fixed on review: its image tile used `object-fit: cover`, missed the `contain`
 convention established earlier in the sequence.
 
-That's 12 of 14 steps done. **Now running (Step 14, alone — by nature touches everything
-built above, so it cannot run parallel with anything): global responsive/accessibility pass.**
-No browser-automation tool is available in this environment (a standing, documented gap —
-`.claude/state.md`'s "known limitations" going back several sessions), so this step's
-verification is a systematic code-level review (CSS breakpoint math, semantic HTML, aria,
-contrast tokens, touch targets, reduced-motion) rather than a rendered-in-browser walkthrough
-— flagged explicitly, not claimed as something it isn't.
+**Step 14 — done, committed (2026-09-07). All 14 steps of the UI/UX revamp are complete.**
+The final pass found and fixed real, provable defects rather than rubber-stamping: an
+undefined CSS custom property (`--text-primary`, never defined — only `--text` exists) in two
+files silently falling back to an inherited value; a real WCAG AA contrast failure introduced
+by this same revamp (`HomeScreen`'s `.qaction__sub` text on its own new tinted fills, computed
+at ~4.3:1 against a 4.5:1 floor); three touch targets under the app's own 44px floor (the
+shared `.chip` component used everywhere, `SearchScreen`'s sort-chip override, `SearchBar`'s
+scan shortcut — the last one shared across the whole app via the mobile header and desktop
+top bar); and an incomplete ARIA tablist on `ScanScreen` (styled like the pattern used
+elsewhere but pointing at real route navigations with no shared tabpanel — replaced with the
+correct `<nav>` + `aria-current="page"` pattern). No browser-automation tool exists in this
+environment, so verification throughout was code-level (real box-width and contrast-ratio
+arithmetic against `tokens.css`'s actual values), not a rendered check — stated plainly in
+every report rather than implied otherwise.
+
+## UI/UX revamp — final summary
+
+20 commits total (`38201a5`..`37e4a96` — `git log` has the full list), spanning: reconciling
+three prior sessions' uncommitted backend/frontend work, a shared design-system foundation
+(`Card`/`ProductImage`/`SearchBar`), a full backend product-image pipeline (new table, real
+S3/MinIO client, OFF image backfill), and a deliberate visual/structural pass over every
+screen (Home, Search, Product Detail, Compare, Family, Scan/Contribution, Settings, Ops, a
+brand-new Activity screen, the app shell), finishing with a global responsive/accessibility
+audit. Every step was executed by a scoped, disjoint-file-set subagent, reviewed for
+correctness/security/accessibility, verified (`npm run typecheck`/`test`, and for the backend
+piece `mvn -o verify`), and committed individually — nothing was accepted on a subagent's
+self-report alone. Three real defects were found and fixed during review that no agent
+reported on its own accord: a personal email address embedded in an outbound HTTP header
+(image-infra step), an `object-fit` inconsistency in the new Activity screen, and everything
+listed above from the final pass.
+
+**What did not change, by design, throughout:** no price/cart/checkout ever existed or was
+added; the closed verdict vocabulary and its non-traffic-light color ramp (D-004); the score
+never became the largest element or moved above the per-person verdict (D-003); Home never
+became a dashboard (D-005); no fabricated data of any kind (images, reviews, ratings,
+recommendations, personalization) was ever introduced — every "not built" gap in the original
+brief (a "for your family" home-page recommendation section, server-side search filters
+beyond category, a display-name greeting) was left unbuilt specifically because no real
+backend/data-model support exists for it yet, not overlooked.
+
+**Genuinely deferred, not started:** multi-image product galleries and an image verify/reject
+review UI (schema already supports both — `is_primary`/`status`/`verified_by_user_id` exist
+unused); running the `seed-catalog-images` backfill against live Open Food Facts (the
+documented, ongoing OFF outage blocks this, same as the base catalogue import); a formal e2e
+suite and an actual rendered-in-browser visual walkthrough (still no browser-automation tool
+in this environment — every screen in this revamp was verified by code-level typecheck/test/
+review only, never seen rendered).
 
 ---
 

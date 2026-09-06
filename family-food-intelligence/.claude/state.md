@@ -1,16 +1,30 @@
 # Project State
 
-**Last updated:** 2026-09-06 (UI/UX revamp, Step 1 of 14 — this entry's author). A full
-consumer-grade UI/UX revamp was commissioned; full detail and remaining sequence in
-`.claude/current-task.md`'s top entry. This step built the shared design-system foundation
-(`Card`, `ProductImage`, `SearchBar`) and migrated the four screens that had independently
-duplicated the same bordered-card CSS. Confirmed via audit: zero product-image infrastructure
-exists anywhere in the app today (backend or frontend) — that is Step 2, not yet started.
-Also reconciled three prior sessions' fully-tested, uncommitted work (catalogue import,
-ops-review, recommendation, activity modules) into two coherent commits, at the user's
-explicit instruction, since it was interleaved in files this step needed to touch. Working
-tree is clean. Verified: frontend `npm run typecheck` clean, `npm run test` 8/8; backend
-untouched this step (unchanged at 204/204 per the commit that landed the prior sessions).
+**Last updated:** 2026-09-07 (UI/UX revamp complete — all 14 steps). Full detail:
+`.claude/current-task.md`'s top entry. Summary: a full consumer-grade UI/UX revamp
+(referencing Zomato/Blinkit/Flipkart/HealthifyMe interaction patterns only, never their
+branding/layout) was commissioned and completed end to end — a shared design-system
+foundation, a real backend product-image pipeline (new `product_image` table, S3/MinIO
+client, Open Food Facts image backfill — separate from and never touching the private
+`label_image` table), and a deliberate visual/structural pass over every screen (Home,
+Search, Product Detail's new two-column desktop layout, Compare, Family, Scan/Contribution,
+Settings, Ops, a brand-new Activity screen, the app shell), finished with a global
+responsive/accessibility audit. 20 commits, each independently reviewed and verified before
+merging (never accepted on a subagent's self-report alone) — three real defects were caught
+on review that no implementing agent flagged itself, including a personal email address that
+would have been sent to an external service in an HTTP header. Working tree is clean.
+Verified throughout: frontend `npm run typecheck` clean and `npm run test` 8/8 at every step;
+backend `mvn -o verify` 100 unit + 116 integration passing for the image-pipeline step. No
+browser-automation tool exists in this environment, so no step in this revamp was verified by
+an actual rendered screenshot — every visual/responsive/accessibility claim was verified by
+reading the real CSS/markup and computing the relevant box-model or contrast math against
+`tokens.css`'s real values, stated plainly rather than implied otherwise.
+
+**Not done, and why:** running the `seed-catalog-images` backfill against live Open Food
+Facts (the same documented, ongoing outage that has blocked the base catalogue import for
+several sessions); multi-image galleries and an image verify/reject review UI (schema already
+supports both, unused); a formal e2e suite; an actual rendered-in-browser visual walkthrough
+of any of this revamp's work.
 
 ---
 
