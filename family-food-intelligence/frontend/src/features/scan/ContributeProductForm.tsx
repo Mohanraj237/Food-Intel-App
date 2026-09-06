@@ -8,6 +8,7 @@ import { submitContribution } from '@/lib/capture';
 import { listPolicies } from '@/lib/consent';
 import { ALLERGEN_CODES, type AllergenCode } from '@/lib/profile';
 import { Button } from '@/design-system/Button';
+import { Card } from '@/design-system/Card';
 import './ContributeProductForm.css';
 
 /**
@@ -129,194 +130,216 @@ export function ContributeProductForm({ gtin, onExit }: ContributeProductFormPro
 
   if (mutation.isSuccess) {
     return (
-      <section className="contribute contribute--success" aria-labelledby="contribute-success-title">
-        <h1 id="contribute-success-title">{t('contribute.successHeading')}</h1>
-        <p>{t('contribute.successBody')}</p>
-        <Link to="/scan" className="btn btn--primary btn--md" onClick={onExit}>
-          {t('contribute.backToScan')}
-        </Link>
-      </section>
+      <div className="contributepage">
+        <Card
+          as="section"
+          padding="lg"
+          elevated
+          className="contribute contribute--success"
+          aria-labelledby="contribute-success-title"
+        >
+          <h1 id="contribute-success-title">{t('contribute.successHeading')}</h1>
+          <p>{t('contribute.successBody')}</p>
+          <Link to="/scan" className="btn btn--primary btn--md" onClick={onExit}>
+            {t('contribute.backToScan')}
+          </Link>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <section className="contribute" aria-labelledby="contribute-title">
+    <div className="contributepage">
       <Button variant="ghost" size="sm" onClick={onExit}>
         {t('action.back')}
       </Button>
 
-      <h1 id="contribute-title">{t('contribute.heading')}</h1>
-      <p className="field__hint">{t('contribute.explainer')}</p>
-
-      <form className="contribute__form" onSubmit={submit}>
-        <label className="field">
-          <span className="field__label">{t('contribute.gtinLabel')}</span>
-          <input readOnly value={gtin} />
-        </label>
-
-        <label className="field">
-          <span className="field__label">{t('contribute.nameLabel')}</span>
-          <input
-            required
-            maxLength={200}
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-          />
-        </label>
-
-        <label className="field">
-          <span className="field__label">
-            {t('contribute.brandLabel')} <span className="field__optional">{t('contribute.brandOptional')}</span>
-          </span>
-          <input maxLength={120} value={brandName} onChange={(e) => setBrandName(e.target.value)} />
-        </label>
-
-        <label className="field">
-          <span className="field__label">
-            {t('contribute.categoryLabel')}{' '}
-            <span className="field__optional">{t('contribute.categoryOptional')}</span>
-          </span>
-          <select
-            value={categoryCode}
-            disabled={categoriesQuery.isPending}
-            onChange={(e) => setCategoryCode(e.target.value)}
-          >
-            <option value="">{t('profile.notSpecified')}</option>
-            {(categoriesQuery.data ?? []).map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="contribute__row">
-          <label className="field">
-            <span className="field__label">{t('contribute.packSizeLabel')}</span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="any"
-              value={packSizeValue}
-              onChange={(e) => setPackSizeValue(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span className="field__label">{t('contribute.packSizeUnitLabel')}</span>
-            <select value={packSizeUnit} onChange={(e) => setPackSizeUnit(e.target.value)}>
-              <option value="">{t('profile.notSpecified')}</option>
-              <option value="g">g</option>
-              <option value="ml">ml</option>
-              <option value="kg">kg</option>
-              <option value="l">l</option>
-            </select>
-          </label>
+      <Card as="section" padding="lg" elevated className="contribute" aria-labelledby="contribute-title">
+        <div className="contribute__intro">
+          <h1 id="contribute-title">{t('contribute.heading')}</h1>
+          <p className="contribute__explainer">{t('contribute.explainer')}</p>
         </div>
 
-        <label className="field">
-          <span className="field__label">
-            {t('contribute.servingDeclaredLabel')}{' '}
-            <span className="field__optional">{t('contribute.servingDeclaredOptional')}</span>
-          </span>
-          <input
-            maxLength={80}
-            value={servingDeclaredText}
-            onChange={(e) => setServingDeclaredText(e.target.value)}
-          />
-        </label>
+        <form className="contribute__form" onSubmit={submit}>
+          <div className="contribute__section">
+            <label className="field">
+              <span className="field__label">{t('contribute.gtinLabel')}</span>
+              <input readOnly value={gtin} />
+            </label>
 
-        <fieldset className="field">
-          <legend className="field__label">{t('contribute.nutrientsHeading')}</legend>
-          <div className="contribute__nutrient-grid">
-            {CORE_NUTRIENTS.map((n) => (
-              <label key={n.code} className="contribute__nutrient-row">
-                <span className="contribute__nutrient-label">{n.label}</span>
+            <label className="field">
+              <span className="field__label">{t('contribute.nameLabel')}</span>
+              <input
+                required
+                maxLength={200}
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+              />
+            </label>
+
+            <label className="field">
+              <span className="field__label">
+                {t('contribute.brandLabel')} <span className="field__optional">{t('contribute.brandOptional')}</span>
+              </span>
+              <input maxLength={120} value={brandName} onChange={(e) => setBrandName(e.target.value)} />
+            </label>
+
+            <label className="field">
+              <span className="field__label">
+                {t('contribute.categoryLabel')}{' '}
+                <span className="field__optional">{t('contribute.categoryOptional')}</span>
+              </span>
+              <select
+                value={categoryCode}
+                disabled={categoriesQuery.isPending}
+                onChange={(e) => setCategoryCode(e.target.value)}
+              >
+                <option value="">{t('profile.notSpecified')}</option>
+                {(categoriesQuery.data ?? []).map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="contribute__row">
+              <label className="field">
+                <span className="field__label">{t('contribute.packSizeLabel')}</span>
                 <input
                   type="number"
                   inputMode="decimal"
                   min="0"
                   step="any"
-                  value={per100[n.code]}
-                  onChange={(e) => setPer100((prev) => ({ ...prev, [n.code]: e.target.value }))}
+                  value={packSizeValue}
+                  onChange={(e) => setPackSizeValue(e.target.value)}
                 />
-                <span className="contribute__nutrient-unit">{n.unit}</span>
               </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset className="field">
-          <legend className="field__label">
-            {t('contribute.nutrientsServingHeading')}{' '}
-            <span className="field__optional">{t('contribute.nutrientsServingOptional')}</span>
-          </legend>
-          <div className="contribute__nutrient-grid">
-            {CORE_NUTRIENTS.map((n) => (
-              <label key={n.code} className="contribute__nutrient-row">
-                <span className="contribute__nutrient-label">{n.label}</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="any"
-                  value={perServing[n.code]}
-                  onChange={(e) => setPerServing((prev) => ({ ...prev, [n.code]: e.target.value }))}
-                />
-                <span className="contribute__nutrient-unit">{n.unit}</span>
+              <label className="field">
+                <span className="field__label">{t('contribute.packSizeUnitLabel')}</span>
+                <select value={packSizeUnit} onChange={(e) => setPackSizeUnit(e.target.value)}>
+                  <option value="">{t('profile.notSpecified')}</option>
+                  <option value="g">g</option>
+                  <option value="ml">ml</option>
+                  <option value="kg">kg</option>
+                  <option value="l">l</option>
+                </select>
               </label>
-            ))}
+            </div>
+
+            <label className="field">
+              <span className="field__label">
+                {t('contribute.servingDeclaredLabel')}{' '}
+                <span className="field__optional">{t('contribute.servingDeclaredOptional')}</span>
+              </span>
+              <input
+                maxLength={80}
+                value={servingDeclaredText}
+                onChange={(e) => setServingDeclaredText(e.target.value)}
+              />
+            </label>
           </div>
-        </fieldset>
 
-        <label className="field">
-          <span className="field__label">
-            {t('contribute.ingredientsLabel')}{' '}
-            <span className="field__optional">{t('contribute.ingredientsOptional')}</span>
-          </span>
-          <textarea
-            rows={4}
-            value={ingredientsRawText}
-            onChange={(e) => setIngredientsRawText(e.target.value)}
-          />
-        </label>
+          <div className="contribute__section">
+            <fieldset className="field">
+              <legend className="field__label">{t('contribute.nutrientsHeading')}</legend>
+              <div className="contribute__nutrient-grid">
+                {CORE_NUTRIENTS.map((n) => (
+                  <label key={n.code} className="contribute__nutrient-row">
+                    <span className="contribute__nutrient-label">{n.label}</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="any"
+                      value={per100[n.code]}
+                      onChange={(e) => setPer100((prev) => ({ ...prev, [n.code]: e.target.value }))}
+                    />
+                    <span className="contribute__nutrient-unit">{n.unit}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
 
-        <fieldset className="field">
-          <legend className="field__label">{t('contribute.allergensLabel')}</legend>
-          <div className="contribute__checks">
-            {ALLERGEN_CODES.map((code) => (
-              <label key={code} className="contribute__check">
-                <input
-                  type="checkbox"
-                  checked={allergens.has(code)}
-                  onChange={() => toggleAllergen(code)}
-                />
-                {t(`allergenCode.${code}`)}
-              </label>
-            ))}
+            <fieldset className="field">
+              <legend className="field__label">
+                {t('contribute.nutrientsServingHeading')}{' '}
+                <span className="field__optional">{t('contribute.nutrientsServingOptional')}</span>
+              </legend>
+              <div className="contribute__nutrient-grid">
+                {CORE_NUTRIENTS.map((n) => (
+                  <label key={n.code} className="contribute__nutrient-row">
+                    <span className="contribute__nutrient-label">{n.label}</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="any"
+                      value={perServing[n.code]}
+                      onChange={(e) => setPerServing((prev) => ({ ...prev, [n.code]: e.target.value }))}
+                    />
+                    <span className="contribute__nutrient-unit">{n.unit}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
           </div>
-        </fieldset>
 
-        <label className="field contribute__check">
-          <input
-            type="checkbox"
-            checked={acknowledged}
-            onChange={(e) => setAcknowledged(e.target.checked)}
-            required
-          />
-          <span>{contributionPolicy?.purposeDescription ?? t('contribute.acknowledgeFallback')}</span>
-        </label>
+          <div className="contribute__section">
+            <label className="field">
+              <span className="field__label">
+                {t('contribute.ingredientsLabel')}{' '}
+                <span className="field__optional">{t('contribute.ingredientsOptional')}</span>
+              </span>
+              <textarea
+                rows={4}
+                value={ingredientsRawText}
+                onChange={(e) => setIngredientsRawText(e.target.value)}
+              />
+            </label>
+          </div>
 
-        {errorMessage && (
-          <p className="form-error" role="alert">
-            {errorMessage}
-          </p>
-        )}
+          <div className="contribute__section">
+            <fieldset className="field">
+              <legend className="field__label">{t('contribute.allergensLabel')}</legend>
+              <div className="contribute__checks">
+                {ALLERGEN_CODES.map((code) => (
+                  <label key={code} className="contribute__check">
+                    <input
+                      type="checkbox"
+                      checked={allergens.has(code)}
+                      onChange={() => toggleAllergen(code)}
+                    />
+                    {t(`allergenCode.${code}`)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
 
-        <Button type="submit" fullWidth loading={mutation.isPending} disabled={!acknowledged}>
-          {t('contribute.submit')}
-        </Button>
-      </form>
-    </section>
+          <div className="contribute__section">
+            <label className="field contribute__check">
+              <input
+                type="checkbox"
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+                required
+              />
+              <span>{contributionPolicy?.purposeDescription ?? t('contribute.acknowledgeFallback')}</span>
+            </label>
+
+            {errorMessage && (
+              <p className="form-error" role="alert">
+                {errorMessage}
+              </p>
+            )}
+
+            <Button type="submit" fullWidth loading={mutation.isPending} disabled={!acknowledged}>
+              {t('contribute.submit')}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
   );
 }

@@ -102,7 +102,7 @@ export function ScanScreen() {
           <div className="scanpage__divider"><span>{t('scan.or')}</span></div>
           <form className="scanpage__manual" onSubmit={(event) => { event.preventDefault(); void lookUp(barcode); }}>
             <label htmlFor="barcode">{t('scan.enterManually')}</label>
-            <div className="scanpage__fieldrow"><input id="barcode" inputMode="numeric" autoComplete="off" placeholder={t('scan.barcodePlaceholder')} value={barcode} onChange={(event) => { setBarcode(event.target.value); setLookupState('idle'); }} /><button className="btn btn--primary" type="submit" disabled={!barcode.trim() || lookupState === 'loading'}>{lookupState === 'loading' ? t('loading.default') : t('action.lookUp')}</button></div>
+            <div className="scanpage__fieldrow"><input id="barcode" inputMode="numeric" autoComplete="off" placeholder={t('scan.barcodePlaceholder')} value={barcode} onChange={(event) => { setBarcode(event.target.value); setLookupState('idle'); }} /><button className="btn btn--secondary" type="submit" disabled={!barcode.trim() || lookupState === 'loading'}>{lookupState === 'loading' ? t('loading.default') : t('action.lookUp')}</button></div>
           </form>
           {lookupState === 'not-found' && (
             <div className="scanpage__notice">

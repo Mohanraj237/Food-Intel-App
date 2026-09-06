@@ -19,7 +19,11 @@
 .scanpage__camera-stop { position: absolute; z-index: 1; bottom: var(--space-3); left: 50%; transform: translateX(-50%); background: #fff; }
 .scanpage__divider { display: flex; align-items: center; gap: var(--space-3); color: var(--text-tertiary); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .06em; }
 .scanpage__divider::before, .scanpage__divider::after { content: ''; height: 1px; background: var(--border); flex: 1; }
-.scanpage__manual { display: flex; flex-direction: column; gap: var(--space-2); font-weight: 700; font-size: var(--text-sm); }
+/* De-emphasised relative to `.scanpage__camera`: manual entry is the
+   fallback path, so its label reads quieter and its submit button
+   (`btn--secondary`, see ScanScreen.tsx) stays outlined rather than filled. */
+.scanpage__manual { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-sm); }
+.scanpage__manual > label { font-weight: 600; color: var(--text-secondary); }
 .scanpage__fieldrow { display: flex; gap: var(--space-2); }
 .scanpage__fieldrow input { min-width: 0; flex: 1; height: var(--tap-primary); padding-inline: var(--space-3); background: var(--bg); border: 1px solid var(--border-interactive); border-radius: var(--radius-sm); }
 .scanpage__notice { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); background: var(--verdict-occasional-bg); color: var(--verdict-occasional-fg); border-radius: var(--radius-sm); font-size: var(--text-sm); line-height: var(--leading-normal); }

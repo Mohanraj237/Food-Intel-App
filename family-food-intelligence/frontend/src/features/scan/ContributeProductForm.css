@@ -1,6 +1,26 @@
-.contribute { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--page-gutter) var(--space-6); max-width: 640px; margin-inline: auto; }
-.contribute--success { align-items: flex-start; gap: var(--space-3); padding-top: var(--space-6); }
-.contribute__form { display: flex; flex-direction: column; gap: var(--space-4); }
+.contributepage { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--page-gutter) var(--space-6); max-width: 640px; margin-inline: auto; }
+/* Base card look (padding/gap/background/border/radius/shadow) comes from
+   `Card` (`padding="lg" elevated`); these are the properties specific to
+   this screen. */
+.contribute { align-items: stretch; }
+.contribute--success { align-items: flex-start; }
+.contribute__intro { display: flex; flex-direction: column; gap: var(--space-2); }
+/* The reviewed-before-publication promise is the thing that makes handing
+   over a contribution feel trustworthy rather than like shouting into a
+   void — it gets a tinted callout, not a quiet caption, so it reads before
+   anyone starts filling in fields. */
+.contribute__explainer {
+  padding: var(--space-3);
+  background: var(--brand-subtle);
+  color: var(--brand);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: var(--leading-normal);
+}
+.contribute__form { display: flex; flex-direction: column; }
+.contribute__section { display: flex; flex-direction: column; gap: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.contribute__section:first-child { padding-top: 0; border-top: 0; }
 .contribute__form textarea {
   padding: var(--space-3);
   background: var(--bg);
