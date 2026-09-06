@@ -5,10 +5,35 @@
   padding: var(--space-4) var(--page-gutter) var(--space-6);
 }
 
+/* The two zones of the page. The utility strip (actions + sign-in prompt) is
+   grouped tightly on its own — it is a set of controls, not browsable content.
+   The browsing surface below groups categories, recent activity and the
+   curated rails with a slightly tighter, even rhythm than the gap that
+   separates the two zones, so the rails read as one continuous shelf rather
+   than a stack of independent widgets. */
+
+.home__top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.home__browse {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
 /* ---- quick actions ----
    Scan and label capture are the two entry points that search cannot serve, so
    they get real estate rather than being buried behind an icon. Two-up on a
-   phone, side by side and wider on a desktop. */
+   phone, side by side and wider on a desktop.
+
+   Filled with a soft tint rather than the neutral bordered surface a product
+   card uses, and without the card's hover lift: these are controls, not
+   browsable content, and once the rails below carry real product photography
+   the two must not read as "two more cards in the shelf." The tint carries
+   their identity instead of a shadow. */
 
 .home__actions {
   display: grid;
@@ -24,15 +49,17 @@
   border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--text);
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
+  border: 1px solid transparent;
   min-height: 72px;
-  transition: transform var(--dur-fast) var(--ease),
-              box-shadow var(--dur-fast) var(--ease);
+  transition: border-color var(--dur-fast) var(--ease);
 }
 
+.qaction--scan { background: var(--brand-subtle); }
+.qaction--label { background: var(--verdict-occasional-bg); }
+
 @media (hover: hover) {
-  .qaction:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .qaction--scan:hover { border-color: var(--brand); }
+  .qaction--label:hover { border-color: var(--verdict-occasional-fg); }
 }
 
 .qaction__glyph {
@@ -43,13 +70,11 @@
   border-radius: var(--radius-sm);
   font-size: 1.25rem;
   flex-shrink: 0;
+  background: var(--card-bg);
 }
 
-.qaction--scan .qaction__glyph { background: var(--brand-subtle); color: var(--brand); }
-.qaction--label .qaction__glyph {
-  background: var(--verdict-occasional-bg);
-  color: var(--verdict-occasional-fg);
-}
+.qaction--scan .qaction__glyph { color: var(--brand); }
+.qaction--label .qaction__glyph { color: var(--verdict-occasional-fg); }
 
 .qaction__text { display: flex; flex-direction: column; min-width: 0; }
 
@@ -119,4 +144,7 @@
 @media (min-width: 1024px) {
   .home { padding-top: var(--space-6); gap: var(--space-7); }
   .home__actions { max-width: 720px; }
+  /* More air between rails on a wide viewport, where the shelf has room to
+     breathe without losing the "one continuous surface" rhythm. */
+  .home__browse { gap: var(--space-6); }
 }

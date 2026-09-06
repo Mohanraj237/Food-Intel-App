@@ -69,80 +69,91 @@ export function HomeScreen() {
 
   return (
     <div className="home">
-      <section className="home__actions" aria-label={t('search.placeholder')}>
-        <Link to="/scan" className="qaction qaction--scan">
-          <span className="qaction__glyph" aria-hidden="true">▣</span>
-          <span className="qaction__text">
-            <span className="qaction__title">{t('scan.heading')}</span>
-            <span className="qaction__sub">{t('scan.hint')}</span>
-          </span>
-        </Link>
-        <Link to="/scan?mode=label" className="qaction qaction--label">
-          <span className="qaction__glyph" aria-hidden="true">◎</span>
-          <span className="qaction__text">
-            <span className="qaction__title">{t('capture.heading')}</span>
-            <span className="qaction__sub">{t('capture.hint')}</span>
-          </span>
-        </Link>
-      </section>
-
-      {!signedIn && (
-        <section className="home__signin">
-          <div className="home__signin-text">
-            <p className="home__signin-title">{t('fit.signInPrompt')}</p>
-            <p className="home__signin-sub">{t('fit.signInReason')}</p>
-          </div>
-          <Link to="/settings" className="btn btn--primary btn--sm home__signin-btn">
-            {t('action.signIn')}
+      {/* Utility zone: the two actions search cannot serve, plus the one
+          boundary-stated consent prompt. Grouped and spaced tighter than the
+          browsing surface below so they read as one entry strip rather than
+          competing for the same visual weight as the rails. */}
+      <div className="home__top">
+        <section className="home__actions" aria-label={t('search.placeholder')}>
+          <Link to="/scan" className="qaction qaction--scan">
+            <span className="qaction__glyph" aria-hidden="true">▣</span>
+            <span className="qaction__text">
+              <span className="qaction__title">{t('scan.heading')}</span>
+              <span className="qaction__sub">{t('scan.hint')}</span>
+            </span>
+          </Link>
+          <Link to="/scan?mode=label" className="qaction qaction--label">
+            <span className="qaction__glyph" aria-hidden="true">◎</span>
+            <span className="qaction__text">
+              <span className="qaction__title">{t('capture.heading')}</span>
+              <span className="qaction__sub">{t('capture.hint')}</span>
+            </span>
           </Link>
         </section>
-      )}
 
-      <section aria-labelledby="cat-heading">
-        <SectionHeader title={t('home.browseCategories')} />
-        <div id="cat-heading" className="sr-only">{t('home.browseCategories')}</div>
-        {categories.isPending && <CategoryRailSkeleton />}
-        {categories.isSuccess && (
-          <CategoryRail
-            categories={categories.data.map((c) => ({ code: c.code, name: c.name }))}
-          />
+        {!signedIn && (
+          <section className="home__signin">
+            <div className="home__signin-text">
+              <p className="home__signin-title">{t('fit.signInPrompt')}</p>
+              <p className="home__signin-sub">{t('fit.signInReason')}</p>
+            </div>
+            <Link to="/settings" className="btn btn--primary btn--sm home__signin-btn">
+              {t('action.signIn')}
+            </Link>
+          </section>
         )}
-        {categories.isError && (
-          <ErrorState error={categories.error} onRetry={() => void categories.refetch()} />
+      </div>
+
+      {/* Browsing surface: categories, recent activity, curated rails. Evenly
+          spaced as one continuous shelf rather than a stack of independent
+          widgets. */}
+      <div className="home__browse">
+        <section aria-labelledby="cat-heading">
+          <SectionHeader title={t('home.browseCategories')} />
+          <div id="cat-heading" className="sr-only">{t('home.browseCategories')}</div>
+          {categories.isPending && <CategoryRailSkeleton />}
+          {categories.isSuccess && (
+            <CategoryRail
+              categories={categories.data.map((c) => ({ code: c.code, name: c.name }))}
+            />
+          )}
+          {categories.isError && (
+            <ErrorState error={categories.error} onRetry={() => void categories.refetch()} />
+          )}
+        </section>
+
+        {signedIn && recentProducts.length > 0 && (
+          <section className="home__rail">
+            <SectionHeader title={t('home.railRecent')} />
+            <ProductRail loading={false} products={recentProducts.map(toCardData)} />
+          </section>
         )}
-      </section>
 
-      {signedIn && recentProducts.length > 0 && (
-        <section className="home__rail">
-          <SectionHeader title={t('home.railRecent')} />
-          <ProductRail loading={false} products={recentProducts.map(toCardData)} />
-        </section>
-      )}
-
-      {catalogueUnavailable ? (
-        <section>
-          <ErrorState error={popular.error} onRetry={() => void popular.refetch()} />
-        </section>
-      ) : (
-        <>
-          <Rail
-            title={t('home.railPopular')}
-            subtitle={t('home.railPopularSub')}
-            query={popular}
-            seeAllTo="/search"
-          />
-          <Rail
-            title={t('home.railBiscuits')}
-            query={biscuits}
-            seeAllTo="/search?category=BISCUITS"
-          />
-          <Rail
-            title={t('home.railBeverages')}
-            query={beverages}
-            seeAllTo="/search?category=BEVERAGES"
-          />
-        </>
-      )}
+        {catalogueUnavailable ? (
+          <section>
+            <ErrorState error={popular.error} onRetry={() => void popular.refetch()} />
+          </section>
+        ) : (
+          <>
+            <Rail
+              title={t('home.railPopular')}
+              subtitle={t('home.railPopularSub')}
+              query={popular}
+              seeAllTo="/search"
+            />
+            <Rail
+              title={t('home.railBiscuits')}
+              query={biscuits}
+              seeAllTo="/search?category=BISCUITS"
+            />
+            <Rail
+              title={t('home.railBeverages')}
+              query={beverages}
+              seeAllTo="/search?category=BEVERAGES"
+            />
+          </>
+        )}
+      </div>
 
       <p className="home__disclaimer">{t('medical.notice')}</p>
     </div>
