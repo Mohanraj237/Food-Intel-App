@@ -117,6 +117,15 @@
   gap: var(--space-3);
 }
 
+/* At a 150px minimum, two tracks need 312px of content width — which a 320px
+   viewport (e.g. iPhone SE) doesn't clear once the page gutter is subtracted,
+   so `auto-fill` silently collapses to one oversized column. This narrows the
+   floor just for that bucket so the two-up phone layout the sizing above was
+   tuned for actually holds at the narrowest end too. */
+@media (max-width: 359px) {
+  .pgrid { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); }
+}
+
 @media (min-width: 768px) {
   .pgrid {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
