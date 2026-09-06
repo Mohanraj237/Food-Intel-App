@@ -15,15 +15,65 @@
   list-style: none;
 }
 
+/* Each row is a nested `Card` (surface="sunken") — the roster reads as a set
+   of entries inside the members panel, not a dense settings list. Layout
+   here only overrides the Card default's column direction with the row
+   this list needs. */
 .family__member {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--surface);
-  border-radius: var(--radius-md);
   flex-wrap: wrap;
+}
+
+/* A visible (not just color) accent for "this is your own row" and "this is
+   a guardian-managed child", since color alone must never be the only signal
+   (and these are never verdict/allergen colors — this is people, not a
+   scored product). */
+.family__member--self {
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.family__member--child {
+  box-shadow: inset 3px 0 0 var(--border-interactive);
+}
+
+.family__member-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* One-letter stand-in for a photo we do not have (no user-photo feature).
+   Gives every row — self, other adults, children — a clear visual anchor
+   before any text is read. */
+.family__avatar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+
+.family__avatar--self {
+  background: var(--brand-subtle);
+  border-color: var(--brand-subtle);
+  color: var(--brand);
+}
+
+.family__avatar--child {
+  border-style: dashed;
+  border-color: var(--border-interactive);
 }
 
 .family__member-info {
@@ -94,4 +144,33 @@
   color: var(--success-fg);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
+}
+
+/* First-run choice: "create" and "join" as two equal-weight next steps
+   rather than a form-plus-toggle. Stacked on narrow phones, side by side
+   once there is room for both to breathe. */
+.household-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 480px) {
+  .household-choice {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+}
+
+.household-choice .card {
+  height: 100%;
+}
+
+/* The avatar sits beside the profile heading so the panel reads as "this
+   person's profile" at a glance, matching the roster it was opened from. */
+.profile__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }

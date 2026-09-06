@@ -28,6 +28,13 @@ interface ProfilePanelProps {
   onBack: () => void;
 }
 
+/** Mirrors `memberInitial` in `FamilyScreen.tsx` — kept local rather than
+ * imported to avoid a circular import between the two files. */
+function memberInitial(label: string): string {
+  const trimmed = label.trim();
+  return trimmed.length > 0 ? trimmed.charAt(0).toUpperCase() : '?';
+}
+
 /**
  * Age band, sex, dietary preference, goals, allergens and conditions for one
  * household member. A 404 from `getProfile` means "no profile yet" — an empty
@@ -133,9 +140,22 @@ export function ProfilePanel({ householdId, member, onBack }: ProfilePanelProps)
         {t('action.back')}
       </Button>
 
-      <h1>
-        {t('profile.heading')} · {member.displayLabel}
-      </h1>
+      <div className="profile__identity">
+        <span
+          className={[
+            'family__avatar',
+            member.memberType === 'CHILD' ? 'family__avatar--child' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          aria-hidden="true"
+        >
+          {memberInitial(member.displayLabel)}
+        </span>
+        <h1>
+          {t('profile.heading')} · {member.displayLabel}
+        </h1>
+      </div>
 
       {profileQuery.isPending && <Skeleton lines={5} label={t('loading.default')} />}
 

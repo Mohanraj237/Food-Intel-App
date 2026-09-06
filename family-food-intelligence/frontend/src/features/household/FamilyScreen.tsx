@@ -25,6 +25,17 @@ import { ProfilePanel } from './ProfilePanel';
 import './FamilyScreen.css';
 
 /**
+ * A short, stable stand-in for a photo we will never have (no user-photo
+ * feature — see the household brief). One capital letter is enough to give a
+ * roster row or a profile header a visual anchor without pretending to be an
+ * avatar upload.
+ */
+function memberInitial(label: string): string {
+  const trimmed = label.trim();
+  return trimmed.length > 0 ? trimmed.charAt(0).toUpperCase() : '?';
+}
+
+/**
  * "Who is eating?" — see/manage the signed-in account's household, then set up
  * each person's profile.
  *
@@ -102,6 +113,14 @@ export function FamilyScreen() {
 
 // ------------------------------------------------------------- no household
 
+/**
+ * The very first thing an unattached account sees. Previously a form was
+ * shown by default with a small text toggle to flip to the other one — easy
+ * to miss, and it framed "join" as an afterthought. Instead this leads with
+ * an explicit, equal-weight choice (each option already carries its own
+ * explainer copy, reused verbatim from the forms below) and only drops into
+ * a form once one is picked, with a plain way back to reconsider.
+ */
 function NoHouseholdView({
   staleNotice,
   onReady,
@@ -109,7 +128,7 @@ function NoHouseholdView({
   staleNotice: boolean;
   onReady: () => void;
 }) {
-  const [mode, setMode] = useState<'create' | 'join'>('create');
+  const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose');
 
   return (
     <div className="page">
@@ -121,15 +140,39 @@ function NoHouseholdView({
         </p>
       )}
 
-      {mode === 'create' ? (
-        <CreateHouseholdForm onCreated={onReady} />
-      ) : (
-        <JoinHouseholdForm onJoined={onReady} />
+      {mode === 'choose' && (
+        <div className="household-choice">
+          <Card as="section" padding="lg" aria-labelledby="choice-create-heading">
+            <h2 id="choice-create-heading" className="family__h2">
+              {t('household.create')}
+            </h2>
+            <p className="field__hint">{t('household.createExplainer')}</p>
+            <p className="field__hint">{t('household.soloIsFine')}</p>
+            <Button fullWidth onClick={() => setMode('create')}>
+              {t('household.create')}
+            </Button>
+          </Card>
+
+          <Card as="section" padding="lg" aria-labelledby="choice-join-heading">
+            <h2 id="choice-join-heading" className="family__h2">
+              {t('household.joinHeading')}
+            </h2>
+            <p className="field__hint">{t('household.joinExplainer')}</p>
+            <Button variant="secondary" fullWidth onClick={() => setMode('join')}>
+              {t('household.haveInvite')}
+            </Button>
+          </Card>
+        </div>
       )}
 
-      <Button variant="ghost" size="sm" onClick={() => setMode(mode === 'create' ? 'join' : 'create')}>
-        {mode === 'create' ? t('household.haveInvite') : t('household.create')}
-      </Button>
+      {mode !== 'choose' && (
+        <Button variant="ghost" size="sm" onClick={() => setMode('choose')}>
+          {t('action.back')}
+        </Button>
+      )}
+
+      {mode === 'create' && <CreateHouseholdForm onCreated={onReady} />}
+      {mode === 'join' && <JoinHouseholdForm onJoined={onReady} />}
     </div>
   );
 }
@@ -378,14 +421,42 @@ function MembersList({
           const canEditProfile = member.memberType === 'CHILD' || isSelf;
           const isRemoving = removeMutation.isPending && removeMutation.variables?.id === member.id;
 
+          const isChild = member.memberType === 'CHILD';
+
           return (
-            <li key={member.id} className="family__member">
-              <div className="family__member-info">
-                <span className="family__member-name">
-                  {member.displayLabel}
-                  {isSelf && <span className="family__you">{t('household.you')}</span>}
+            <Card
+              as="li"
+              key={member.id}
+              surface="sunken"
+              padding="sm"
+              className={[
+                'family__member',
+                isSelf ? 'family__member--self' : '',
+                isChild ? 'family__member--child' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              <div className="family__member-main">
+                <span
+                  className={[
+                    'family__avatar',
+                    isSelf ? 'family__avatar--self' : '',
+                    isChild ? 'family__avatar--child' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  aria-hidden="true"
+                >
+                  {memberInitial(member.displayLabel)}
                 </span>
-                <span className="family__role">{t(`household.role.${member.role}`)}</span>
+                <div className="family__member-info">
+                  <span className="family__member-name">
+                    {member.displayLabel}
+                    {isSelf && <span className="family__you">{t('household.you')}</span>}
+                  </span>
+                  <span className="family__role">{t(`household.role.${member.role}`)}</span>
+                </div>
               </div>
               <div className="family__member-actions">
                 {canEditProfile && (
@@ -438,7 +509,7 @@ function MembersList({
                   </Button>
                 )}
               </div>
-            </li>
+            </Card>
           );
         })}
       </ul>
