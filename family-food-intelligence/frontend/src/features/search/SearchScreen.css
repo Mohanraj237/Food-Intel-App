@@ -1,9 +1,58 @@
 .searchpage { padding-block: var(--space-3) var(--space-6); }
 
+/* ---- category chips ----
+   A thin rule under the row gives the filter strip a defined edge instead of
+   chips floating loose above the results, and the trailing fade hints that the
+   row scrolls sideways before a shopper has to discover it by dragging. */
+
+.searchpage__chiprow {
+  position: relative;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.searchpage__chiprow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: var(--space-3);
+  width: var(--space-6);
+  background: linear-gradient(to right, transparent, var(--rail-fade));
+  pointer-events: none;
+}
+
 .searchpage__body {
   padding-inline: var(--page-gutter);
   padding-top: var(--space-4);
 }
+
+/* ---- toolbar: result heading + sort ----
+   The heading takes the room it needs and the sort control anchors to the
+   trailing edge; on a narrow viewport it drops to its own line under the
+   heading rather than crowding it. */
+
+.searchpage__toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.searchpage__toolbar > *:first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.searchpage__sort {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+}
+
+.searchpage__sort .chip { min-height: 34px; padding: var(--space-1) var(--space-3); }
 
 /* ---- not found: a designed destination, not an error ---- */
 
@@ -17,6 +66,7 @@
   border-radius: var(--radius-lg);
   background: var(--surface);
   border: 1px dashed var(--border-interactive);
+  box-shadow: var(--shadow-sm);
 }
 
 .notfound__glyph {
@@ -25,10 +75,13 @@
   width: 64px;
   height: 64px;
   border-radius: var(--radius-full);
-  background: var(--card-bg);
+  /* Brand-tinted rather than neutral: this destination is a next step, not a
+     dead end, and the glyph should read as an invitation rather than a
+     warning icon. */
+  background: var(--brand-subtle);
   border: 1px solid var(--border);
   font-size: 1.75rem;
-  color: var(--text-tertiary);
+  color: var(--brand);
 }
 
 .notfound__title { font-size: var(--text-h2); font-weight: 700; }

@@ -1,11 +1,42 @@
+import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { t } from '@/lib/i18n';
-import { getCategories, searchProducts } from '@/lib/catalog';
+import { t, type MessageKey } from '@/lib/i18n';
+import { getCategories, searchProducts, type ProductSummary } from '@/lib/catalog';
 import { Chip, ProductGrid, SectionHeader } from '@/design-system/Rails';
 import { ErrorState } from '@/design-system/States';
 import { toCardData } from '../home/HomeScreen';
 import './SearchScreen.css';
+
+/**
+ * Client-side-only "best data quality first" ordering.
+ *
+ * The backend's `/search` does not accept a `sort` parameter (see
+ * `src/lib/catalog.ts`), so this never re-queries or fabricates anything — it
+ * re-orders the same page of real `dataQuality` values the server already
+ * returned. Ranks mirror the badge treatment on the product screen
+ * (`features/product/ProductScreen.tsx`): verified first, unresolved
+ * conflicts last. An unrecognised or missing value sorts alongside
+ * `UNVERIFIED` rather than to either extreme, so an unexpected enum value
+ * degrades quietly instead of jumping to the front or back.
+ */
+const UNRECOGNISED_RANK = 2; // alongside UNVERIFIED — see qualityRank below
+
+const QUALITY_RANK: Record<string, number> = {
+  VERIFIED: 0,
+  RECENT: 1,
+  UNVERIFIED: UNRECOGNISED_RANK,
+  STALE: 3,
+  NEEDS_REVIEW: 4,
+  CONFLICTING: 5,
+};
+
+function qualityRank(dataQuality: string | null): number {
+  if (dataQuality === null) return UNRECOGNISED_RANK;
+  return QUALITY_RANK[dataQuality] ?? UNRECOGNISED_RANK;
+}
+
+type SortMode = 'relevance' | 'quality';
 
 /**
  * Search results.
@@ -22,6 +53,7 @@ export function SearchScreen() {
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
   const category = params.get('category') ?? '';
+  const sort: SortMode = params.get('sort') === 'quality' ? 'quality' : 'relevance';
 
   const categories = useQuery({
     queryKey: ['categories'],
@@ -44,6 +76,16 @@ export function SearchScreen() {
     setParams(next, { replace: true });
   }
 
+  function setSort(mode: SortMode) {
+    const next = new URLSearchParams(params);
+    if (mode === 'relevance') {
+      next.delete('sort');
+    } else {
+      next.set('sort', mode);
+    }
+    setParams(next, { replace: true });
+  }
+
   const heading = q
     ? t('search.resultsFor', { query: q })
     : category
@@ -53,10 +95,20 @@ export function SearchScreen() {
   const items = results.data?.items ?? [];
   const isEmpty = results.isSuccess && items.length === 0;
 
+  // Re-orders the page already in hand; never re-fetches and never invents a
+  // value for a product missing one. Only worth offering once there is more
+  // than one item to reorder.
+  const sortedItems = useMemo<ProductSummary[]>(() => {
+    if (sort !== 'quality') return items;
+    return [...items].sort((a, b) => qualityRank(a.dataQuality) - qualityRank(b.dataQuality));
+  }, [items, sort]);
+
+  const canSort = results.isSuccess && sortedItems.length > 1;
+
   return (
     <div className="searchpage">
       {categories.isSuccess && categories.data.length > 0 && (
-        <div className="chip-row" role="group" aria-label={t('home.browseCategories')}>
+        <div className="chip-row searchpage__chiprow" role="group" aria-label={t('home.browseCategories')}>
           {category && (
             <Chip active onClick={() => toggleCategory(category)}>
               {t('search.clearFilter')}
@@ -75,12 +127,29 @@ export function SearchScreen() {
       )}
 
       <div className="searchpage__body">
-        <SectionHeader
-          title={heading}
-          {...(results.isSuccess
-            ? { subtitle: t('search.resultCount', { count: results.data.total }) }
-            : {})}
-        />
+        <div className="searchpage__toolbar">
+          <SectionHeader
+            title={heading}
+            {...(results.isSuccess
+              ? { subtitle: t('search.resultCount', { count: results.data.total }) }
+              : {})}
+          />
+
+          {canSort && (
+            <div
+              className="searchpage__sort"
+              role="group"
+              aria-label={t('search.sortLabel' as MessageKey)}
+            >
+              <Chip active={sort === 'relevance'} onClick={() => setSort('relevance')}>
+                {t('search.sortRelevance' as MessageKey)}
+              </Chip>
+              <Chip active={sort === 'quality'} onClick={() => setSort('quality')}>
+                {t('search.sortQuality' as MessageKey)}
+              </Chip>
+            </div>
+          )}
+        </div>
 
         {results.isError && (
           <ErrorState error={results.error} onRetry={() => void results.refetch()} />
@@ -89,7 +158,7 @@ export function SearchScreen() {
         {isEmpty ? (
           <NotFound query={q} />
         ) : (
-          <ProductGrid loading={results.isPending} products={items.map(toCardData)} />
+          <ProductGrid loading={results.isPending} products={sortedItems.map(toCardData)} />
         )}
       </div>
     </div>
