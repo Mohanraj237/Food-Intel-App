@@ -84,9 +84,14 @@
   line-height: var(--leading-snug);
 }
 
+/* --text-tertiary is 5.02:1 on --bg but drops to ~4.3:1 on these tinted
+   fills (brand-subtle / verdict-occasional-bg) — a new combination this
+   revamp introduced that fails WCAG AA for normal-size text. --text-secondary
+   clears both tints (~6.8:1+) while --text-tertiary only ever measured
+   against plain --bg. */
 .qaction__sub {
   font-size: var(--text-xs);
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   line-height: var(--leading-snug);
   /* One line on a phone; the full hint is on the scan screen itself. */
   display: -webkit-box;

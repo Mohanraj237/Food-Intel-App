@@ -86,10 +86,29 @@ export function ScanScreen() {
 
   return (
     <div className="scanpage">
-      <div className="scanpage__switch" role="tablist" aria-label={t('nav.scan')}>
-        <Link className={!isLabelMode ? 'scanpage__tab scanpage__tab--active' : 'scanpage__tab'} to="/scan" role="tab" aria-selected={!isLabelMode}>{t('scan.heading')}</Link>
-        <Link className={isLabelMode ? 'scanpage__tab scanpage__tab--active' : 'scanpage__tab'} to="/scan?mode=label" role="tab" aria-selected={isLabelMode}>{t('capture.heading')}</Link>
-      </div>
+      {/* Styled like the tablist pattern used elsewhere (`SettingsScreen`,
+          `OpsQueueScreen`), but these two options are real routes (`/scan`,
+          `/scan?mode=label`), not a same-page panel switch — there is no
+          single tabpanel these could point `aria-controls` at. `role="tab"`
+          without that pairing is an incomplete ARIA widget, so this is plain
+          navigation with `aria-current` instead, the correct pattern for
+          tab-styled links that actually navigate. */}
+      <nav className="scanpage__switch" aria-label={t('nav.scan')}>
+        <Link
+          className={!isLabelMode ? 'scanpage__tab scanpage__tab--active' : 'scanpage__tab'}
+          to="/scan"
+          aria-current={!isLabelMode ? 'page' : undefined}
+        >
+          {t('scan.heading')}
+        </Link>
+        <Link
+          className={isLabelMode ? 'scanpage__tab scanpage__tab--active' : 'scanpage__tab'}
+          to="/scan?mode=label"
+          aria-current={isLabelMode ? 'page' : undefined}
+        >
+          {t('capture.heading')}
+        </Link>
+      </nav>
       {isLabelMode ? <LabelCaptureNotice /> : (
         <Card as="section" padding="lg" elevated className="scanpage__panel" aria-labelledby="scan-title">
           <div className="scanpage__intro"><span className="scanpage__icon" aria-hidden="true">▣</span><div><h1 id="scan-title">{t('scan.heading')}</h1><p>{t('scan.hint')}</p></div></div>

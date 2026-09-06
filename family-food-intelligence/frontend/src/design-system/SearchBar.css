@@ -42,8 +42,11 @@
 .searchbar__scan {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  /* --tap-min, not a smaller fixed box: this is a real tap target (a Link to
+     /scan), and the 48px-tall bar (--tap-primary) has room to fit it without
+     crowding the input. */
+  width: var(--tap-min);
+  height: var(--tap-min);
   border-radius: var(--radius-sm);
   background: var(--brand-subtle);
   color: var(--brand);

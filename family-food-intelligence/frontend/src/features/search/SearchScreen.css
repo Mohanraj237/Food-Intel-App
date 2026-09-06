@@ -52,7 +52,10 @@
   padding-bottom: var(--space-3);
 }
 
-.searchpage__sort .chip { min-height: 34px; padding: var(--space-1) var(--space-3); }
+/* Denser padding for the secondary sort control, but never below the shared
+   44px tap floor (--tap-min) — a chip is still a tap target regardless of
+   which row it sits in. */
+.searchpage__sort .chip { min-height: var(--tap-min); padding: var(--space-1) var(--space-3); }
 
 /* ---- not found: a designed destination, not an error ---- */
 
