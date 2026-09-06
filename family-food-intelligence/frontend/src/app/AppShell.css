@@ -1,0 +1,254 @@
+/* Application shell: sticky search + bottom nav on mobile, top bar on desktop. */
+
+.shell {
+  --page-gutter: var(--space-4);
+  min-height: 100dvh;
+}
+
+/* ============================== mobile header ============================== */
+
+.shell__header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-3) var(--page-gutter) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* Keeps the header clear of a notch in landscape. */
+  padding-top: max(var(--space-3), env(safe-area-inset-top, 0px));
+}
+
+.shell__brandrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--brand);
+  font-weight: 800;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+}
+
+.wordmark__mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 0.75rem;
+}
+
+.shell__avatar {
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+/* ================================ searchbar ================================ */
+
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--tap-primary);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border-interactive);
+  transition: border-color var(--dur-fast) var(--ease),
+              background var(--dur-fast) var(--ease);
+}
+
+.searchbar:focus-within {
+  border-color: var(--brand);
+  background: var(--card-bg);
+}
+
+.searchbar__icon {
+  color: var(--text-tertiary);
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+.searchbar__input {
+  flex: 1;
+  min-width: 0;              /* lets the field shrink inside a flex row */
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: var(--text-body); /* 16px — anything smaller zooms on iOS focus */
+  color: var(--text);
+}
+
+.searchbar__input::placeholder { color: var(--text-tertiary); }
+
+/* Removes the browser's own clear affordance, which sits at a different place
+   in every engine and fights the scan button beside it. */
+.searchbar__input::-webkit-search-cancel-button { display: none; }
+
+.searchbar__scan {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-subtle);
+  color: var(--brand);
+  text-decoration: none;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+/* ================================ top bar ================================== */
+
+.shell__topbar { display: none; }
+
+.toplinks { display: flex; align-items: center; gap: var(--space-2); }
+
+.toplinks__item {
+  display: inline-flex;
+  align-items: center;
+  height: var(--tap-min);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.toplinks__item:hover { background: var(--surface); color: var(--text); }
+
+.toplinks__item--active {
+  color: var(--brand);
+  background: var(--brand-subtle);
+}
+
+/* ================================== main =================================== */
+
+.shell__main {
+  padding-bottom: calc(var(--bottom-nav-h) + var(--space-6) + env(safe-area-inset-bottom, 0px));
+}
+
+.shell__main:focus { outline: none; }
+
+/* ============================== bottom nav ================================= */
+
+.bottom-nav {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: var(--z-bottom-nav);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bottom-nav__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: var(--bottom-nav-h);
+  padding: var(--space-2) var(--space-1);
+  color: var(--text-tertiary);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  touch-action: manipulation;
+}
+
+.bottom-nav__glyph { font-size: 1.25rem; line-height: 1; }
+
+.bottom-nav__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom-nav__item--active { color: var(--brand); }
+
+/* A bar above the active item: a second, non-colour cue for the current tab. */
+.bottom-nav__item--active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 28px;
+  height: 3px;
+  border-radius: 0 0 var(--radius-full) var(--radius-full);
+  background: var(--brand);
+}
+
+/* ========================= desktop: 1024px and up ========================== */
+
+@media (min-width: 1024px) {
+  .shell { --page-gutter: var(--space-6); }
+
+  /* Mobile header and bottom nav give way to a single top bar. */
+  .shell__header,
+  .bottom-nav { display: none; }
+
+  .shell__topbar {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .shell__topbar-inner {
+    max-width: var(--shell-max);
+    margin-inline: auto;
+    height: var(--topbar-h);
+    padding-inline: var(--page-gutter);
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+  }
+
+  .wordmark--top { font-size: 1.125rem; flex-shrink: 0; }
+  .wordmark--top .wordmark__mark { width: 30px; height: 30px; font-size: 0.8125rem; }
+
+  /* Search takes the middle and is generously wide — it is the primary action,
+     and a cramped search box on a 1400px window looks like an afterthought. */
+  .shell__topsearch { flex: 1; max-width: 560px; }
+
+  .shell__main {
+    max-width: var(--shell-max);
+    margin-inline: auto;
+    padding-bottom: var(--space-8);
+  }
+}
+
+@media (min-width: 1280px) {
+  .shell__topsearch { max-width: 640px; }
+}

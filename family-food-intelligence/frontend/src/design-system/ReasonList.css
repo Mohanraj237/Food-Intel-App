@@ -1,0 +1,16 @@
+.reason-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.reason-list__item {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border);
+}

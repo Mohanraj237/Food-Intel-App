@@ -1,0 +1,20 @@
+.contribute { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--page-gutter) var(--space-6); max-width: 640px; margin-inline: auto; }
+.contribute--success { align-items: flex-start; gap: var(--space-3); padding-top: var(--space-6); }
+.contribute__form { display: flex; flex-direction: column; gap: var(--space-4); }
+.contribute__form textarea {
+  padding: var(--space-3);
+  background: var(--bg);
+  border: 1px solid var(--border-interactive);
+  border-radius: var(--radius-sm);
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+}
+.contribute__row { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-3); }
+.contribute__nutrient-grid { display: flex; flex-direction: column; gap: var(--space-2); }
+.contribute__nutrient-row { display: grid; grid-template-columns: 1fr 96px auto; align-items: center; gap: var(--space-2); font-size: var(--text-sm); font-weight: 400; }
+.contribute__nutrient-row input { min-height: var(--tap-primary); padding-inline: var(--space-3); background: var(--bg); border: 1px solid var(--border-interactive); border-radius: var(--radius-sm); width: 100%; }
+.contribute__nutrient-label { color: var(--text); }
+.contribute__nutrient-unit { color: var(--text-tertiary); font-size: var(--text-xs); }
+.contribute__checks { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+.contribute__check { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); font-weight: 400; min-height: var(--tap-min); }

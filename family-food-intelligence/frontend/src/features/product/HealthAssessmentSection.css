@@ -1,0 +1,58 @@
+.health-assessment {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.health-assessment__summary {
+  cursor: pointer;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+}
+
+.health-assessment__summary::-webkit-details-marker {
+  color: var(--text-tertiary);
+}
+
+.health-assessment__body {
+  padding: 0 var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.health-assessment__explainer {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Deliberately restrained — never the display-size hero the score is not
+   allowed to become (D-003). */
+.health-assessment__value {
+  font-size: var(--text-h2);
+  font-weight: 700;
+}
+
+.health-assessment__pending {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.health-assessment__factors {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.health-assessment__method {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}

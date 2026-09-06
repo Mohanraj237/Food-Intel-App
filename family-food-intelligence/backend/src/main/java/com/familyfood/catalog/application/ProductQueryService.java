@@ -1,0 +1,326 @@
+package com.familyfood.catalog.application;
+
+import com.familyfood.catalog.application.dto.AllergenRowDto;
+import com.familyfood.catalog.application.dto.BarcodeRowDto;
+import com.familyfood.catalog.application.dto.CategoryDto;
+import com.familyfood.catalog.application.dto.CurrentVersionDto;
+import com.familyfood.catalog.application.dto.IngredientRowDto;
+import com.familyfood.catalog.application.dto.KeyFactDto;
+import com.familyfood.catalog.application.dto.NutrientRowDto;
+import com.familyfood.catalog.application.dto.PackSizeDto;
+import com.familyfood.catalog.application.dto.ProductDetailDto;
+import com.familyfood.catalog.application.dto.ProductSummaryDto;
+import com.familyfood.catalog.application.dto.SourceRefDto;
+import com.familyfood.catalog.domain.Allergen;
+import com.familyfood.catalog.domain.Brand;
+import com.familyfood.catalog.domain.Category;
+import com.familyfood.catalog.domain.Ingredient;
+import com.familyfood.catalog.domain.Nutrient;
+import com.familyfood.catalog.domain.Product;
+import com.familyfood.catalog.domain.ProductAllergen;
+import com.familyfood.catalog.domain.ProductBarcode;
+import com.familyfood.catalog.domain.ProductConflict;
+import com.familyfood.catalog.domain.ProductIngredient;
+import com.familyfood.catalog.domain.ProductNutrient;
+import com.familyfood.catalog.domain.ProductSource;
+import com.familyfood.catalog.domain.ProductStatus;
+import com.familyfood.catalog.domain.ProductVersion;
+import com.familyfood.catalog.infra.AllergenRepository;
+import com.familyfood.catalog.infra.BrandRepository;
+import com.familyfood.catalog.infra.CategoryRepository;
+import com.familyfood.catalog.infra.IngredientRepository;
+import com.familyfood.catalog.infra.NutrientRepository;
+import com.familyfood.catalog.infra.ProductAllergenRepository;
+import com.familyfood.catalog.infra.ProductBarcodeRepository;
+import com.familyfood.catalog.infra.ProductConflictRepository;
+import com.familyfood.catalog.infra.ProductIngredientRepository;
+import com.familyfood.catalog.infra.ProductNutrientRepository;
+import com.familyfood.catalog.infra.ProductRepository;
+import com.familyfood.catalog.infra.ProductSourceRepository;
+import com.familyfood.catalog.infra.ProductVersionRepository;
+import com.familyfood.platform.error.AppException;
+import com.familyfood.platform.error.ErrorCode;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * Read-only product and category lookups.
+ *
+ * <p>Only versions with {@code isCurrent=true} and a non-rejected status are ever shown
+ * to a user; only products with {@code status=ACTIVE} are ever shown. Neither invariant
+ * is optional — a product without a current version, or one that has been rejected or
+ * merged away, has nothing safe to display (see V4__catalog.sql).
+ */
+@Service
+@Transactional(readOnly = true)
+public class ProductQueryService {
+
+    private static final Set<com.familyfood.catalog.domain.VersionStatus> HIDDEN_VERSION_STATUSES = Set.of(
+            com.familyfood.catalog.domain.VersionStatus.REJECTED,
+            com.familyfood.catalog.domain.VersionStatus.SUPERSEDED);
+
+    private final ProductRepository products;
+    private final ProductVersionRepository versions;
+    private final ProductBarcodeRepository barcodes;
+    private final ProductSourceRepository sources;
+    private final ProductNutrientRepository nutrients;
+    private final ProductIngredientRepository ingredients;
+    private final ProductAllergenRepository allergens;
+    private final ProductConflictRepository conflicts;
+    private final BrandRepository brands;
+    private final CategoryRepository categories;
+    private final NutrientRepository nutrientRefs;
+    private final AllergenRepository allergenRefs;
+    private final IngredientRepository ingredientRefs;
+
+    public ProductQueryService(ProductRepository products,
+                               ProductVersionRepository versions,
+                               ProductBarcodeRepository barcodes,
+                               ProductSourceRepository sources,
+                               ProductNutrientRepository nutrients,
+                               ProductIngredientRepository ingredients,
+                               ProductAllergenRepository allergens,
+                               ProductConflictRepository conflicts,
+                               BrandRepository brands,
+                               CategoryRepository categories,
+                               NutrientRepository nutrientRefs,
+                               AllergenRepository allergenRefs,
+                               IngredientRepository ingredientRefs) {
+        this.products = products;
+        this.versions = versions;
+        this.barcodes = barcodes;
+        this.sources = sources;
+        this.nutrients = nutrients;
+        this.ingredients = ingredients;
+        this.allergens = allergens;
+        this.conflicts = conflicts;
+        this.brands = brands;
+        this.categories = categories;
+        this.nutrientRefs = nutrientRefs;
+        this.allergenRefs = allergenRefs;
+        this.ingredientRefs = ingredientRefs;
+    }
+
+    // ------------------------------------------------------------------------ single product
+
+    public ProductDetailDto getProduct(UUID id) {
+        Product product = products.findById(id)
+                .filter(p -> p.getStatus() == ProductStatus.ACTIVE)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        ProductVersion version = versions.findByProductIdAndCurrentTrue(id)
+                .filter(v -> !HIDDEN_VERSION_STATUSES.contains(v.getStatus()))
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        ProductSummaryDto summary = buildSummaries(List.of(product), Map.of(id, version)).get(0);
+        return buildDetail(summary, product, version);
+    }
+
+    public ProductDetailDto getProductByBarcode(String gtin) {
+        List<ProductBarcode> matches = barcodes.findByGtinAndActiveTrue(gtin);
+        if (matches.isEmpty()) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+
+        boolean anyConflict = matches.stream().anyMatch(ProductBarcode::isConflictFlag);
+        Set<UUID> distinctProducts = matches.stream()
+                .map(ProductBarcode::getProductId)
+                .collect(Collectors.toSet());
+
+        if (anyConflict || distinctProducts.size() > 1) {
+            // AC-4.4: never guess between two active products claiming the same GTIN.
+            throw new AppException(ErrorCode.BARCODE_AMBIGUOUS);
+        }
+
+        return getProduct(distinctProducts.iterator().next());
+    }
+
+    // ---------------------------------------------------------------------------- categories
+
+    public List<CategoryDto> listCategories() {
+        return categories.findAllByOrderBySortOrderAsc().stream()
+                .map(c -> new CategoryDto(c.getCode(), c.getName(), c.getPath(), c.getSortOrder(),
+                        c.getTypicalServingMinG(), c.getTypicalServingMaxG()))
+                .toList();
+    }
+
+    // -------------------------------------------------------------- batch summaries (search)
+
+    /**
+     * Summaries for the given product ids, in the given order. A product with no
+     * current version (or whose current version is hidden) is silently dropped rather
+     * than failing the whole batch — the search result simply has fewer items than ids.
+     */
+    public List<ProductSummaryDto> getSummaries(List<UUID> orderedIds) {
+        if (orderedIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, Product> productsById = products.findAllById(orderedIds).stream()
+                .filter(p -> p.getStatus() == ProductStatus.ACTIVE)
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+
+        List<Product> orderedProducts = orderedIds.stream()
+                .map(productsById::get)
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<UUID, ProductVersion> versionByProductId = versions
+                .findByProductIdInAndCurrentTrue(orderedIds).stream()
+                .filter(v -> !HIDDEN_VERSION_STATUSES.contains(v.getStatus()))
+                .collect(Collectors.toMap(ProductVersion::getProductId, Function.identity()));
+
+        return buildSummaries(orderedProducts, versionByProductId);
+    }
+
+    // --------------------------------------------------------------------------- assembly
+
+    private List<ProductSummaryDto> buildSummaries(List<Product> productList,
+                                                    Map<UUID, ProductVersion> versionByProductId) {
+        Set<UUID> brandIds = productList.stream()
+                .map(Product::getBrandId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<UUID> categoryIds = productList.stream()
+                .map(Product::getCategoryId).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        Map<UUID, Brand> brandsById = brands.findAllById(brandIds).stream()
+                .collect(Collectors.toMap(Brand::getId, Function.identity()));
+        Map<UUID, Category> categoriesById = categories.findAllById(categoryIds).stream()
+                .collect(Collectors.toMap(Category::getId, Function.identity()));
+
+        List<UUID> versionIds = versionByProductId.values().stream()
+                .map(ProductVersion::getId).toList();
+        Map<UUID, List<ProductNutrient>> nutrientsByVersion = nutrients
+                .findByProductVersionIdIn(versionIds).stream()
+                .collect(Collectors.groupingBy(ProductNutrient::getProductVersionId));
+
+        Map<String, Nutrient> coreNutrientsByCode = nutrientRefs.findByCoreTrue().stream()
+                .collect(Collectors.toMap(Nutrient::getCode, Function.identity()));
+
+        List<ProductSummaryDto> result = new ArrayList<>();
+        for (Product product : productList) {
+            ProductVersion version = versionByProductId.get(product.getId());
+            if (version == null) {
+                continue;
+            }
+            Brand brand = product.getBrandId() == null ? null : brandsById.get(product.getBrandId());
+            Category category = product.getCategoryId() == null ? null : categoriesById.get(product.getCategoryId());
+
+            List<ProductNutrient> versionNutrients = nutrientsByVersion.getOrDefault(version.getId(), List.of());
+            List<KeyFactDto> keyFacts = versionNutrients.stream()
+                    .filter(pn -> coreNutrientsByCode.containsKey(pn.getNutrientCode()))
+                    .sorted(Comparator.comparingInt(pn -> coreNutrientsByCode.get(pn.getNutrientCode()).getSortOrder()))
+                    .map(pn -> {
+                        Nutrient ref = coreNutrientsByCode.get(pn.getNutrientCode());
+                        return new KeyFactDto(pn.getNutrientCode(), ref.getDisplayName(),
+                                pn.getAmountPerServing(), pn.getAmountPer100(), pn.getUnit());
+                    })
+                    .toList();
+
+            PackSizeDto packSize = (product.getPackSizeValue() == null && product.getPackSizeUnit() == null)
+                    ? null
+                    : new PackSizeDto(product.getPackSizeValue(), product.getPackSizeUnit());
+
+            result.add(new ProductSummaryDto(
+                    product.getId(),
+                    brand != null ? brand.getName() : "",
+                    product.getName(),
+                    packSize,
+                    category != null ? category.getCode() : null,
+                    category != null ? category.getName() : null,
+                    null,
+                    version.getDataQuality().name(),
+                    version.getServingSizeG(),
+                    version.getServingSizeDeclared(),
+                    keyFacts));
+        }
+        return result;
+    }
+
+    private ProductDetailDto buildDetail(ProductSummaryDto summary, Product product, ProductVersion version) {
+        Map<UUID, ProductSource> sourcesById = sources.findByProductVersionId(version.getId()).stream()
+                .collect(Collectors.toMap(ProductSource::getId, Function.identity()));
+
+        List<ProductNutrient> versionNutrients = nutrients.findByProductVersionId(version.getId());
+        Map<String, Nutrient> nutrientRefsByCode = nutrientRefs
+                .findAllById(versionNutrients.stream().map(ProductNutrient::getNutrientCode).toList())
+                .stream().collect(Collectors.toMap(Nutrient::getCode, Function.identity()));
+
+        List<NutrientRowDto> nutrientRows = versionNutrients.stream()
+                .sorted(Comparator.comparingInt(pn -> nutrientRefsByCode.containsKey(pn.getNutrientCode())
+                        ? nutrientRefsByCode.get(pn.getNutrientCode()).getSortOrder() : Integer.MAX_VALUE))
+                .map(pn -> {
+                    Nutrient ref = nutrientRefsByCode.get(pn.getNutrientCode());
+                    ProductSource source = sourcesById.get(pn.getSourceId());
+                    SourceRefDto sourceDto = source == null ? null
+                            : new SourceRefDto(source.getSourceType().name(), source.getSourceRef(), source.getCapturedAt());
+                    return new NutrientRowDto(
+                            pn.getNutrientCode(),
+                            ref != null ? ref.getDisplayName() : pn.getNutrientCode(),
+                            pn.getAmountPer100(),
+                            pn.getAmountPerServing(),
+                            pn.getUnit(),
+                            pn.getBasisPer100() == null ? null : pn.getBasisPer100().name(),
+                            pn.isEstimated(),
+                            pn.getConfidence(),
+                            sourceDto);
+                })
+                .toList();
+
+        List<ProductIngredient> versionIngredients = ingredients
+                .findByProductVersionIdOrderByPositionAsc(version.getId());
+        Map<String, Ingredient> ingredientRefsByCode = ingredientRefs.findAllById(
+                versionIngredients.stream()
+                        .map(ProductIngredient::getIngredientCode)
+                        .filter(Objects::nonNull)
+                        .toList())
+                .stream().collect(Collectors.toMap(Ingredient::getCode, Function.identity()));
+
+        List<IngredientRowDto> ingredientRows = versionIngredients.stream()
+                .map(pi -> {
+                    Ingredient ref = pi.getIngredientCode() == null ? null : ingredientRefsByCode.get(pi.getIngredientCode());
+                    return new IngredientRowDto(pi.getRawText(), pi.getPosition(),
+                            ref != null ? ref.getCanonicalName() : null, pi.isAdditive(),
+                            ref != null ? ref.getInsNumber() : null);
+                })
+                .toList();
+
+        List<ProductAllergen> versionAllergens = allergens.findByProductVersionId(version.getId());
+        Map<String, Allergen> allergenRefsByCode = allergenRefs.findAllById(
+                versionAllergens.stream().map(ProductAllergen::getAllergenCode).toList())
+                .stream().collect(Collectors.toMap(Allergen::getCode, Function.identity()));
+
+        List<AllergenRowDto> allergenRows = versionAllergens.stream()
+                .map(pa -> {
+                    Allergen ref = allergenRefsByCode.get(pa.getAllergenCode());
+                    return new AllergenRowDto(pa.getAllergenCode(),
+                            ref != null ? ref.getDisplayName() : pa.getAllergenCode(),
+                            pa.getDeclarationType().name());
+                })
+                .toList();
+
+        List<BarcodeRowDto> barcodeRows = barcodes.findByProductIdAndActiveTrue(product.getId()).stream()
+                .map(b -> new BarcodeRowDto(b.getGtin(), b.getGtinType() == null ? null : b.getGtinType().name(), b.isPrimary()))
+                .toList();
+
+        boolean hasOpenConflict = conflicts.existsByProductVersionIdAndStatus(version.getId(), ProductConflict.Status.OPEN);
+
+        CurrentVersionDto currentVersion = new CurrentVersionDto(
+                version.getId(), version.getVersionNo(), version.getEffectiveFrom(),
+                version.getServingSizeG(), version.getServingSizeDeclared(), version.getServingPlausible(),
+                version.getDataQuality().name(), version.getCapturedAt(), version.getVerifiedAt(),
+                version.getCaptureMethod().name());
+
+        return ProductDetailDto.from(summary, currentVersion, nutrientRows, ingredientRows,
+                allergenRows, barcodeRows, hasOpenConflict);
+    }
+}

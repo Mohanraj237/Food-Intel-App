@@ -1,0 +1,32 @@
+/* Allergen flag.
+   Deep magenta, used nowhere else. Not red: red says "danger / this will harm
+   you", which is a claim about a person's body rather than about a label. */
+
+.allergen-flag {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  color: var(--allergen-fg);
+  background: var(--allergen-bg);
+  border: 2px solid var(--allergen-border);
+}
+
+.allergen-flag__mark {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.allergen-flag__heading {
+  font-weight: 700;
+  font-size: var(--text-h2);
+  line-height: var(--leading-snug);
+}
+
+.allergen-flag__note {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  /* Inherits the allergen foreground; the tint keeps it above 4.5:1. */
+}

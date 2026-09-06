@@ -1,0 +1,24 @@
+# Production. Every value below comes from the environment; nothing is defaulted.
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+springdoc:
+  api-docs:
+    enabled: false          # no public schema disclosure
+  swagger-ui:
+    enabled: false
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+
+logging:
+  level:
+    root: WARN
+    com.familyfood: INFO
+    access: INFO

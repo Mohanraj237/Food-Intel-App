@@ -240,3 +240,160 @@ No rule may originate from an LLM labelling an ingredient "bad" (Pack 08 §5).
 **Conflict.** Brief §9 says "do not force registration before demonstrating useful product intelligence unless technically or legally necessary". A personal-fit verdict is computed *from* a health profile, which cannot exist without a data principal and a consent record.
 
 **Decision.** Anonymous users may search, open a product, and see product-level facts and the product-level assessment. **The per-person fit strip is where sign-in is required**, and the prompt at that boundary states plainly why. This gives the demonstration the brief asks for while keeping consent legally coherent.
+
+---
+
+## D-021 — One Maven module; boundaries enforced by ArchUnit, not by POM graph
+
+**Date:** 2026-09-05 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Context.** `docs/architecture/system-architecture.md` specifies thirteen modules. The question is whether those become thirteen Maven modules or thirteen enforced packages in one.
+
+**Decision.** One Maven module. Module boundaries are packages under `com.familyfood.*`, and an ArchUnit suite fails the build on any violation — including the two rules that carry product weight: `scoring` must not depend on `ai` (D-011) and `recommendation` must not depend on any commercial concept (D-012).
+
+**Rationale.** Thirteen POMs buy compile-time rejection instead of test-time rejection, in exchange for fourteen build files, slower builds and expensive refactoring, on a codebase with one team and one deployable. A failing build is a failing build. This is the boring choice the Constitution §3 and the brief §5 both ask for.
+
+**Reversal condition.** A second deployable, or a module that genuinely needs an independent release cadence.
+
+---
+
+## D-022 — Barcode scan progressive enhancement
+
+**Date:** 2026-09-05 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Decision.** Use the browser's native barcode detector and rear camera only where available; manual GTIN entry is the universal path and uses the same lookup API. Camera frames and decoded values remain in memory for the active lookup only. Label OCR remains visibly unavailable until its secure processing and confirmation flow exists.
+
+---
+
+## D-023 — Cross-module membership facts flow through one published interface, never a shared repository or entity
+
+**Date:** 2026-09-06 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Context.** `profile`, `consent`, and eventually `scoring`/`capture`/`activity` all need the same fact — is the caller this household member, or a live guardian of this (child) member — but the module table (`docs/architecture/system-architecture.md` §3) does not let any of them depend on `household`'s persistence layer, and the `ConsentRecord`/domain style already established (subject ids stored as raw `UUID`, never a JPA relationship into another module's entity) rules out an object-graph shortcut.
+
+**Decision.** `household` publishes exactly one interface for this, `com.familyfood.household.application.HouseholdAccess`:
+```java
+public interface HouseholdAccess {
+    Optional<MemberInfo> findMember(UUID memberId);
+    boolean isGuardianOf(UUID guardianAccountId, UUID childMemberId);
+    record MemberInfo(UUID id, UUID householdId, UUID userAccountId, String memberType, boolean active) {}
+}
+```
+`profile` and `consent` each constructor-inject it and apply the identical authorization shape: a departed or unknown member is `RESOURCE_NOT_FOUND`; a `CHILD` subject requires `isGuardianOf(caller, subjectMemberId)` else `NOT_A_GUARDIAN`; an `ADULT` subject requires `caller.equals(member.userAccountId())` else `ACCESS_DENIED`. `memberType` stays a raw string (`"ADULT"`/`"CHILD"`, the DB's own CHECK values) rather than a shared enum type, so no module needs a compile-time dependency on another module's enum.
+
+**Rationale.** This is D-001/D-002 (guardian-only child data, self-only adult data) made structural in exactly one place instead of re-derived per module. A future module (e.g. `scoring` reading a profile to compute a household-fit verdict) extends the same pattern rather than inventing a `PermissionService` god-object or reaching into `household`'s repositories directly — the latter is exactly what `ModuleBoundaryTest#repositoriesAreNotSharedAcrossModules` exists to catch.
+
+**Reversal condition.** A third or fourth consumer needing materially different membership facts (e.g. role, not just guardian/self) — extend `HouseholdAccess`'s method set then, don't fork a second interface.
+
+**Rationale.** This preserves a quick-commerce interaction without relying on a third-party SDK or presenting a decorative but non-functional camera screen.
+
+---
+
+## D-024 — Phase 4 scoring foundation: no fabricated health judgment, `scoring` reaches `household` only through `HouseholdAccess`, household fit is caller-scoped
+
+**Date:** 2026-09-06 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Context.** Phase 4 asks for a deterministic `ProductHealthScore` and `PersonalFit`/`HouseholdFit` pipeline. The repository defines the *shape* of this pipeline in detail (`system-architecture.md` §5, `database-design.md` §8: `reference_standard`, `rule_set`, `scoring_rule`, `score_component`, `product_score`) but nowhere specifies the actual numeric thresholds a rule or score component should use (e.g. how many grams of added sugar per 100 g triggers `LIMIT`). Separately, implementing `HouseholdFit` requires enumerating a household's members, which only `household`'s published `HouseholdAccess` (D-023) can answer — but `ModuleBoundaryTest#repositoriesAreNotSharedAcrossModules` currently defines `Household` as a layer no other named layer (including the already-declared, still-empty `Scoring` layer) may access at all, with no carve-out for the published-interface package. `profile` already depends on `HouseholdAccess` today only because it was never added as a named layer to that same rule — an inconsistency this decision resolves for `scoring` explicitly rather than by the same accident.
+
+**Decisions.**
+
+1. **No invented numeric health thresholds.** Building a production `ProductHealthScore`/nutrient-based `scoring_rule` set requires numbers (e.g. "added sugar > X g/100 g ⇒ `LIMIT`") that no document in this repository specifies, and getting one wrong is exactly the kind of fabricated medical judgment the orchestrating brief for this phase forbids guessing on. The schema and rule engine are built in full and are production-grade; the `ACTIVE` `rule_set` ships with **zero** `scoring_rule` / `score_component` rows. `ProductHealthScore` therefore always reports `status=NOT_YET_SCORED` and `PersonalFit`'s nutrient-goal dimension always reports `verdict=INSUFFICIENT_DATA, reasonCodes=[NO_ACTIVE_RULES]` — honest, not a bug — until a nutrition-reviewed threshold set is supplied and activated as a new `rule_set` version. A second, `DRAFT` (never `ACTIVE`) rule_set with illustrative example rules exists solely so the engine itself (versioning, basis evaluation, most-severe-wins, reason codes) is unit-tested end-to-end without those numbers ever reaching a real user.
+2. **Allergen match is real and ships now.** Matching a household member's recorded `AllergenCode`s against a product's declared allergens is a factual set-membership check, not a health judgment, so it is implemented as a genuine, active `PersonalFit` dimension from day one — surfaced as its own field (`allergenMatches`), never folded into the `verdict` enum (D-004: allergen is a separate hard flag, not a verdict).
+3. **`scoring` reaches `household` only through `HouseholdAccess`, never `household.domain`/`infra`/`api`.** `ModuleBoundaryTest#repositoriesAreNotSharedAcrossModules`'s `Household` layer is redefined to cover only `com.familyfood.household.domain..`, `com.familyfood.household.infra..` and `com.familyfood.household.api..` — the previously-undifferentiated `com.familyfood.household..` layer definition is narrowed so that `household.application` (where `HouseholdAccess` lives) is reachable by a named layer while the module's actual persistence and HTTP surface stay walled off. This makes the exact extension D-023 anticipated ("a future module, e.g. scoring") a live, enforced rule rather than one more module quietly exempted from the check by never being named in it. `HouseholdAccess` itself gains one additive method, `listActiveMembers(UUID householdId)`, backed by the repository call `household`'s own controller already uses — no new persistence, no duplicated membership logic.
+4. **Household fit is scoped to what the caller may see, not "everyone in the household."** D-002 means an adult's profile may only ever be read by that adult's own account — not even the household owner. `HouseholdFit` for a request therefore returns a personal-fit entry only for the caller's own membership and any child they are a guardian of; other adult members are silently absent from the response (never a 403 for the whole request), exactly mirroring how the frontend `ConsentPanel` already treats another adult's non-essential consent purposes. This is D-002 applied consistently, not a new restriction invented for scoring.
+
+**Alternatives rejected.** (a) Guess plausible WHO/FSSAI numbers from general knowledge — rejected outright; a wrong number here is a trust-destroying, potentially harmful defect in a product whose entire premise is a citable reason for every claim (D-009). (b) Give `scoring` a copy of household membership data — rejected as exactly the duplicated-membership-logic D-023 exists to prevent. (c) Compute household fit for every member regardless of who is asking, relying on the API caller being "trusted enough" — rejected as a direct violation of D-002.
+
+**Reversal condition.** Nutrient-based `scoring_rule`/`score_component` rows activate only when a task explicitly supplies a nutrition/regulatory-reviewed threshold set with citable sources — at that point they are added as a new versioned, `ACTIVE` `rule_set`, superseding the empty one; no historical `product_score`/verdict becomes wrong, since each stores the `rule_set` version it was computed under (D-014).
+
+---
+
+## D-025 — Scoring rule content is authored through a controlled evidence pipeline, never generated from Claude's general knowledge
+
+**Date:** 2026-09-06 · **Status:** ACCEPTED · **Owner:** Orchestrator (at the user's explicit direction)
+
+**Context.** D-024 shipped the scoring engine with zero active rules rather than let Claude guess a threshold. That resolves *this* session, but not the next one: without a standing rule, a future session under time pressure could reasonably read "build Phase 4 scoring rules" as an instruction to research thresholds and write them into a migration — recreating exactly the problem D-024 avoided. The user's own direction, verbatim: *"Don't ask Claude to 'research some healthy food thresholds and create rules.' That would recreate the exact problem you just avoided."*
+
+**Decision.** Real `scoring_rule`/`score_component` content is produced only through this pipeline, never any shorter path:
+
+```
+domain source → reviewed specification → migration → automated tests → activate rule_set
+```
+
+1. **A human-owned specification precedes any migration.** Before a production `scoring_rule`/`score_component` migration is written, a specification must exist naming, per rule: rule id, nutrient/fact, unit, basis (per-100g/100ml/serving), applicable category, population/age scope, threshold, severity, score impact, reason code, source, source date/version, reviewer, rule_set version, effective date, and confidence/verification status. Claude may format, structure, or transcribe such a specification once a human supplies the source content; Claude does not originate the threshold values themselves.
+2. **Source, interpretation, and implementation are recorded separately and never conflated.** For every rule: (a) what the authoritative body actually published, (b) how that was translated into this application's rule, (c) how `RuleEngine` executes it — three distinct, separately-reviewable statements, not one paragraph blending fact and judgment. This lives in `docs/data/scoring/` (see its `README.md` for the required layout: `scoring-methodology.md`, one `rules-vN.md` per rule_set version, an `evidence/` directory with one file per cited source, and a `review.md` recording who approved activation and when).
+3. **A `rule_set` activation is a reviewed release, not a routine commit.** Treat it with the same weight as a schema migration touching production data: a named reviewer, a dated approval, and a migration that flips the new `rule_set` to `ACTIVE` while retiring the superseded one in the same transaction (the partial-unique-index invariant from D-024 means both must happen together).
+
+**Alternatives rejected.** (a) Let a future session interpret "add scoring rules" as license to research and decide thresholds itself — rejected for the reason quoted above. (b) Keep the evidence pipeline as an unwritten convention rather than a decision-log entry — rejected because the whole point of this repository's decision log is that a convention which matters this much must be discoverable by a session that never saw the conversation where it was decided.
+
+**Reversal condition.** None anticipated. If a future emergency genuinely requires bypassing this (it should not), that bypass is itself a new decision-log entry with an explicit owner and expiry, not a silent exception.
+
+---
+
+## D-026 — `PRODUCT_IMPROVEMENT` consent is not wired to the new contribution endpoint; flagged, not fixed
+
+**Date:** 2026-09-06 · **Status:** OPEN (deliberately unresolved) · **Owner:** Orchestrator
+
+**Context.** `V1__extensions_and_reference_data.sql` seeds a `PRODUCT_IMPROVEMENT` consent purpose ("Contributing a product to the catalogue") that reads as if it were meant to gate exactly the manual-entry contribution endpoint (`POST /api/v1/contributions`, new `capture` module) built this session. It does not gate it — the endpoint accepts any signed-in caller's submission unconditionally. This was caught by the implementing agent's own review, not missed silently.
+
+**Why it wasn't wired anyway.** `ConsentGate.require(subjectMemberId, purposeCode)` is scoped to a household member, not an account — every existing purpose (`ACCOUNT`, `PERSONAL_FIT`, `CHILD_FOOD_SUITABILITY`, `LABEL_IMAGE_PROCESSING`) concerns processing *a specific person's* data. Contributing a product is an account-level action with no household-member dependency at all — a signed-in account with no household yet (the common case for someone who just registered to report a missing barcode) has no member id for `ConsentGate` to check against. Wiring it as-is would not gate the intended purpose; it would simply block every contribution from anyone without a household, which is very likely not what seeding this purpose was for.
+
+**Decision.** Ship the contribution endpoint without a consent check now, exactly as built, rather than force-fit the existing member-scoped `ConsentGate` onto an account-level action under time pressure — the same reasoning D-024/D-025 apply to scoring thresholds applies here: a wrong fix to a real gap is worse than an honestly-labelled gap. This is recorded as `OPEN`, not resolved, so it cannot be mistaken for "consent was considered and correctly deemed unnecessary."
+
+**What resolving this properly would need** (not decided, listed so a future session doesn't have to rediscover the options): (a) extend `ConsentGate`/`ConsentRecord` to support an account-scoped subject in addition to a household-member one, or (b) treat `PRODUCT_IMPROVEMENT` as implicitly granted by the act of submitting (a terms-of-contribution acknowledgment rather than a revocable consent record, which may not even belong in the same ledger as personal-data purposes), or (c) determine the purpose was seeded speculatively and retire it if a proper design review concludes contribution shouldn't be consent-gated at all. Any of these is a deliberate design decision, not an implementation detail.
+
+**Reversal condition.** Resolved the moment a future task explicitly designs the account-vs-member consent-subject question and implements one of the options above (or a better one) — at which point this entry's status changes from `OPEN` to a normal `ACCEPTED`/superseded entry.
+
+---
+
+## D-027 — Phase 5 Compare and Outcome capture: client-side composition of existing endpoints, no fabricated backend, no false persistence claim
+
+**Date:** 2026-09-06 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Context.** Phase 5's brief asks for a Compare experience and an Outcome-capture interaction (D-005). Neither has a backend: no `recommendation` module exists for a comparison API (FR-007/PX-2, `NOT_STARTED`), and no `activity` module exists to persist a bought/skipped decision (FR-012, `NOT_STARTED`). The brief is explicit that a missing backend capability must be documented and worked around, never faked with invented API responses or a UI that claims to save when it does not.
+
+**Decisions.**
+
+1. **Compare is a client-side composition of endpoints that already exist**, not a new backend contract. `features/compare/CompareScreen.tsx` loads two products the caller has actually navigated to or searched for (`getProduct`), and renders one row per dimension using the same endpoints `ProductScreen` already calls for a single product — `getProductHealth` for the product-level assessment, `getHouseholdFit`/`listMembers` for the per-person verdicts (caller-scoped exactly as D-024 pt. 4 requires), and the product's own `nutrients`/`allergens`/`ingredients` fields for the rest. No row is invented; a dimension with no real per-product value renders the same "not declared" honesty `ProductScreen`'s nutrition table already uses. The second product is chosen through an inline search picker (local component state, not a new route) rather than a dedicated "select products to compare" screen — consistent with the existing app's preference for local state over route proliferation (`ScanScreen`'s contribute toggle is the precedent).
+2. **The product-level health assessment (`GET /products/{id}/assessment`) and the structured `Reason[]` explanation, both already implemented in Phase 4 but never called from the frontend, are wired up now.** `HealthAssessmentSection` (collapsed `<details>`, below the per-person verdict, never the screen's largest element — preserving D-003 exactly as `ProductScreen`'s existing information-order comment already commits to) and a new `MemberFitRow` "why" disclosure (`ReasonList`, `lib/reasons.ts`) render the same `Reason` shape `scoring/application/Reason.java` already emits. Since D-024 ships zero active rules, every real call today resolves to `NOT_YET_SCORED`/`NO_ACTIVE_RULES` — rendered as the honest, already-drafted `why.noRules`/`score.notYetScored` copy, not as an error.
+3. **Outcome capture (`features/product/OutcomeCapture.tsx`) is a real, isolated UI with no network call at all.** Selecting an option never claims the choice was saved — it shows `outcome.notPersisted` ("this is a preview... not connected to your account"), a new locale key added specifically so the existing `outcome.thanks` copy (which reads as a persisted acknowledgment) is not reused dishonestly ahead of a real `activity` backend. Once that backend exists, only this component's `onChange` body needs to call it — the UI contract does not change.
+
+**Rationale.** Every option that would have made Compare or Outcome look more finished right now — a mocked comparison-score API, a fabricated "Saved!" toast — is exactly the fabricated-data failure mode D-024's own precedent (ship the honest, incomplete mechanism rather than invent content) exists to prevent. Composing real, already-authorized endpoints client-side is not the same thing as inventing a response: every number shown is a real value from a real backend call for a real product the caller selected.
+
+**Alternatives rejected.** (a) A mocked `/compare` backend response — rejected, indistinguishable from fabricated data once shipped. (b) Skipping Compare/Outcome entirely until backend modules exist — rejected; the brief calls for exactly this "build the reusable UI/model against a clearly isolated adapter, document the backend dependency" path, and the existing locale bundle already contains `compare.*`/`outcome.*` keys clearly prepared for this. (c) Reusing `outcome.thanks` for the unpersisted case — rejected as a false persistence claim.
+
+**Reversal condition.** Once a `recommendation`/comparison backend exists, `CompareScreen`'s per-dimension data fetching can be replaced by a single comparison endpoint without changing its rendering; once an `activity` backend exists, `OutcomeCapture` gains a mutation and its confirmation copy changes from `outcome.notPersisted` to `outcome.thanks`. Neither is a rewrite.
+
+---
+
+## D-028 — Account erasure: two-phase (request + scheduled hard erasure), pseudonymise `user_account` rather than delete it, no cancellation endpoint
+
+**Date:** 2026-09-06 · **Status:** ACCEPTED · **Owner:** Orchestrator (data-rights session)
+
+**Context.** NFR-09/CH-008/FR-010 required closing the account/child-erasure gap the requirements-traceability audit (`e641dd3`) made explicit: no export or erasure endpoint existed anywhere, and `HouseholdService.removeMember` was only ever a soft "leave." Before writing any deletion code, the existing schema and identity module were inspected for intent already encoded there, per this session's own instruction not to invent a new deletion framework — and a real one was found: `user_account.status` already had a `DELETION_REQUESTED` value, `deleted_at`/`UserAccount.markDeletionRequested`/`isUsable()` already existed, `familyfood.privacy.erasure-grace-period` (`P30D`) was already configured, and `UserAccountRepository.findByDeletedAtBefore` was already commented "for the scheduled hard-delete job" — none of it wired to an endpoint or a scheduler. `AuditAction` already carried `ACCOUNT_DELETION_REQUESTED`, `ACCOUNT_DELETED`, `CHILD_DATA_DELETED`, `DATA_EXPORTED` and `DATA_ERASURE_COMPLETED`, unused. `V3__household_consent_profile.sql`'s own comments were explicit about the shape required: `household_member.user_account_id` has no `ON DELETE` action "because a membership referenced by a surviving `consent_record` must not disappear when an account row is finally hard-deleted. Erasure detaches the person from the household through `left_at` and a scrubbed label instead."
+
+**Decisions.**
+
+1. **Two phases, exactly as the schema already anticipated.** `POST /api/v1/account/deletion` (`AccountErasureService.requestDeletion`) is immediate: `markDeletionRequested` (blocks sign-in via `isUsable()`), every refresh token revoked (`RefreshTokenRevoker`), `ACCOUNT_DELETION_REQUESTED` audited. Actual erasure runs later, via `AccountErasureScheduler` (hourly `@Scheduled`, a fixed constant with no configuration knob — the same "reviewable constant, not a tunable" choice `HouseholdService.INVITATION_TTL` already makes), once `familyfood.privacy.erasure-grace-period` has elapsed. Tests trigger the hard-erasure step directly (`DataRightsService.performFullErasure`) rather than waiting 30 real days or manipulating the clock.
+2. **`user_account` is never row-deleted — it is anonymised in place.** `UserAccount.eraseIdentity` overwrites `email` (to a synthetic, unique, lower-case `erased-{accountId}@erased.invalid` — freeing the real address for re-registration), `password_hash` (to a real Argon2id hash of random bytes, so `PasswordHasher.matches` never throws on a malformed value, even though `isUsable()`'s `status != ACTIVE` check would already block sign-in regardless of what the hash contains), and `phone_hash` (to `null`), and sets a new terminal `AccountStatus.ERASED` (added to the CHECK constraint in `V7__data_rights.sql`). This exactly mirrors `audit_event`'s own documented "pseudonymise the actor, don't remove the record" treatment, extended to the one other table every other table's `ON DELETE`-less foreign key ultimately points at. `household_member` rows the account held are similarly scrubbed in place (`HouseholdMember.scrubForErasure`: `leave()` + `displayLabel` overwritten to a fixed `"Erased member"` placeholder), never row-deleted, for the same referential reason.
+3. **`consent_record` and `audit_event` are never touched by any erasure path in this session** (AC-9.3). `ProfileService.eraseAllVersions` and `HouseholdService.eraseAccountMemberships`/`eraseChildMember` reach only `person_profile`/`household_member`/`guardian_link` — none of them import `consent.infra` or attempt to write `audit_event` (which the database would refuse regardless — `trg_audit_event_no_update`/`no_delete`). This was verified in integration tests against a real Postgres, not asserted from reading the code: `AccountErasureIT`/`ChildErasureIT` query `consent_record`/`audit_event` row counts directly after erasure.
+4. **No cancellation endpoint exists for a `DELETION_REQUESTED` account.** This is a real, deliberate gap, not an oversight: once `markDeletionRequested` runs, `isUsable()` is false, so the account cannot sign back in to ask for a reprieve even if a cancel endpoint existed — an anonymous "cancel my pending deletion" endpoint would itself be a new authentication problem (who may cancel someone else's deletion?), and building one was judged out of proportion for this session's scope (it is a UX/product feature, not a data-lifecycle correctness gap). The 30-day grace period today only delays when hard erasure runs; it does not yet give the account holder a way to stop it. Flagged for a future session, not solved here.
+5. **An account that is the sole guardian of a child is not blocked from deleting itself, and the child's data is not touched.** A child is a separate data subject (D-001/D-002); an adult's unilateral account deletion does not carry authority to also erase someone else's data, symmetric with the equivalent household-safety requirement (deleting one adult must never affect another member). This can leave a child "orphaned" (no live guardian) in a single-guardian household — a real product-level gap, not resolved here, since reassigning or requiring a second guardian before deletion is a new workflow this session's scope did not ask for and the household module does not currently support.
+
+**Alternatives rejected.** (a) Hard-delete the `user_account` row outright — rejected because `consent_record.granted_by_user_id`, `household_member.user_account_id`, `guardian_link` (transitively) and `audit_event.actor_user_id` all reference it with no `ON DELETE` action by deliberate prior design (V2/V3's own comments); a real `DELETE` would either violate those foreign keys or require cascading through rows this session's own brief says must survive. (b) Erase immediately on request, no grace period — rejected: the grace period was already a considered part of the schema (config property, repository query, column comment) before this session began, and immediate erasure removes any window for a compromised-account or accidental-click scenario to be caught by whoever operates the scheduled sweep, even without a self-service cancel path. (c) Block deletion while an account is a child's sole guardian — rejected as an unrequested new workflow (guardian reassignment/handoff) rather than a data-lifecycle fix; documented as a known limitation instead of guessed into existence.
+
+**Reversal condition.** A future session may add a genuine cancellation flow (e.g., a separate, narrowly-scoped "reactivate" token emailed at request time, independent of normal sign-in) — that supersedes point 4 without changing points 1–3. A future session may also add guardian-handoff/reassignment to `household`, at which point point 5's "orphaned child" gap can be closed by requiring a handoff before the last guardian's account may be deleted.
+
+---
+
+## D-029 — Erased product contributions: anonymise the submitter link, never delete the submission's content
+
+**Date:** 2026-09-06 · **Status:** ACCEPTED · **Owner:** Orchestrator (data-rights session)
+
+**Context.** Account erasure needed a decision this repository had not yet made anywhere: is a `product_contribution` row (the manual-entry queue `capture` added this session's predecessor) the submitter's personal data (delete it on erasure), or catalogue-improvement content with independent value (retain it)? Per this session's own brief, this is exactly the kind of ambiguity to resolve deliberately rather than guess silently.
+
+**Decision.** Retain the row; anonymise only `submitted_by_user_id` (`ProductContribution.anonymizeSubmitter`, called from `ContributionService.anonymizeSubmitter` during account erasure). `V7__data_rights.sql` drops the column's `NOT NULL` constraint for exactly this case. Reasoning: (a) `product_contribution` has no relationship into `catalog.domain` at all and every row is `PENDING` today (no reviewer console exists yet, per D-026's own context) — the content (product name, nutrients, ingredients) is a claim about a product, not a fact about the submitter; (b) this mirrors the repository's own established pattern for exactly this shape of problem — `audit_event.actor_user_id` and, per D-028, `user_account` itself are both pseudonymised rather than deleted so that a surviving record's evidentiary value is not destroyed by someone else's data-rights request; (c) deleting the row outright would be indistinguishable from silently discarding a real (if unreviewed) product-data submission, which conflicts with `NFR-12`/PX-10's "missing beats wrong, don't discard real signal" posture applied one level up.
+
+**Alternatives rejected.** (a) Delete every `PENDING` contribution on account erasure — rejected: nothing about "this is unreviewed" makes the underlying product-data claim personal data belonging to the submitter, and discarding it destroys information a future ops-review console might still use. (b) Leave `submitted_by_user_id` pointing at the now-erased (anonymised) `user_account` row unchanged — rejected: the id would still resolve to a real (if now-anonymous) account row, which is a weaker privacy posture than explicitly severing the link, for no benefit once the account row itself carries no identifying information anyway.
+
+**Reversal condition.** If a future ops-review console promotes a contribution into `catalog` with per-field provenance (D-015), that promoted product's `catalog.ProductSource` provenance is a separate, already-designed mechanism — this decision only ever governed the pre-promotion `product_contribution` row, and does not need to change when that console is built.

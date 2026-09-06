@@ -1,0 +1,267 @@
+.pdp { padding-bottom: var(--space-6); }
+
+.pdp__section {
+  padding: var(--space-4) var(--page-gutter);
+  border-bottom: 1px solid var(--border);
+}
+
+.pdp__section:last-child { border-bottom: 0; }
+
+.pdp__h2 {
+  font-size: var(--text-h2);
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+}
+
+/* ---- hero ---- */
+
+.pdp__hero {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4) var(--page-gutter);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.pdp__hero--loading { min-height: 132px; }
+
+.pdp__art {
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  filter: saturate(var(--cat-tile-dim)) brightness(calc(0.4 + 0.6 * var(--cat-tile-dim)));
+}
+
+.pdp__glyph {
+  font-size: 2.75rem;
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.2));
+}
+
+.pdp__identity { min-width: 0; }
+
+.pdp__brand {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.pdp__name {
+  font-size: var(--text-h1);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  margin-top: var(--space-1);
+}
+
+.pdp__meta {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+}
+
+/* ---- sign-in boundary ---- */
+
+.pdp__signin {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--brand-subtle);
+  border: 1px solid var(--brand);
+}
+
+.pdp__signin-title { font-weight: 700; }
+.pdp__signin-sub { font-size: var(--text-sm); color: var(--text-secondary); }
+.pdp__signin .btn { text-decoration: none; margin-top: var(--space-1); }
+
+.pdp__pending { color: var(--text-secondary); }
+
+/* ---- fit section (signed-in, has household) ---- */
+
+.pdp__fit-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pdp__fit-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pdp__fit-allergen {
+  font-size: var(--text-sm);
+  color: var(--allergen-fg);
+}
+
+.pdp__fit-note {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.pdp__fit-why {
+  margin-top: var(--space-1);
+}
+
+.pdp__fit-why summary {
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--brand);
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+}
+
+.pdp__fit-why > :not(summary) {
+  margin-top: var(--space-2);
+}
+
+.pdp__nomembers {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* ---- provenance ----
+   Given its own block rather than a footnote. "Where did this number come from
+   and when was it checked" is a trust question, and burying it under the panel
+   answers it only for people who already trust us. */
+
+.provenance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.provenance__badge {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.provenance__badge--good  { color: var(--verdict-everyday-fg);  background: var(--verdict-everyday-bg); }
+.provenance__badge--warn  { color: var(--verdict-limit-fg);     background: var(--verdict-limit-bg); }
+.provenance__badge--stale { color: var(--verdict-occasional-fg);background: var(--verdict-occasional-bg); }
+.provenance__badge--neutral { color: var(--verdict-insufficient-fg); background: var(--verdict-insufficient-bg); }
+
+.provenance__line { font-size: var(--text-sm); color: var(--text-secondary); }
+
+.provenance__conflict {
+  font-size: var(--text-sm);
+  color: var(--verdict-limit-fg);
+  font-weight: 600;
+}
+
+/* ---- nutrition table ---- */
+
+.pdp__serving { font-size: var(--text-sm); color: var(--text-secondary); }
+
+.pdp__serving-warn {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--verdict-limit-fg);
+  background: var(--verdict-limit-bg);
+  line-height: var(--leading-normal);
+}
+
+.nutri {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-3);
+  min-width: 320px;
+}
+
+.nutri th,
+.nutri td {
+  text-align: right;
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+
+.nutri thead th {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  font-weight: 700;
+}
+
+.nutri th:first-child,
+.nutri thead th:first-child { text-align: left; }
+
+.nutri tbody th {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.nutri__value { font-variant-numeric: tabular-nums; font-weight: 600; }
+.nutri__unit { color: var(--text-tertiary); font-weight: 400; margin-left: 1px; }
+
+/* Visibly different from a zero — the distinction is the point. */
+.nutri__missing {
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-size: var(--text-xs);
+}
+
+.nutri__est {
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.pdp__ingredients { line-height: var(--leading-normal); color: var(--text-secondary); }
+
+.pdp__report {
+  display: inline-block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--brand);
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+}
+
+.pdp__disclaimer {
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: var(--leading-normal);
+}
+
+.pdp__notfound-help { margin-block: var(--space-3); color: var(--text-secondary); }
+
+/* ---- desktop: two columns, hero stays full width ---- */
+
+@media (min-width: 1024px) {
+  .pdp__hero { padding-block: var(--space-6); gap: var(--space-5); }
+  .pdp__art { width: 148px; height: 148px; }
+  .pdp__glyph { font-size: 4rem; }
+  .pdp__name { font-size: var(--text-display); }
+  .pdp__section { max-width: 780px; }
+}

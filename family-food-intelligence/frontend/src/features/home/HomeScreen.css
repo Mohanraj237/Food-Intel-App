@@ -1,0 +1,122 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--page-gutter) var(--space-6);
+}
+
+/* ---- quick actions ----
+   Scan and label capture are the two entry points that search cannot serve, so
+   they get real estate rather than being buried behind an icon. Two-up on a
+   phone, side by side and wider on a desktop. */
+
+.home__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.qaction {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  min-height: 72px;
+  transition: transform var(--dur-fast) var(--ease),
+              box-shadow var(--dur-fast) var(--ease);
+}
+
+@media (hover: hover) {
+  .qaction:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+}
+
+.qaction__glyph {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.qaction--scan .qaction__glyph { background: var(--brand-subtle); color: var(--brand); }
+.qaction--label .qaction__glyph {
+  background: var(--verdict-occasional-bg);
+  color: var(--verdict-occasional-fg);
+}
+
+.qaction__text { display: flex; flex-direction: column; min-width: 0; }
+
+.qaction__title {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.qaction__sub {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: var(--leading-snug);
+  /* One line on a phone; the full hint is on the scan screen itself. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- sign-in prompt ----
+   Stated at the boundary where it actually applies (D-020): browsing is open,
+   a personal result is not. The copy says why rather than just demanding it. */
+
+.home__signin {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--brand-subtle);
+  border: 1px solid var(--brand);
+}
+
+.home__signin-text { flex: 1; min-width: 200px; }
+.home__signin-title { font-weight: 700; color: var(--text); }
+
+.home__signin-sub {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
+.home__signin-btn { flex-shrink: 0; text-decoration: none; }
+
+/* ---- rails ---- */
+
+.home__rail { display: flex; flex-direction: column; }
+
+.home__disclaimer {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: var(--leading-normal);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+/* ---- desktop ---- */
+
+@media (min-width: 768px) {
+  .home__actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+  .qaction { padding: var(--space-4); min-height: 84px; }
+  .qaction__title { font-size: var(--text-body); }
+}
+
+@media (min-width: 1024px) {
+  .home { padding-top: var(--space-6); gap: var(--space-7); }
+  .home__actions { max-width: 720px; }
+}

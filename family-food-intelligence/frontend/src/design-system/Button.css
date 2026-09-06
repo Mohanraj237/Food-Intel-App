@@ -1,0 +1,58 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap-primary);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+  /* Stops a double-tap zooming on iOS and makes repeat taps feel immediate. */
+  touch-action: manipulation;
+}
+
+.btn--sm { min-height: var(--tap-min); padding: var(--space-2) var(--space-3);
+           font-size: var(--text-sm); }
+.btn--lg { min-height: 56px; font-size: var(--text-h2); }
+.btn--full { width: 100%; }
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn--primary { background: var(--brand); color: var(--on-brand); }
+.btn--primary:hover:not(:disabled) { background: var(--brand-hover); }
+
+.btn--secondary {
+  background: transparent;
+  color: var(--brand);
+  border-color: var(--border-interactive);
+}
+.btn--secondary:hover:not(:disabled) { background: var(--brand-subtle); }
+
+.btn--ghost { background: transparent; color: var(--text); }
+.btn--ghost:hover:not(:disabled) { background: var(--surface); }
+
+.btn--destructive { background: transparent; color: var(--danger-fg);
+                    border-color: var(--danger-fg); }
+.btn--destructive:hover:not(:disabled) { background: var(--danger-bg); }
+
+.btn__spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: var(--radius-full);
+  animation: btn-spin 700ms linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn__spinner { animation: none; opacity: 0.6; }
+}

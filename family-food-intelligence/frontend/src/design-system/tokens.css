@@ -1,0 +1,308 @@
+/* =============================================================================
+   Design tokens — the single source of visual truth.
+   Implements docs/design/design-system.md. Every contrast ratio in the comments
+   is measured, not estimated.
+
+   No component may define a raw colour, size or duration. If a value is needed
+   and is not here, it belongs here first.
+   ============================================================================= */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- surfaces ---- */
+  --bg: #ffffff;
+  --surface: #f7f8f7;
+  --surface-raised: #ffffff;
+  --surface-sunken: #eef1ef;
+  --overlay: rgb(16 20 18 / 0.48);
+
+  /* ---- text (ratios on --bg) ---- */
+  --text: #14181a;              /* 17.87:1 */
+  --text-secondary: #4a5257;    /*  7.97:1 */
+  --text-tertiary: #697077;     /*  5.02:1 */
+  --text-inverse: #ffffff;
+
+  /* ---- borders ----
+     --border is DECORATIVE and intentionally low contrast.
+     Any boundary that carries meaning uses --border-interactive (3.4:1). */
+  --border: #e3e7e5;
+  --border-interactive: #7e8884;
+  --border-strong: #4a5257;
+
+  /* ---- brand ---- */
+  --brand: #0e7c6b;             /*  5.10:1 on --bg */
+  --brand-hover: #0b6558;       /*  6.96:1 */
+  --brand-subtle: #e6f4f1;
+  --on-brand: #ffffff;          /*  5.10:1 on --brand */
+  --focus-ring: #0e7c6b;
+
+  /* ---- verdicts ------------------------------------------------------------
+     Deliberately NOT a green→red traffic light. The product reports frequency
+     and fit, not virtue, and a safety ramp would moralise food (D-004).
+     DOESNT_FIT is violet because it means "conflicts with a preference you
+     declared" — a match failure, not a hazard. */
+  --verdict-everyday-fg: #126446;        /* 6.15:1 on its tint */
+  --verdict-everyday-bg: #e4f1ea;
+  --verdict-occasional-fg: #175a85;      /* 6.28:1 */
+  --verdict-occasional-bg: #e3eef6;
+  --verdict-limit-fg: #7d5100;           /* 6.04:1 */
+  --verdict-limit-bg: #faefd9;
+  --verdict-doesnt-fit-fg: #54458a;      /* 6.72:1 */
+  --verdict-doesnt-fit-bg: #ece8f7;
+  --verdict-insufficient-fg: #525960;    /* 6.16:1 */
+  --verdict-insufficient-bg: #edeff1;
+
+  /* ---- allergen: its own system, used nowhere else ----
+     Not on the verdict ramp because an allergen is not a verdict. Not red,
+     because red says "this will harm you" — a claim we must never make. */
+  --allergen-fg: #8f1746;                /* 7.40:1 */
+  --allergen-bg: #fae6ed;
+  --allergen-border: #d98aab;
+
+  /* ---- feedback ---- */
+  --danger-fg: #9a2020;
+  --danger-bg: #fbe9e9;
+  --success-fg: #126446;
+  --success-bg: #e4f1ea;
+
+  /* ---- type ---- */
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans',
+    'Noto Sans Devanagari', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --text-display: 1.75rem;
+  --text-h1: 1.375rem;
+  --text-h2: 1.125rem;
+  --text-body: 1rem;       /* floor for body copy; also prevents iOS input zoom */
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+
+  /* ---- space (4px base) ---- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* ---- radius ---- */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+
+  /* ---- elevation ---- */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 -8px 28px rgb(0 0 0 / 0.16);
+
+  /* ---- motion ---- */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* ---- layout ---- */
+  --tap-min: 44px;          /* WCAG 2.2 AA minimum */
+  --tap-primary: 48px;
+  --content-max: 640px;     /* mobile-first; a wide column hurts scanning */
+  --bottom-nav-h: 56px;
+
+  /* ---- z ---- */
+  --z-sticky: 10;
+  --z-bottom-nav: 20;
+  --z-sheet-backdrop: 30;
+  --z-sheet: 31;
+  --z-modal: 40;
+  --z-toast: 50;
+}
+
+/* =============================================================================
+   Dark theme. Only the tokens that change are redefined; every value has its
+   primary definition on bare :root above, so nothing depends on a media query
+   having matched.
+   ============================================================================= */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #121513;
+    --surface: #1b1f1d;
+    --surface-raised: #232826;
+    --surface-sunken: #0d100e;
+    --overlay: rgb(0 0 0 / 0.64);
+
+    --text: #e8edea;              /* 15.52:1 */
+    --text-secondary: #a8b2ae;    /*  8.44:1 */
+    --text-tertiary: #8a9490;     /*  5.88:1 */
+    --text-inverse: #0a1f1b;
+
+    --border: #2a302d;
+    --border-interactive: #6e7873;  /* 4.02:1 */
+    --border-strong: #a8b2ae;
+
+    --brand: #4ecfb6;             /*  9.56:1 */
+    --brand-hover: #3fbfa6;
+    --brand-subtle: #12302a;
+    --on-brand: #0a1f1b;
+    --focus-ring: #4ecfb6;
+
+    --verdict-everyday-fg: #6fd3a6;      /* 8.50:1 on its tint */
+    --verdict-everyday-bg: #16281f;
+    --verdict-occasional-fg: #7cc2ec;    /* 8.13:1 */
+    --verdict-occasional-bg: #152430;
+    --verdict-limit-fg: #e8b75a;         /* 8.57:1 */
+    --verdict-limit-bg: #2a2113;
+    --verdict-doesnt-fit-fg: #b3a4e8;    /* 7.22:1 */
+    --verdict-doesnt-fit-bg: #221e33;
+    --verdict-insufficient-fg: #a6afb5;  /* 7.19:1 */
+    --verdict-insufficient-bg: #1e2224;
+
+    --allergen-fg: #f09bbb;              /* 8.11:1 */
+    --allergen-bg: #2e1522;
+    --allergen-border: #8f1746;
+
+    --danger-fg: #f0a0a0;
+    --danger-bg: #2e1616;
+    --success-fg: #6fd3a6;
+    --success-bg: #16281f;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 12px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 -8px 28px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Explicit user choice wins in both directions. */
+:root[data-theme='dark'] {
+  --bg: #121513;
+  --surface: #1b1f1d;
+  --surface-raised: #232826;
+  --surface-sunken: #0d100e;
+  --overlay: rgb(0 0 0 / 0.64);
+
+  --text: #e8edea;
+  --text-secondary: #a8b2ae;
+  --text-tertiary: #8a9490;
+  --text-inverse: #0a1f1b;
+
+  --border: #2a302d;
+  --border-interactive: #6e7873;
+  --border-strong: #a8b2ae;
+
+  --brand: #4ecfb6;
+  --brand-hover: #3fbfa6;
+  --brand-subtle: #12302a;
+  --on-brand: #0a1f1b;
+  --focus-ring: #4ecfb6;
+
+  --verdict-everyday-fg: #6fd3a6;
+  --verdict-everyday-bg: #16281f;
+  --verdict-occasional-fg: #7cc2ec;
+  --verdict-occasional-bg: #152430;
+  --verdict-limit-fg: #e8b75a;
+  --verdict-limit-bg: #2a2113;
+  --verdict-doesnt-fit-fg: #b3a4e8;
+  --verdict-doesnt-fit-bg: #221e33;
+  --verdict-insufficient-fg: #a6afb5;
+  --verdict-insufficient-bg: #1e2224;
+
+  --allergen-fg: #f09bbb;
+  --allergen-bg: #2e1522;
+  --allergen-border: #8f1746;
+
+  --danger-fg: #f0a0a0;
+  --danger-bg: #2e1616;
+  --success-fg: #6fd3a6;
+  --success-bg: #16281f;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 -8px 28px rgb(0 0 0 / 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+  }
+}
+
+/* =============================================================================
+   Consumer-commerce layer
+   Added for the Zomato/Blinkit-grade rework. The interaction patterns those apps
+   get right — a sticky search that is always in reach, dense scannable cards,
+   horizontal rails, category tiles with real visual identity — are what make a
+   shopping app feel fast. None of their branding, colour or layout is copied;
+   the palette below is our own and the card anatomy carries our data (verdict
+   and nutrition) where theirs carries price.
+   ============================================================================= */
+
+:root {
+  /* Breakpoints, as documented values. Media queries cannot read custom
+     properties, so these are duplicated literally in the queries — kept here so
+     there is one place that states what the numbers mean. */
+  --bp-sm: 480px;    /* large phone */
+  --bp-md: 768px;    /* tablet */
+  --bp-lg: 1024px;   /* desktop: bottom nav gives way to a top bar */
+  --bp-xl: 1280px;
+
+  --shell-max: 1240px;      /* desktop content width */
+  --topbar-h: 68px;
+
+  /* Category identity.
+     Each category gets a two-stop gradient and a glyph. This is how a rail of
+     tiles reads as a place rather than a list of words — and how a product card
+     has a visual anchor before any photograph exists. Deliberately stylised, so
+     it is never mistaken for a photograph of a real pack. */
+  --cat-biscuits-a: #F5D9A8;      --cat-biscuits-b: #E3B573;
+  --cat-cereal-a: #FBE3A2;        --cat-cereal-b: #E9C25C;
+  --cat-namkeen-a: #F8CFA0;       --cat-namkeen-b: #E5A263;
+  --cat-beverages-a: #A9DCEF;     --cat-beverages-b: #6FBFDD;
+  --cat-malt-a: #D9BFA4;          --cat-malt-b: #B9906B;
+  --cat-staples-a: #E7DCC3;       --cat-staples-b: #CBBB93;
+  --cat-dairy-a: #DCE9F7;         --cat-dairy-b: #AFC9E8;
+  --cat-oil-a: #F3E3A6;           --cat-oil-b: #DCC15F;
+  --cat-chocolate-a: #D9BBA6;     --cat-chocolate-b: #A97C5F;
+  --cat-noodles-a: #F7D8B0;       --cat-noodles-b: #E0A96D;
+  --cat-sauces-a: #F2C3B8;        --cat-sauces-b: #DB8E7C;
+  --cat-protein-a: #C9E5CE;       --cat-protein-b: #92C6A0;
+  --cat-chips-a: #F9DFA6;         --cat-chips-b: #E6BC5E;
+  --cat-default-a: #DCE3E0;       --cat-default-b: #B4C0BB;
+  --cat-tile-dim: 1;              /* dark theme dims these; see below */
+
+  /* Card surfaces sit slightly off the page ground so a grid reads as objects
+     rather than as text blocks. */
+  --card-bg: #ffffff;
+  --card-media-bg: #f2f4f3;
+  --card-border: #eceeed;
+  --rail-fade: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --card-bg: #1b1f1d;
+    --card-media-bg: #232826;
+    --card-border: #2a302d;
+    --rail-fade: #121513;
+    /* Category tints are darkened rather than swapped: the hue is the category's
+       identity and must survive the theme, but full-strength pastels glare on a
+       dark ground. */
+    --cat-tile-dim: 0.42;
+  }
+}
+
+:root[data-theme='dark'] {
+  --card-bg: #1b1f1d;
+  --card-media-bg: #232826;
+  --card-border: #2a302d;
+  --rail-fade: #121513;
+  --cat-tile-dim: 0.42;
+}

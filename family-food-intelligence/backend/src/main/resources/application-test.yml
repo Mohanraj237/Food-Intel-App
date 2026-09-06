@@ -1,0 +1,25 @@
+# Test profile. Datasource is supplied by Testcontainers at runtime.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration, classpath:db/testdata
+
+familyfood:
+  auth:
+    jwt-secret: dGVzdC1zaWduaW5nLWtleS1ub3QtYS1zZWNyZXQtdGhpcnR5LXR3by1i
+    access-token-ttl: PT5M
+  privacy:
+    hash-pepper: test-pepper
+  ai:
+    enabled: false
+  limits:
+    login-attempts-per-hour: 5
+
+logging:
+  level:
+    com.familyfood: DEBUG
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN

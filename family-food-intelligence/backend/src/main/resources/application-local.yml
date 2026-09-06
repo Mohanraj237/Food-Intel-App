@@ -1,0 +1,29 @@
+# Local development. Values here are NOT secrets — they are deliberately weak,
+# obviously fake, and must never be reused in any deployed environment.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/familyfood
+    username: familyfood
+    password: familyfood_local
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+
+familyfood:
+  auth:
+    # base64("local-development-signing-key-not-a-secret-32b")
+    jwt-secret: bG9jYWwtZGV2ZWxvcG1lbnQtc2lnbmluZy1rZXktbm90LWEtc2VjcmV0LTMyYg==
+  privacy:
+    hash-pepper: local-development-pepper
+  storage:
+    access-key: minioadmin
+    secret-key: minioadmin
+
+logging:
+  level:
+    com.familyfood: DEBUG
+
+springdoc:
+  swagger-ui:
+    enabled: true

@@ -1,0 +1,66 @@
+# ---- Secrets: never commit. (Constitution §60, D-018) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+secrets/
+**/application-local-secrets.yml
+
+# ---- Java / Maven ----
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/.gradle-enterprise/
+*.class
+*.jar
+!maven-wrapper.jar
+*.war
+*.log
+hs_err_pid*
+replay_pid*
+
+# ---- Node / frontend ----
+node_modules/
+dist/
+dist-ssr/
+build/
+.vite/
+coverage/
+*.local
+.eslintcache
+*.tsbuildinfo
+
+# ---- Playwright ----
+/e2e/test-results/
+/e2e/playwright-report/
+/e2e/blob-report/
+/e2e/.cache/
+/e2e/playwright/.auth/
+
+# ---- IDE ----
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.settings/
+.classpath
+.project
+nbproject/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Local data / uploads ----
+/data/
+/uploads/
+/tmp/
+*.sqlite
+*.db
