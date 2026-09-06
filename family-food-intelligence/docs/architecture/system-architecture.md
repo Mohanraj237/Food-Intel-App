@@ -107,7 +107,7 @@ The seam is preserved rather than exercised: modules communicate through publish
 | `consent` | Consent ledger, purposes, versions, guardian consent, withdrawal | platform, audit | Depend on any module that it gates |
 | `catalog` | Product, ProductVersion, Brand, Category, Barcode, Ingredient, Nutrient facts, Allergen, per-field provenance, verification state | platform, audit | Contain scoring logic |
 | `search` | Query parsing, FTS + trigram ranking, brand aliases | platform, catalog | Own product write paths |
-| `capture` | Image upload, OCR orchestration, extraction proposals, confirmation, contribution queue | platform, catalog, ai | Write to catalog without confirmation |
+| `capture` | Image upload, OCR orchestration, extraction proposals, confirmation, contribution queue, ops-review approve/reject (D-032) | platform, catalog, ai, identity (`OperatorAccess` only, D-032) | Write to catalog without confirmation |
 | `scoring` | Rules engine, ProductHealthScore, PersonalFit, HouseholdFit, explanation assembly, rule versioning | platform, catalog, profile | Call `ai`. Ever. |
 | `recommendation` | Alternative selection, better_on/worse_on, honest empty result | platform, catalog, scoring | Depend on any commercial concept (D-012) |
 | `activity` | Lookups, verdict records, outcome capture, recent activity | platform, catalog, scoring | Store raw search text unhashed |

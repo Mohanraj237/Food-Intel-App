@@ -127,7 +127,7 @@ class AccountExportIT extends IntegrationTestBase {
                         .header("Authorization", owner.authHeader())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"productName":"Test Snack"}
+                                {"productName":"Test Snack","catalogueContributionAcknowledged":true}
                                 """))
                 .andExpect(status().isCreated());
 

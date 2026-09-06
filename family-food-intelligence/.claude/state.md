@@ -1,6 +1,26 @@
 # Project State
 
-**Last updated:** 2026-09-06. Two sessions landed the same day, in the same working tree, on independent files — neither has been committed yet (see "Working tree" note in `.claude/current-task.md`):
+**Last updated:** 2026-09-06 (Phase 6 hardening sprint, this entry's author). Added 30 new
+backend tests for the three modules the feature-completion sprint left untested
+(`recommendation`, `activity`, ops-review) and found + fixed 4 real defects along the way —
+see `.claude/current-task.md`'s top section for the full list (one was a P1: a whole-number
+nutrient amount crashed ops-review approval with a 500). Full backend regression: **204/204**
+(88 unit + 116 integration, up from 174 before this sprint). Frontend: typecheck + 8/8 tests
+green. Catalogue unchanged at 894 real products (893 Open Food Facts + 1 ops-review test
+artifact from live verification) — Open Food Facts' outage from the prior sprint was checked
+again and had not recovered; the importer remains ready to re-run.
+
+---
+
+**Previous entry (2026-09-06, feature-completion sprint, commit `3ef643a`).** Added: real
+Open Food Facts dev catalogue (893 products, D-031), ops-review console (D-032),
+`recommendation` module (D-013, D-033), `activity` module (FR-012), resolved D-026 (D-030).
+Full detail: `.claude/current-task.md`. Per-row requirement status lives in
+`docs/product/requirements-traceability.md` (now v2.1).
+
+---
+
+**Previous entry (2026-09-06, earlier the same day):** Two sessions landed the same day, in the same working tree, on independent files — neither has been committed yet (see "Working tree" note in `.claude/current-task.md`):
 1. **Phase 5 session** — core consumer UX: Compare, product-level health assessment, per-person "why" reasons, an honest Outcome-capture UI. D-027.
 2. **Data rights session** (this entry's author) — NFR-09/CH-008/FR-010's erasure gap: account export, account deletion (two-phase), child erasure. New `datarights` module. D-028/D-029.
 
@@ -12,12 +32,12 @@ See `.claude/current-task.md` for detail on both.
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 0 — Discovery | **DONE** | `docs/engineering/repository-assessment.md`, `docs/decisions/decision-log.md` (27 decisions, D-001..D-027 — D-026 is `OPEN`, see below), `docs/architecture/*`, `docs/product/*`, `docs/design/design-system.md` |
+| 0 — Discovery | **DONE** | `docs/engineering/repository-assessment.md`, `docs/decisions/decision-log.md` (33 decisions, D-001..D-033 — all `ACCEPTED`; D-026 was `OPEN`, resolved by D-030), `docs/architecture/*`, `docs/product/*`, `docs/design/design-system.md` |
 | 1 — Foundation | **DONE** | Git, `.gitignore`, Maven, Spring Boot boots, PostgreSQL + Flyway (V1-V6), Argon2id + JWT auth round-trips, RFC 7807 errors, structured logging + masking, ArchUnit boundaries, frontend shell + design tokens, CI, Docker |
-| 2 — Household, consent, profiles | **BACKEND DONE, FRONTEND DONE** | `household`/`profile`/`consent` modules complete and tested; `ConsentGate` has one real caller (`PersonalFitService`) and one known, deliberately-unwired gap (`capture` — see D-026). `GET /api/v1/households` lists the caller's own households. **New this session (data rights):** `datarights` module — account export, account deletion (two-phase), child erasure. Gate 2's own "erasure removes the right rows and leaves `consent_record` + `audit_event`" requirement is now met and integration-tested (D-028/D-029) |
-| 3 — Product intelligence | **READ PATH DONE; MANUAL-ENTRY INTAKE DONE** | `catalog`/`search` unchanged. **New this session:** `capture` module — manual-entry contribution intake (`POST /api/v1/contributions`), queued `PENDING`, never auto-published. OCR intake still not built (no AI credential); ops-review console still not built (deferred, `docs/product/post-mvp-backlog.md`) |
-| 4 — Scoring & personalisation | **FOUNDATION DONE, GATE 4 NOT YET MET** | Unchanged this session. Zero nutrient-threshold rules active by design (D-024/D-025). Next steps: `docs/engineering/implementation-plan.md` §6 |
-| 5 — Core UX | **CORE LOOP REAL, PARTIAL** | Household/profile/consent/auth/product-fit/scan-contribution screens real (prior sessions). **New this session:** product-level health assessment and per-person "why" reasons wired up on `ProductScreen` (the endpoints existed since Phase 4 but were never called from the frontend); a real Compare screen (`/compare`, client-side composition of existing endpoints — no comparison backend exists, D-027); an honest Outcome-capture UI (no `activity` backend exists — makes no network call, never claims the choice was saved, D-027). Still open: no e2e suite, no formal full-app accessibility audit, alternatives/recommendation still `NOT_STARTED` |
+| 2 — Household, consent, profiles | **BACKEND DONE, FRONTEND DONE** | `household`/`profile`/`consent` modules complete and tested; `ConsentGate` has one real caller (`PersonalFitService`). **D-026 resolved this sprint (D-030):** contribution is gated by a required terms-of-contribution acknowledgment on the row itself, not a consent-ledger grant. `GET /api/v1/households` lists the caller's own households. `datarights` module — account export, account deletion (two-phase), child erasure (D-028/D-029) |
+| 3 — Product intelligence | **READ PATH DONE; INTAKE + OPS REVIEW DONE; REAL DEV CATALOGUE (893)** | `search` unchanged. `capture` — manual-entry contribution intake (unchanged) **+ ops-review console this sprint** (queue/detail/approve/reject, D-032, live-verified end-to-end: submit → approve → real searchable product). `catalog` gains `ProductIngestionService` (D-014/D-015-compliant write path) and an Open Food Facts dev-catalogue importer (D-031) — **893 real products imported**, not 5000+, due to a sustained Open Food Facts API outage spanning this whole session (tooling is resumable/idempotent; re-running once the source recovers needs no code change — `tools/data-import/README.md`). OCR intake still not built (no AI credential) |
+| 4 — Scoring & personalisation | **FOUNDATION DONE, GATE 4 NOT YET MET; RECOMMENDATION MODULE ADDED** | Scoring engine unchanged — zero nutrient-threshold rules active by design (D-024/D-025). **New this sprint:** `recommendation` module (D-013) — ranks on real allergen-safety deltas and (inert until D-025) verdict deltas only, never an invented nutrient-direction judgment (D-033); live-verified. Next steps: `docs/engineering/implementation-plan.md` §6 |
+| 5 — Core UX | **CORE LOOP REAL, OUTCOME NOW PERSISTED** | Household/profile/consent/auth/product-fit/scan-contribution/product-detail/compare screens real (prior sessions). **New this sprint:** `activity` module (FR-012) — `OutcomeCapture` now persists for real (loading/success/error/retry, no more `outcome.notPersisted`); best-effort `VIEWED`/`COMPARED` events from Product/Compare; Home gained a real "Recently viewed" rail; a "Better options" section (`recommendation`) on Product. Still open: no e2e suite, no formal full-app accessibility audit, no browser-based visual walkthrough performed (no browser-automation tool available in this environment) |
 | 6 — Quality hardening | NOT STARTED | |
 | 7 — Release candidate | NOT STARTED | |
 
@@ -60,25 +80,23 @@ See `.claude/current-task.md` for detail on both.
 - **Discovered mid-session:** this working tree has multiple other Claude Code sessions active concurrently (`ListAgents` showed four peer interactive sessions) with real, uncommitted changes already present when this session's own edits began — the Phase 5 UX work above is one of them. No file-level conflict occurred (different files throughout, except `locales/en-IN.json`, which both sessions added distinct keys to without collision — verified valid JSON and the frontend test suite green after combining). **Nothing was committed this session** — see `.claude/current-task.md` for why.
 
 **Known, documented (not hidden) limitations (unchanged plus several resolved):**
-- **Resolved this session (Phase 5 UX)**: product-level health assessment and per-person reasons are now rendered; Compare and Outcome-capture UIs now exist.
-- **Resolved this session (data rights)**: no data export/deletion endpoint existed at all — now real and tested (see above). No email-sending backend still applies (unrelated, unchanged).
-- Zero nutrient-threshold scoring rules are active (unchanged, D-024/D-025) — so every real Compare/health-assessment result today is honestly `NOT_YET_SCORED`/`INSUFFICIENT_DATA`.
-- Product contributions go into a `PENDING` queue with no reviewer console yet — nothing submitted through that flow becomes a real, searchable product until a human-built review process exists (tracked in `implementation-plan.md` §6/`post-mvp-backlog.md`).
-- `PRODUCT_IMPROVEMENT` consent is not enforced on contribution submission (D-026, `OPEN`).
-- Compare has no backend of its own (D-027) — it is a real, honest client-side composition, not a placeholder, but it is also not a `recommendation` module and does not attempt alternatives/ranking (FR-007/PX-2, still `NOT_STARTED`).
-- Outcome capture persists nothing (D-027) — by design, until an `activity` module exists (FR-012, `NOT_STARTED`).
+- **Resolved this sprint**: real Open Food Facts dev catalogue exists (893 products, D-031); ops-review console exists and is live-verified (D-032); D-026 resolved (D-030); `recommendation`/alternatives exists (D-013, D-033); `activity`/outcome persistence exists (FR-012) — Compare and product-level health assessment were already real from a prior session.
+- Zero nutrient-threshold scoring rules are active (unchanged, D-024/D-025) — so every real Compare/health-assessment/alternatives-verdict result today is honestly `NOT_YET_SCORED`/`INSUFFICIENT_DATA`, and `recommendation`'s verdict-comparison dimension is correspondingly inert until a reviewed rule set activates.
+- No correction/flag flow for a product already in the catalogue (FR-011) — distinct from the new-product contribution flow, which now has a real reviewer path (ops console).
+- `recommendation` deliberately does not compare nutrient values directly (e.g. "lower sugar") — that needs D-025's reviewed rule content first (D-033); today it ranks on allergen-safety and verdict deltas only.
 - No self-service cancellation of a pending account deletion, and deleting the sole guardian of a child does not also erase the child — both deliberate, documented limitations, not oversights (D-028).
-- No frontend ESLint config exists (`eslint.config.js` absent) — `npm run lint` cannot run at all. Pre-existing (NFR-14), not introduced or fixed this session.
-- No formal accessibility audit of the full application has been performed. Screens touched this session were reviewed by hand (semantic markup, labelled inputs, visible focus) but not tested with a screen reader or an automated tool (no axe/equivalent in the toolchain).
+- No frontend ESLint config exists (`eslint.config.js` absent) — `npm run lint` cannot run at all. Pre-existing (NFR-14).
+- No formal accessibility audit of the full application, no e2e suite, no browser-based visual walkthrough (no browser-automation tool available in this environment) — explicitly deferred to the dedicated hardening phase.
+- No dedicated unit/integration tests were written this sprint for `recommendation`, `activity`, or the ops-review additions to `capture` — full-suite regression (unit+ArchUnit+integration) stayed green throughout, and every new endpoint was live-verified by hand against the running instance, but that is not the same as a maintained automated test for these specific modules. Flagged for the hardening phase.
 
-## Known external blockers (unchanged from Phase 0)
+## Known external blockers (Phase 0, updated this sprint)
 
 - No AI provider credential → OCR/AI explanation `MOCKED` until a key exists; the OCR intake path into `capture` specifically remains unbuilt for the same reason
 - No SMS provider → phone/OTP auth `BLOCKED`; email+password ships (D-008)
 - Privacy counsel not engaged → `GUARDIAN_ATTESTATION` is `PROVISIONAL`/`REQUIRES_LEGAL_SIGNOFF` (D-001)
 - No FSSAI Indian Nutrition Rating data feed → `DEFERRED`
-- No real seed catalogue → dev seed only
-- **No nutrition/regulatory-reviewed numeric threshold set** → real `scoring_rule`/`score_component` rows `DEFERRED` until one is authored and reviewed (D-024/D-025) — still the single biggest lever on product value
+- **Open Food Facts API outage spanning this entire sprint** (`HTTP 503`/`401`, confirmed not specific to this session's request pattern) → the dev catalogue stopped at 893 real products, not the 5000+ target. Tooling is fully built, idempotent, and resumable (`tools/data-import/README.md`) — this is now a re-run away, not new engineering, once the source recovers.
+- **No nutrition/regulatory-reviewed numeric threshold set** → real `scoring_rule`/`score_component` rows `DEFERRED` until one is authored and reviewed (D-024/D-025) — still the single biggest lever on product value, and now also the gate on `recommendation`'s richer dimensions (D-033)
 
 ## Where the master requirements live
 

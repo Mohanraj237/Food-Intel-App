@@ -66,6 +66,7 @@ public class ContributionController {
                         .map(n -> new NutrientContribution(n.nutrientCode(), n.amountPer100(), n.amountPerServing()))
                         .toList(),
                 request.ingredientsRawText(),
-                request.allergenCodes());
+                request.allergenCodes(),
+                request.catalogueContributionAcknowledged());
     }
 }

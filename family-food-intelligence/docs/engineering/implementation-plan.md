@@ -170,19 +170,19 @@ reflects value and dependency, not phase number; several of these can run in par
 |---|---|---|---|
 | P0 | Scoring rule content (evidence pack → spec → migration → activation) | Domain/regulatory review, `docs/data/scoring/` | Gate 4 — real scores and verdicts |
 | P0 | Controller tests for `ProductHealthController`/`HouseholdFitController` | None | The one known test gap from the Phase 4 session (see below) |
-| P0 | Product ingestion (`capture` module) | None | Real product facts — without this, scoring has nothing to score |
-| P1 | `recommendation` module (alternatives, `better_on`/`worse_on`) | Real scoring rules, real product data | FR-007, PX-2, D-013 |
-| P1 | Household list endpoint (`GET /api/v1/households` or equivalent, scoped to the caller) | None | Removes the frontend's locally-cached-household-id workaround |
+| ~~P0~~ | ~~Product ingestion (`catalog`/`capture`)~~ | None | **Done, partially** (2026-09-06, feature-completion sprint) — `ProductIngestionService` + Open Food Facts dev-catalogue import (D-031, 893 real products — short of the 5000+ target purely due to a sustained Open Food Facts outage, see `.claude/state.md`) + ops-review console (D-032). Barcode-scan capture and OCR fallback (this section's items 2-3 below) remain as originally scoped |
+| ~~P1~~ | ~~`recommendation` module (alternatives, `better_on`/`worse_on`)~~ | ~~Real scoring rules, real product data~~ | **Done, narrower than proposed** (2026-09-06) — built *ahead of* real scoring rules by ranking only on real allergen-safety deltas and (inert-until-D-025) verdict deltas, deliberately never the nutrient/component-difference dimension this section originally proposed (D-033). Closes FR-007, PX-2, D-013's mechanism; the richer dimension still needs D-025 |
+| ~~P1~~ | ~~Household list endpoint~~ | None | **Done** (`GET /api/v1/households`, prior session) |
 | P1 | Real invitation lifecycle (`CREATED → SENT → OPENED → ACCEPTED`, plus `EXPIRED`/`REVOKED`) + email delivery | An email provider | Replaces the current raw-token-shown-to-inviter flow |
-| P2 | `activity` module (verdict/lookup persistence, D-014's version references) | Real scoring rules (recording a verdict is more useful once verdicts are real) | FR-014, recent/saved history |
+| ~~P2~~ | ~~`activity` module (verdict/lookup persistence, D-014's version references)~~ | None | **Done** (2026-09-06) — `VIEWED`/`SCANNED`/`COMPARED`/`BOUGHT`/`BOUGHT_ALTERNATIVE`/`BOUGHT_NEITHER`/`SKIPPED`, wired to `OutcomeCapture`. Closes FR-012; a per-verdict D-014 version-reference snapshot (FR-014's fuller ask) is not yet built — today's rows record product identity and event type, not a verdict's three version references |
 | ~~P2~~ | ~~Data rights (export, account/child deletion)~~ | None | **Done** (2026-09-06, `datarights` module, D-028/D-029) — Phase 2's own gate requirement is now met and integration-tested |
 | P3 | Phase 5 UX polish, Phase 6 hardening, Phase 7 release candidate | All of the above | See §3 above — unchanged, not restated here |
 
-**Parallelizable now, independently:** scoring rule content, controller tests, product
-ingestion, and the household list endpoint share no files and no data dependencies on each
-other. Recommendation and activity are sequenced *after* real scoring content because a
-recommendation ranked against an empty ruleset, or an activity log full of `INSUFFICIENT_DATA`
-verdicts, tests nothing real.
+**Update (2026-09-06, feature-completion sprint):** product ingestion, `recommendation`, and
+`activity` all shipped this sprint — earlier than this table's original sequencing, which had
+assumed real scoring rule content would land first. Each was scoped narrowly enough to be
+honest without that content (D-031/D-032/D-033) rather than waiting on the P0 scoring-rule
+item, which remains the single largest lever on product value and is unstarted.
 
 ### P0 — Scoring rule content
 
@@ -219,16 +219,18 @@ separate from authoritative product facts until the existing mandatory-confirmat
 ops-review gates (`system-architecture.md` §6) are satisfied — no OCR output enters the
 catalogue unconfirmed or unreviewed, regardless of how this module is sequenced.
 
-### P1 — Recommendation module, proposed starting shape
+### P1 — Recommendation module, proposed starting shape (superseded by D-033 — built, narrower)
 
-The following ranking is a **proposed starting point for product sign-off, not a decision** —
-recorded here so the next session doesn't have to reconstruct the conversation, not as
-something Claude decided unilaterally: household compatibility (does it even fit this
-household's constraints) → allergen conflicts (hard exclusion) → product health assessment →
-relevant nutrient/component differences → price/availability (deferred; no pricing/inventory
-data source exists yet). Start deterministic (rank by these dimensions in order), not
-ML-ranked — matches the "smallest useful" precedent D-024 set for scoring itself. Every
-alternative shown publishes both `better_on` and `worse_on` (D-013, PX-2) — no exception.
+The ranking below was recorded as a **proposed starting point for product sign-off, not a
+decision**: household compatibility → allergen conflicts (hard exclusion) → product health
+assessment → relevant nutrient/component differences → price/availability (deferred). D-033
+(2026-09-06) built a *deliberately narrower* version of this ahead of real scoring content:
+allergen-conflict exclusion (real, factual) and a verdict-severity comparison (real
+mechanism, but inert while D-024 ships zero rules) — never the "product health assessment"
+or "nutrient/component differences" steps, since both require a nutrition-direction judgment
+this repository has no reviewed source for yet. Every alternative shown publishes both
+`better_on` and `worse_on` (D-013, PX-2) — implemented exactly as required. The full shape
+above remains the target once D-025 supplies reviewed rule content.
 
 ### A pre-existing documentation gap, surfaced not fixed here
 

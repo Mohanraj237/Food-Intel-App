@@ -1,6 +1,22 @@
 # Requirements Traceability Matrix
 
-**Version:** 2.0 · **Date:** 2026-09-06 · **Maintained by:** Orchestrator
+**Version:** 2.2 · **Date:** 2026-09-06 · **Maintained by:** Orchestrator
+
+**v2.2 note:** updated after a Phase 6 hardening sprint that added 30 integration tests for
+`recommendation`, `activity`, and the ops-review additions to `capture` — all three had
+shipped in the prior sprint with no dedicated tests of their own. Found and fixed 4 real
+defects along the way (full list: `.claude/current-task.md`), including one, P1, that would
+have crashed ops-review approval for any contribution with a whole-number nutrient value.
+FR-007/PX-2, FR-012 and PX-10's evidence below now cite that real test coverage. FR-011 was
+assessed and deliberately not built this session (no defect required it). Only the rows
+those changes touch were re-verified; the rest of v2.1's audit still stands.
+
+**v2.1 note:** updated after the feature-completion sprint that added `recommendation`
+(FR-007, PX-2) and `activity` (FR-012), resolved D-026 (contribution acknowledgment,
+D-030), added the ops-review console (D-032), and put a real, exercised write path into
+`catalog` for the first time (PX-10, via `ProductIngestionService` — the Open Food Facts
+dev-catalogue import, D-031). Only the rows those changes touch were re-verified; the rest
+of v2.0's audit still stands as of its own date.
 
 Every MVP requirement traced from source document → decision → module → API → tests.
 
@@ -41,12 +57,12 @@ and the Phase Summary at the end of this document for the gate-level view.
 | FR-004 | Product profile — facts, source, updated date, score components, key concerns | D-003, D-014, D-015 | `catalog`, `scoring` | **PARTIAL** | `catalog/domain/ProductVersion.java`, `ProductSource.java` (per-field provenance), `ProductQueryService` (`dataQuality`, `currentVersion.verifiedAt`, `keyFacts`); `scoring/api/ProductHealthController.java` (`GET /products/{id}/assessment`) | Score components/key concerns return `NOT_YET_SCORED` for every real product until D-024/D-025 real thresholds are authored — facts/provenance/versioning are real, scored content is not |
 | FR-005 | Personal fit against a member's goals/preferences/constraints | D-004, D-010 | `scoring`, `profile` | **COMPLETE** (mechanism) | `scoring/application/PersonalFitServiceImpl.java`; `PersonalFitServiceTest`, `PersonalFitServiceIT`; reached via `HouseholdFitController` for the caller's own entry | Real verdict content is `BLOCKED` by D-024/D-025 — every call returns `INSUFFICIENT_DATA`/`NO_ACTIVE_RULES` today. The evaluation mechanism itself (consent gate → profile → goal aggregation → most-severe-wins) is fully built and tested against the DRAFT rule set |
 | FR-006 | Family comparison — fit for each eligible member in one view | D-002, D-020 | `scoring` | **COMPLETE** (mechanism) | `scoring/api/HouseholdFitController.java` (`GET /households/{id}/products/{id}/fit`, caller-scoped per D-002/D-024 pt.4); `HouseholdFitServiceIT`; frontend `ProductScreen.tsx` (`FitSection`/`MemberFitRow`) | Same D-024/D-025 content gap as FR-005 |
-| FR-007 | Alternatives ranked by relevant improvement dimensions | D-012, D-013 | `recommendation` | **NOT_STARTED** | No `recommendation` package exists. `ModuleBoundaryTest.recommendationMustNotDependOnCommercialConcepts` is explicitly `allowEmptyShould(true)` — confirmed inert | Sequenced after real scoring content + real product data per `implementation-plan.md` §6 (P1). Distinct from Compare (below): a Phase 5 session built a real, honest two-product Compare screen (`features/compare/CompareScreen.tsx`, D-027) that composes existing endpoints client-side for a caller-chosen second product — that is not the same requirement as *ranked, system-suggested* alternatives, which still needs `recommendation` and remains `NOT_STARTED` |
+| FR-007 | Alternatives ranked by relevant improvement dimensions | D-012, D-013 | `recommendation` | **COMPLETE** (mechanism, tested) | `recommendation` module: `AlternativesServiceImpl` — same-category candidates, ranked/filtered on real allergen-safety deltas and (today inert, D-024-ready) verdict deltas only, never an invented nutrient-direction judgment (D-033); `GET /households/{id}/products/{id}/alternatives` (mirrors `HouseholdFitController`'s authorization exactly); frontend `features/product/AlternativesSection.tsx` on `ProductScreen`. `ModuleBoundaryTest.recommendationMustNotDependOnCommercialConcepts` is now genuinely live. **Phase 6 hardening:** `AlternativesServiceIT` (9 tests) — found and fixed a real authorization-ordering defect where an uncategorised product bypassed the household-membership check entirely | Real allergen-safety signal exists today; the nutrient/component-difference dimension named in `implementation-plan.md`'s proposed shape is deliberately not built until D-025 supplies reviewed rule content (D-033) — until then, `betterOn`/`worseOn` content is narrower than the full proposed shape, by design, not oversight |
 | FR-008 | Explainability — factors behind score/fit, using evidence and source data | D-003, D-009, D-011 | `scoring`, `ai` | **PARTIAL** | `scoring/application/Reason.java`; `RuleEngineImpl` structured reason codes (`NUTRIENT_EXCEEDS_THRESHOLD`, `MISSING_NUTRIENT_DATA`, `NO_ACTIVE_RULES`), each carrying `standard_ref`; `ModuleBoundaryTest.scoringMustNotDependOnAi` (D-011 structurally enforced); **frontend now renders it (Phase 5 session)** — `design-system/ReasonList.tsx`/`lib/reasons.ts`, the per-person "why" disclosure on `ProductScreen.tsx`, and `features/product/HealthAssessmentSection.tsx` for the product-level assessment (`GET /products/{id}/assessment`, implemented Phase 4, called from the frontend for the first time this session) | Deterministic reason codes exist and are now visible end-to-end; the AI explanation *layer* (grounded natural-language prose) still does not exist — no `ai` module |
 | FR-009 | Family management — add/remove members, roles, permissions | D-002 | `household` | **COMPLETE** | `household/api/HouseholdController.java` (create/list/members/invite/accept/revoke/remove); `HouseholdIT` (`nonMemberIsDeniedEverywhere` — Gate-2 IDOR, `removalRulesAreEnforced`); frontend `FamilyScreen.tsx` | "Permissions" here means the 3-role model (`OWNER`/`ADULT`/`DEPENDENT`), not a granular resource×action matrix — see NFR-07 |
 | FR-010 | Child profile — guardian-controlled, consent status, purpose, minimum data | **D-001** | `household`, `consent`, `profile`, `datarights` | **PARTIAL** | `household/domain/GuardianLink.java`, `HouseholdService.addChild`; `profile/domain/PersonProfile.java` (`AgeBand`, no DOB column); `consent/application/ConsentService.java` (`CHILD_FOOD_SUITABILITY` purpose, `GUARDIAN_ATTESTATION` mechanism); frontend `FamilyScreen.tsx` + `ConsentPanel.tsx`. **New this session:** `POST /households/{id}/members/{id}/erase` (`HouseholdService.eraseChildMember` + `DataRightsService.eraseChild`) — guardian-only, immediate; erases the child's `person_profile` rows and scrubs the membership, `ChildErasureIT` (guardian succeeds; non-guardian co-member and unrelated-household adult both denied; erased child unreachable after; `consent_record`/`audit_event` retained; guardian and unrelated households untouched) | One real gap remains: the guardian-attestation consent mechanism is `PROVISIONAL`/`REQUIRES_LEGAL_SIGNOFF` per D-001 — `BLOCKED` on privacy counsel. The child-erasure gap is closed (D-028) |
-| FR-011 | Feedback — flag incorrect product data and recommendations | D-015 | `catalog` | **NOT_STARTED** | None found — no feedback/flag/correction endpoint on an existing catalog product, in backend or frontend | Distinct from the new-product contribution flow (`capture`), which only handles products *not yet* in the catalogue |
-| FR-012 | Event capture — optional "bought"/"consumed" with minimal confirmation | **D-005** (purchase half only) | `activity` | **NOT_STARTED** | No `activity` package exists. A Phase 5 session built the frontend confirmation UI (`features/product/OutcomeCapture.tsx`, D-027) — it deliberately makes no network call and never claims the choice was saved (`outcome.notPersisted`), so it does not change this row's status | Sequenced after real scoring content per `implementation-plan.md` §6 (P2). The UI is ready; only the `activity` backend and a wire-up of `OutcomeCapture`'s `onChange` remain |
+| FR-011 | Feedback — flag incorrect product data and recommendations | D-015 | `catalog` | **NOT_STARTED** | None found — no feedback/flag/correction endpoint on an existing catalog product, in backend or frontend. `data_correction` table already exists in the schema (V4__catalog.sql), unused | Distinct from the new-product contribution flow (`capture`), which only handles products *not yet* in the catalogue. **Assessed during Phase 6 hardening and deliberately not built**: no defect discovered required it, and that session's brief scoped new features out unless a defect made one necessary |
+| FR-012 | Event capture — optional "bought"/"consumed" with minimal confirmation | **D-005** (purchase half only) | `activity` | **COMPLETE** (tested) | `activity` module: `ActivityEvent` (`VIEWED`/`SCANNED`/`COMPARED`/`BOUGHT`/`BOUGHT_ALTERNATIVE`/`BOUGHT_NEITHER`/`SKIPPED`), scoped to the caller's own account only (D-002's self-only pattern) — `POST /api/v1/activity`, `GET /api/v1/activity/recent`; `OutcomeCapture.tsx` posts a real event and only shows `outcome.thanks` once the server confirms persistence; `ProductScreen`/`CompareScreen` fire best-effort `VIEWED`/`COMPARED` events; Home's "Recently viewed" rail reads `GET /activity/recent`. **Phase 6 hardening:** `ActivityControllerIT` (10 tests) — account isolation, all 7 event types, invalid-type/unknown-product rejection, ordering, append-only semantics confirmed as intended | None material |
 | FR-013 | Versioning — formulation/data versions and effective dates | D-014 | `catalog` | **COMPLETE** | `catalog/domain/ProductVersion.java` (supersede semantics, `uq_product_current_version`); `profile/domain/PersonProfile.java` (`uq_profile_current`); `scoring/domain/RuleSet.java` (`uq_rule_set_active`); `ProfileVersionChainIT` | None material — the versioning pattern is applied consistently across every module that needs it |
 | FR-014 | Auditability — log scoring-rule version and data source per verdict | D-014 | `activity`, `audit` | **PARTIAL** | `audit/AuditEvent.java` + `AuditService.java` (immutable, DB-trigger-enforced — see NFR-08); `ProductHealthResponse`/`PersonalFitResponse` carry `ruleSetVersion` | No `activity` module exists to persist a verdict alongside its three D-014 version references as queryable history — today's audit log records account/consent/household actions, not per-verdict version snapshots |
 
@@ -55,7 +71,7 @@ and the Phase Summary at the end of this document for the gate-level view.
 | ID | Requirement | Decision | Module | Status | Evidence | Gap / Notes |
 |---|---|---|---|---|---|---|
 | PX-1 | Hard allergen flag, visually and structurally distinct from nutrition verdicts | D-004 | `scoring` | **COMPLETE** | `PersonalFitServiceImpl.matchAllergens` (real, factual matching from day one — D-024 pt.2); frontend `design-system/AllergenFlag.tsx`; `i18n.vocabulary.test.ts` asserts no verdict label exists for `CONTAINS_ALLERGEN` and that cross-contamination copy is present | None material |
-| PX-2 | Every alternative displays an honest trade-off where one exists | D-013 | `recommendation` | **NOT_STARTED** | Same as FR-007 — no `recommendation` module | — |
+| PX-2 | Every alternative displays an honest trade-off where one exists | D-013 | `recommendation` | **COMPLETE** (mechanism) | Same as FR-007 — every `AlternativeView` carries both `betterOn` and `worseOn` (never only the flattering side); a candidate that would introduce a new allergen risk is excluded entirely rather than shown with a downside | — |
 | PX-3 | Verdict vocabulary is a closed enum; banned words unrepresentable | D-004 | `scoring`, frontend | **COMPLETE** | `scoring/domain/RuleVerdict.java` (Java enum); `frontend/src/lib/i18n.vocabulary.test.ts` (banned-vocabulary gate + closed-enum label-coverage test, part of the frontend's passing test suite); `design-system/VerdictChip.tsx` | None material |
 | PX-4 | Every rule cites a named public standard or cannot activate | D-009 | `scoring` | **COMPLETE** (mechanism) | `V5__scoring.sql`: `scoring_rule.standard_ref NOT NULL REFERENCES reference_standard(code)` — DB-enforced, not just a code convention | Zero rules are currently active (D-024) — the constraint is proven against the DRAFT rule set only |
 | PX-5 | Both per-serving and per-100g evaluated; implausible serving flagged | D-010 | `scoring` | **COMPLETE** | `V5__scoring.sql`: `scoring_rule.basis CHECK (PER_SERVING\|PER_100G\|BOTH)`; `RuleEngineImpl.basesOf`/`evaluateGoal` evaluates both and lets the more severe verdict win (`RuleEngineImplTest`, `RuleEngineIT`); `ProductVersion.servingPlausible` column exists for the implausible-serving flag | None material |
@@ -63,7 +79,7 @@ and the Phase Summary at the end of this document for the gate-level view.
 | PX-7 | Per-field source recording | D-015 | `catalog` | **COMPLETE** | `catalog/domain/ProductSource.java`, `ProductSourceRepository` — a dedicated per-field provenance table (`V4__catalog.sql`) | None material |
 | PX-8 | Excluded populations produce no numeric targets | D-017 | `profile`, `scoring` | **COMPLETE** | `profile/domain/GoalCode.java` — a closed 7-value enum with no weight, body-composition or calorie-target goal representable at all, mirrored by a DB `CHECK` constraint | Satisfied structurally by omission (no such target can exist for *any* profile) rather than by a runtime "is this person in an excluded population" detector — a stronger guarantee for the same outcome |
 | PX-9 | No advertising/ranking-payment capability exists in the codebase | D-012 | architecture test | **COMPLETE** | `architecture/ModuleBoundaryTest.recommendationMustNotDependOnCommercialConcepts`, `.noSponsorshipConceptsExistAtAll` — build fails on violation | None material |
-| PX-10 | Sanity rules at write time; never publish a partial panel as complete | D-015 | `catalog` | **PARTIAL** | `catalog/domain/DataQuality.java`, `ProductVersion.servingPlausible`/`dataQuality` columns — schema fully supports "flag, don't fabricate" | No live write path into `catalog` exists yet to exercise this at runtime — real products currently arrive only via migration/dev-seed, and `capture` contributions deliberately never reach `catalog` (they stay `PENDING`). The mechanism is schema-proven, not yet exercised by a real ingestion pipeline |
+| PX-10 | Sanity rules at write time; never publish a partial panel as complete | D-015 | `catalog` | **COMPLETE** (tested) | `catalog/domain/DataQuality.java`, `ProductVersion.servingPlausible`/`dataQuality` columns. `catalog.application.ProductIngestionService` is a real, exercised write path — the Open Food Facts dev-catalogue import (D-031) and ops-review contribution approval (D-032) both go through it, honestly classifying `dataQuality`/`VersionStatus` by actual completeness/review state rather than defaulting to `VERIFIED`. **Phase 6 hardening:** `OpsReviewControllerIT` (11 tests) covers the full submit→approve lifecycle end-to-end and found/fixed a P1 defect (a whole-number nutrient amount crashed approval, D-032) and a P2 (unvalidated allergen/nutrient codes reaching a foreign-key violation at approval instead of a clean 400 at submission) | `capture` contributions still never reach `catalog` directly (they stay `PENDING` until a human reviewer approves, exactly as designed) |
 
 ## 3. Child-data controls — Documentation Pack 06
 
@@ -73,7 +89,7 @@ and the Phase Summary at the end of this document for the gate-level view.
 | CH-002 | No child data processed until consent requirements met | **COMPLETE** | `consent/application/ConsentGate.require(...)`, called by `PersonalFitServiceImpl` before any profile data is read for a child (`CHILD_FOOD_SUITABILITY` purpose) | None material |
 | CH-003 | Purpose limitation | **COMPLETE** | `consent/domain/ConsentPurpose.java` + `ConsentGate.require(subjectId, purposeCode)` — gated per purpose, not globally | None material |
 | CH-004 | No targeted advertising or engagement to children | **COMPLETE** | Same evidence as PX-9 | None material |
-| CH-005 | No behavioural surveillance of children | **COMPLETE** | No `activity`/consumption-tracking module exists anywhere in the codebase | Holds today by absence of the capability rather than by an explicit guard against it — re-verify this row once FR-012 (`activity`) is built, since D-005 scopes that module to "bought/not bought," not consumption tracking |
+| CH-005 | No behavioural surveillance of children | **COMPLETE** | **Re-verified this session now that `activity` exists (FR-012):** `activity_event.account_id` is a `user_account` id, not a `household_member`/child id — a `CHILD` member has no account of their own (D-001/D-002) and therefore structurally cannot be the subject of an activity event at all. Every write (`ActivityController`) is scoped to the signed-in caller's own account; nothing in `activity` accepts or stores a child's identity, consumption pattern, or behaviour | The guard is now explicit (a child cannot appear in this table, by schema), not merely "the capability doesn't exist yet" |
 | CH-006 | Data minimisation — age band over identifiers | **COMPLETE** | `profile/domain/AgeBand.java`; `PersonProfile` has no date-of-birth column at all | None material |
 | CH-007 | Consent versioning — version, timestamp, mechanism, status | **COMPLETE** | `consent/domain/ConsentPolicyVersion.java`, `ConsentRecord.java` (mechanism, status, timestamps) | None material |
 | CH-008 | Guardian revocation route; delete/stop processing | **COMPLETE** | `ConsentService.withdraw` (real, immediate stop-processing); `HouseholdService.eraseChildMember` + `DataRightsService.eraseChild` (`POST /households/{id}/members/{id}/erase`, new this session) — guardian-only, hard-deletes the child's `person_profile` rows (all versions) and scrubs the membership (`leave` + `displayLabel` overwritten); `guardian_link` rows revoked | "Stop processing" and "delete" are both real now. `consent_record` and `audit_event` deliberately survive as evidence (AC-9.3, D-028) — this is the correct reading of "delete," not a remaining gap. Verified against a real database in `ChildErasureIT`, not asserted from reading the code |
@@ -125,39 +141,60 @@ Phase 0 — Discovery                     COMPLETE
 Phase 1 — Foundation                    COMPLETE
 Phase 2 — Household, consent, profiles  PARTIAL   (IDOR/consent gating real and tested;
                                                     data export and account/child erasure
-                                                    now real and tested too — NFR-09,
-                                                    CH-008, FR-010 above, D-028/D-029;
-                                                    D-026 consent wiring is the one
-                                                    remaining open item)
+                                                    real and tested — NFR-09, CH-008,
+                                                    FR-010 above, D-028/D-029; D-026
+                                                    resolved (D-030) — the guardian-
+                                                    attestation consent mechanism's legal
+                                                    review remains BLOCKED per D-001,
+                                                    unrelated to D-026)
 Phase 3 — Product intelligence          PARTIAL   (search/barcode/manual contribution real
-                                                    and tested; OCR BLOCKED, no ops-review
-                                                    console, no correction queue, no real
-                                                    catalogue data — FR-002/003/011, PX-10)
+                                                    and tested; feature-completion sprint
+                                                    added a real, live-verified ops-review
+                                                    console (queue/detail/approve/reject,
+                                                    D-032) and a real 893-product Open Food
+                                                    Facts dev catalogue via
+                                                    ProductIngestionService, D-031 — OCR
+                                                    still BLOCKED (no AI credential), no
+                                                    correction queue for already-catalogued
+                                                    products — FR-002/003/011)
 Phase 4 — Scoring & personalisation     PARTIAL   (deterministic engine, both-basis
                                                     evaluation, personal/household fit,
                                                     frontend wiring all real and tested;
-                                                    zero active rules by design (D-024),
-                                                    controller tests for the two scoring
-                                                    endpoints still missing, recommendation
-                                                    and AI explanation unbuilt)
+                                                    zero active rules by design (D-024);
+                                                    feature-completion sprint added a real,
+                                                    live-verified `recommendation` module
+                                                    (allergen-safety + inert-until-D-025
+                                                    verdict deltas only, D-033) — controller
+                                                    tests for the two Phase-4 scoring
+                                                    endpoints and AI explanation remain
+                                                    unbuilt)
 Phase 5 — Core UX                       PARTIAL   (household/profile/consent/auth/
                                                     product-fit/scan-contribution screens
-                                                    real and live-verified; a later session
-                                                    added a real Compare screen (client-side
-                                                    composition, no comparison backend,
-                                                    D-027), wired up the previously-unused
-                                                    product-level health assessment and
-                                                    per-person "why" reasons, and added an
-                                                    honest, unpersisted Outcome-capture UI
-                                                    (D-027) — typecheck/tests verified but
-                                                    NOT browser-verified against real data,
-                                                    since the running dev database currently
-                                                    has zero seeded products; still no e2e
-                                                    suite, no formal accessibility audit,
-                                                    no ranked alternatives (needs
-                                                    `recommendation`), no outcome
-                                                    persistence (needs `activity`))
-Phase 6 — Quality hardening             NOT_STARTED
+                                                    real and live-verified; a real Compare
+                                                    screen (client-side composition, no
+                                                    comparison backend, D-027); feature-
+                                                    completion sprint added a real, live-
+                                                    verified `activity` backend and wired
+                                                    Outcome-capture to it (D-005/FR-012),
+                                                    a "Better options" section on Product
+                                                    (D-013), and a real, populated catalogue
+                                                    to browse/search against — still no e2e
+                                                    suite, no formal accessibility audit, no
+                                                    browser-based visual walkthrough (no
+                                                    browser-automation tool available in
+                                                    this environment))
+Phase 6 — Quality hardening             IN_PROGRESS (this session added 30 integration
+                                                    tests for the three modules the
+                                                    feature-completion sprint shipped
+                                                    untested — recommendation, activity,
+                                                    ops-review — and found/fixed 4 real
+                                                    defects, one P1. Still needed: unit/
+                                                    integration coverage for everything
+                                                    else per-module (much of it already
+                                                    exists from earlier phases), a formal
+                                                    accessibility audit, e2e, security
+                                                    review beyond a grep sweep, and load/
+                                                    performance testing)
 Phase 7 — Release candidate             NOT_STARTED
 ```
 

@@ -1,6 +1,173 @@
 # Current Task
 
-**As of:** 2026-09-06. Two independent sessions landed in this same working tree
+**As of:** 2026-09-06 (Phase 6 hardening sprint, this entry's author). Full detail in the
+final session report given to the user; this is the durable summary.
+
+## Phase 6 hardening — tests for the three untested modules, 4 real defects found and fixed
+
+**Objective:** the prior feature-completion sprint explicitly deferred dedicated tests for
+`recommendation`, `activity`, and the ops-review additions to `capture`. This session wrote
+that coverage and treated every failure as a real defect to investigate, not a test to
+weaken — exactly per this session's own brief ("the goal is to discover real defects").
+
+**Tests added** (30 new, all integration-level against real Postgres + the real HTTP
+security chain, except where noted):
+- `AlternativesServiceIT` (9) — cross-household denial, unknown product, the uncategorised-
+  product authorization bypass (see defect below), no-candidates honest-empty-result, real
+  allergen-safety differentiation (safer candidate surfaced, equally-unsafe one is not, a
+  new-risk one is excluded outright), D-033's no-fabricated-nutrient-judgment guarantee,
+  and deterministic ordering.
+- `OpsReviewControllerIT` (11) — D-026 acknowledgment enforcement, allergen/nutrient code
+  validation at submission (see defect below), anonymous and non-operator denial on every
+  ops endpoint, the full submit→queue→approve lifecycle producing a real searchable
+  provenance-correct product, double-approval/double-rejection rejected, reject requires a
+  reason and creates nothing.
+- `ActivityControllerIT` (10) — anonymous denial, account isolation (one account can never
+  read another's recent activity), all 7 event types persist, invalid event type and
+  missing/unknown product ids rejected, newest-first ordering, append-only semantics
+  (duplicate submissions are not deduplicated — verified as the intended contract, not a bug),
+  `BOUGHT_ALTERNATIVE` carrying both product ids through to the response.
+
+**Defects found and fixed** (all four confirmed by a failing test before the fix, a passing
+one after):
+
+1. **P1 — a whole-number nutrient amount crashed ops-review approval.** A contribution's
+   `nutrients` jsonb column round-trips a bare JSON integer (e.g. `500`, not `500.0`) back as
+   a Java `Integer`/`Long`, not a `BigDecimal` — Jackson's untyped-`Object` deserialization
+   only produces `BigDecimal` for a value with a decimal point. `ContributionService
+   .toIngestCommand`'s hard `(BigDecimal)` cast threw `ClassCastException` on approval for
+   any such contribution, an entirely ordinary submission (typing "500 kcal", not "500.0
+   kcal"), permanently stuck at 500 with no recovery but a code fix. Fixed with a
+   `toBigDecimal(Object)` helper that accepts any `Number`.
+2. **P2 — an uncategorised product bypassed household-membership authorization in
+   `recommendation`.** `AlternativesServiceImpl.findAlternatives` returned its "nothing to
+   compare within" empty result *before* calling `HouseholdFitService.evaluate` — the one
+   call that enforces the caller is actually a live member of the target household. A
+   product with no category let anyone, member or not, get a (trivially empty, but
+   incorrectly-authorized) `200` instead of the `403 NOT_HOUSEHOLD_MEMBER` every other
+   household-scoped endpoint guarantees. Fixed by reordering: the authorization check now
+   always runs first.
+3. **P2 — contribution submission accepted allergen/nutrient codes with no reference-table
+   check.** `categoryCode` was already validated against the real `category` table;
+   `allergenCodes`/nutrient codes were not, so a bad code (typo or malicious) would sit in a
+   `PENDING` contribution looking valid, then fail ops-review approval with an opaque
+   `500` when the write hit the real foreign-key constraint (`product_allergen.allergen_code
+   REFERENCES allergen(code)`) — permanently blocking that one contribution's approval.
+   Fixed by adding `ProductQueryService.listAllergens()` (mirroring the existing
+   `listCategories()`/`listNutrients()`) and validating both fields at submission time,
+   the same way `categoryCode` already was.
+4. **P2 — stale cross-account data in the frontend query cache.** `signOutLocally()` never
+   cleared the TanStack Query cache. With `staleTime: 60_000`, a different account signing
+   in on the same tab right after a sign-out (or after account deletion) could see the
+   *previous* account's cached "recently viewed" products, household list, or ops-access
+   check for up to a minute — the backend re-checks authorization on every request
+   regardless, but the client must not display a previous identity's cached data to a new
+   one. Fixed in `App.tsx`: the query cache is cleared whenever the signed-in account id
+   changes (including to/from signed-out); a token refresh that keeps the same account id
+   deliberately does not clear it.
+
+**Also fixed, incidental to the review:** a misplaced Javadoc comment on `ProductQueryService`
+(landed on the wrong method during the prior sprint's editing) was corrected while adding
+`listAllergens()` next to it.
+
+**Assessed and deliberately not built:** FR-011 (a correction/flag flow for products already
+in the catalogue, distinct from the new-product contribution flow). No defect discovered
+during this hardening pass makes it necessary, and this session's own brief is explicit that
+new features are out of scope unless a defect requires one — left as a known, documented gap,
+not silently dropped.
+
+**Verification:** `mvn -o verify` — **204/204** (88 unit + 116 integration, up from 174).
+`npm run typecheck` and `npm run test` (8/8) green. A `security-review`-style grep sweep
+(`console.log`, `dangerouslySetInnerHTML`, `eval(`, `System.out`, hardcoded secrets) found
+nothing. The pre-existing barcode-conflict mechanism (`trg_barcode_conflict`, already tested
+in `ProductControllerIT`) was inspected, not re-tested — `ProductIngestionService` writes
+through the exact same `ProductBarcode`/repository path that existing test already covers,
+with no new code in between that could bypass the trigger.
+
+**One accessibility defect found and fixed, one found and documented, not fixed:** the
+ops-queue status filter used an incomplete ARIA tablist pattern (`role="tablist"`/`"tab"`
+with no `role="tabpanel"`/`aria-controls"` linkage) — fixed in the new `OpsQueueScreen`.
+The identical pre-existing pattern in `SettingsScreen.tsx`'s sign-in/sign-up switcher has
+the same gap; left as a documented P3 rather than risk destabilising an already-shipped,
+untouched component under this session's time budget.
+
+---
+
+**Previous entry (2026-09-06, feature-completion sprint).** Commit `3ef643a`.
+
+## Feature-completion sprint — catalogue import, ops review, recommendation, activity
+
+**Objective:** complete the major product features end-to-end and populate a real
+development catalogue, per an explicit sprint brief (not a normal incremental task). Ran
+solo (no parallel subagents) to avoid the multi-writer working-tree problem prior sessions
+hit — see the historical note below, which this sprint's own git history confirms was
+already resolved by the time this session started (`git status` was clean at the start).
+
+**What was built** (full detail: `docs/decisions/decision-log.md` D-030..D-033; commit
+`3ef643a`'s message):
+1. **Catalogue import (P0).** `catalog.application.ProductIngestionService` — the single
+   write path into the catalogue (D-014/D-015-compliant), used by both the importer and
+   ops-review approval. `tools/data-import/fetch-openfoodfacts.mjs` +
+   `catalog.seed.OpenFoodFactsSeedRunner` (gated behind a `seed-catalog` Spring profile)
+   import real Open Food Facts India-market products (D-031). **893 products imported**,
+   not the 5000+ target — Open Food Facts' public API experienced a sustained outage
+   (`HTTP 503`/`401` across subdomains and endpoints, confirmed not specific to this
+   session's request pattern) for essentially this entire session. The tooling is
+   resumable (`--resume=true --start-page=N`) and the import is idempotent — re-running
+   once the source recovers will top up toward 5000+ with no code change. See
+   `tools/data-import/README.md` for the exact re-run steps.
+2. **Ops-review console (P1).** `UserAccount.role` (`OperatorRole`), `identity.application
+   .OperatorAccess` (published interface, mirrors `HouseholdAccess`), `ContributionService`
+   gains `listQueue`/`getDetail`/`approve`/`reject`, `capture.api.OpsReviewController`.
+   Frontend `features/ops/` (queue + detail/review screens), a Settings link shown only to
+   operators. Live-verified end-to-end against the running instance: submit → approve →
+   real searchable catalogue product with `dataQuality=VERIFIED`.
+3. **D-026 resolved (D-030).** `PRODUCT_IMPROVEMENT` is a required terms-of-contribution
+   acknowledgment on the contribution row (`contributor_acknowledged`), not a
+   consent-ledger grant — extending the ledger to an account-scoped subject was judged
+   disproportionate for a purpose with no personal data. Live-verified: submission without
+   acknowledgment now `400`s.
+4. **`recommendation` module (P1, new).** `AlternativesServiceImpl` ranks same-category
+   candidates on real allergen-safety deltas and (today inert, D-024-ready) verdict deltas
+   only — never an invented nutrient-direction judgment (D-033).
+   `GET /households/{id}/products/{id}/alternatives`, frontend `AlternativesSection` on
+   Product. Live-verified (200, honest empty result with no differentiating member/allergen
+   data yet).
+5. **`activity` module (P2, new).** `VIEWED`/`SCANNED`/`COMPARED`/`BOUGHT`/
+   `BOUGHT_ALTERNATIVE`/`BOUGHT_NEITHER`/`SKIPPED`, scoped to the caller's own account only.
+   `OutcomeCapture.tsx` now persists for real (loading/success/error/retry); `ProductScreen`/
+   `CompareScreen` fire best-effort `VIEWED`/`COMPARED`; Home gained a real "Recently
+   viewed" rail. Live-verified end-to-end (POST + GET /recent).
+
+**Verification performed:** backend `mvn -o verify` (174 tests, unit+ArchUnit+Testcontainers
+integration) green; frontend `npm run typecheck` and `npm run test` (vitest, banned-
+vocabulary/i18n gate) green. Live-verified against the running dev instance (`curl`): auth,
+contribution submit/reject-without-ack/approve, ops access/queue, activity record/recent,
+household create, alternatives. **Not verified:** no browser-automation tool was available
+in this environment, so no rendered-in-browser walkthrough was performed — flagged, not
+claimed. No dedicated unit/integration tests were written for the three new modules
+(`recommendation`, `activity`, ops-review additions to `capture`) — deferred to the
+hardening phase per this sprint's own explicit instruction not to make comprehensive
+testing the focus.
+
+**Known, deliberate gaps, not hidden:**
+- Catalogue is at 893 products, not 5000+, purely due to the Open Food Facts outage above.
+- No correction/flag flow for already-catalogued products (FR-011) — distinct from the
+  contribution-for-new-products flow, still `NOT_STARTED`.
+- `recommendation`'s nutrient/component-difference dimension is deliberately not built —
+  needs D-025's reviewed rule content first (D-033).
+- No formal accessibility audit, no e2e suite, no load/performance testing — explicitly
+  deferred to the dedicated hardening phase per this sprint's brief.
+
+**Recommended next session:** if Open Food Facts has recovered, re-run the importer
+(`tools/data-import/README.md`) to top up the catalogue toward 5000+ — that is now a
+5-minute operation, not new engineering. Otherwise, this is a reasonable point to begin the
+dedicated testing/hardening phase (unit/integration/E2E/security/accessibility/performance),
+since the major product-feature gate is now substantially satisfied.
+
+---
+
+## Historical: two independent sessions landed in this same working tree
 today, on disjoint files, both uncommitted: a Phase 5 frontend session (below,
 D-027) and a data-rights session (immediately below this line, D-028/D-029).
 **Neither session found the other's changes surprising in content — both were

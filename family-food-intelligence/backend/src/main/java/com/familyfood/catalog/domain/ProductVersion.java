@@ -139,6 +139,18 @@ public class ProductVersion {
         }
     }
 
+    /**
+     * A human reviewer (ops review approval, a future correction pass) has checked this
+     * version. Moves status to {@code VERIFIED} and records who/when — never set at
+     * ingestion time for an unreviewed external import (see {@code ProductIngestionService}).
+     */
+    public void markVerified(UUID verifiedByUserId, Instant now) {
+        this.status = VersionStatus.VERIFIED;
+        this.verifiedAt = now;
+        this.verifiedByUserId = verifiedByUserId;
+        this.verificationPass = this.verificationPass + 1;
+    }
+
     public UUID getId() {
         return id;
     }

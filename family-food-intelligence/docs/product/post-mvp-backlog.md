@@ -45,5 +45,5 @@ The corresponding code paths do not exist and an architecture test asserts their
 | Phone/OTP authentication | SMS provider contract (D-008) |
 | DPDP-verifiable parental consent mechanism | Indian privacy counsel ⚖️ (D-001) |
 | Live OCR and AI explanation | AI provider credential |
-| Real seed catalogue (~2,000 SKUs against real baskets) | A data-operations activity, not an engineering one; see `docs/data/` |
-| Open Food Facts import + contribute-back pipeline | ODbL attribution and share-alike review ⚖️ (D-016) |
+| Growing the dev catalogue past 893 products toward the 5000+ target | Open Food Facts API outage spanning the feature-completion sprint (2026-09-06) — the import (`tools/data-import/`, D-031) is built, idempotent, and resumable; this is a re-run, not new engineering, once the source recovers |
+| Open Food Facts **contribute-back** pipeline (submitting corrections upstream to OFF) | Distinct from the import, which now exists (D-031) — contribute-back is separate, later work with its own ODbL share-alike considerations |

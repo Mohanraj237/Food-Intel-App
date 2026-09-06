@@ -92,6 +92,16 @@ public class ProductContribution {
     @Column(name = "review_notes")
     private String reviewNotes;
 
+    /**
+     * Resolves D-026: a required terms-of-contribution acknowledgment, checked at
+     * submission (see {@code ContributionService.submit}), not a consent-ledger grant —
+     * see V9__contribution_acknowledgment.sql for why. The text shown for this
+     * acknowledgment is the real seeded {@code PRODUCT_IMPROVEMENT} purpose (public via
+     * {@code GET /consent/policies}), not separately invented copy.
+     */
+    @Column(name = "contributor_acknowledged", nullable = false)
+    private boolean contributorAcknowledged;
+
     protected ProductContribution() {
         // JPA
     }
@@ -113,6 +123,7 @@ public class ProductContribution {
                                               List<Map<String, Object>> nutrients,
                                               String ingredientsRawText,
                                               List<String> allergenCodes,
+                                              boolean contributorAcknowledged,
                                               Instant now) {
         ProductContribution contribution = new ProductContribution();
         contribution.id = UUID.randomUUID();
@@ -129,7 +140,37 @@ public class ProductContribution {
         contribution.allergenCodes = allergenCodes == null ? List.of() : List.copyOf(allergenCodes);
         contribution.status = ContributionStatus.PENDING;
         contribution.submittedAt = now;
+        contribution.contributorAcknowledged = contributorAcknowledged;
         return contribution;
+    }
+
+    /**
+     * Ops review approves this submission — a real catalogue product/version has already
+     * been created from it by the time this is called (see
+     * {@code ContributionService.approve}); this method only records the review outcome on
+     * the contribution row itself. Throws if the contribution is not {@code PENDING} —
+     * a reviewed contribution is never re-reviewed.
+     */
+    public void approve(String reviewedByAccountId, Instant now) {
+        requirePending();
+        this.status = ContributionStatus.APPROVED;
+        this.reviewedBy = reviewedByAccountId;
+        this.reviewedAt = now;
+    }
+
+    /** Ops review rejects this submission. {@code reason} is required — never a silent no. */
+    public void reject(String reviewedByAccountId, String reason, Instant now) {
+        requirePending();
+        this.status = ContributionStatus.REJECTED;
+        this.reviewedBy = reviewedByAccountId;
+        this.reviewedAt = now;
+        this.reviewNotes = reason;
+    }
+
+    private void requirePending() {
+        if (this.status != ContributionStatus.PENDING) {
+            throw new IllegalStateException("contribution " + id + " is already " + status + ", not PENDING");
+        }
     }
 
     /**
@@ -208,5 +249,9 @@ public class ProductContribution {
 
     public String getReviewNotes() {
         return reviewNotes;
+    }
+
+    public boolean isContributorAcknowledged() {
+        return contributorAcknowledged;
     }
 }

@@ -28,7 +28,8 @@ public record SubmitContributionRequest(
         @Size(max = 200) String servingDeclaredText,
         @Valid List<NutrientEntryDto> nutrients,
         @Size(max = 4000) String ingredientsRawText,
-        List<@Size(max = 30) String> allergenCodes
+        List<@Size(max = 30) String> allergenCodes,
+        boolean catalogueContributionAcknowledged
 ) {
     public SubmitContributionRequest {
         nutrients = nutrients == null ? List.of() : List.copyOf(nutrients);

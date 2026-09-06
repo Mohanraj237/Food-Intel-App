@@ -154,6 +154,55 @@ public class ProductQueryService {
                 .toList();
     }
 
+    /**
+     * Same-category candidates for {@code recommendation} (D-013) — active products only,
+     * excluding the product being compared against, in no particular ranking order (the
+     * caller decides ranking; this is a candidate pool, not a result).
+     */
+    public List<ProductSummaryDto> listActiveInCategory(String categoryCode, UUID excludeProductId, int limit) {
+        var category = categories.findByCode(categoryCode).orElse(null);
+        if (category == null) {
+            return List.of();
+        }
+        List<Product> candidates = products.findByCategoryIdAndStatusAndIdNot(
+                category.getId(), ProductStatus.ACTIVE, excludeProductId,
+                org.springframework.data.domain.PageRequest.of(0, limit));
+
+        Map<UUID, ProductVersion> versionByProductId = versions
+                .findByProductIdInAndCurrentTrue(candidates.stream().map(Product::getId).toList()).stream()
+                .filter(v -> !HIDDEN_VERSION_STATUSES.contains(v.getStatus()))
+                .collect(Collectors.toMap(ProductVersion::getProductId, Function.identity()));
+
+        return buildSummaries(candidates, versionByProductId);
+    }
+
+    /**
+     * The nutrient reference vocabulary, for anything that needs a code's canonical unit
+     * without duplicating V1__extensions_and_reference_data.sql's table — currently
+     * ops-review contribution approval (a contribution's raw nutrient map has no unit of
+     * its own; the reference row is the only honest source for it).
+     */
+    public List<com.familyfood.catalog.application.dto.NutrientRefDto> listNutrients() {
+        return nutrientRefs.findAllByOrderBySortOrderAsc().stream()
+                .map(n -> new com.familyfood.catalog.application.dto.NutrientRefDto(
+                        n.getCode(), n.getDisplayName(), n.getCanonicalUnit(), n.getSortOrder(), n.isCore()))
+                .toList();
+    }
+
+    /**
+     * The allergen reference vocabulary (the FSSAI-declarable set) — used to validate a
+     * contribution's submitted allergen codes against the same closed set
+     * {@code product_allergen.allergen_code}'s foreign key enforces, so a bad code is
+     * rejected honestly at submission time instead of failing ops-review approval later
+     * with an opaque database constraint violation.
+     */
+    public List<com.familyfood.catalog.application.dto.AllergenRefDto> listAllergens() {
+        return allergenRefs.findAllByOrderBySortOrderAsc().stream()
+                .map(a -> new com.familyfood.catalog.application.dto.AllergenRefDto(
+                        a.getCode(), a.getDisplayName(), a.isFssaiDeclarable(), a.getSortOrder()))
+                .toList();
+    }
+
     // -------------------------------------------------------------- batch summaries (search)
 
     /**

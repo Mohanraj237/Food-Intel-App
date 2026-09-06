@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface NutrientRepository extends JpaRepository<Nutrient, String> {
 
     java.util.List<Nutrient> findByCoreTrue();
+
+    java.util.List<Nutrient> findAllByOrderBySortOrderAsc();
 }

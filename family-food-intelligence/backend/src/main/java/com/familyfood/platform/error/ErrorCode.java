@@ -34,6 +34,7 @@ public enum ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "error.access_denied"),
     NOT_HOUSEHOLD_MEMBER(HttpStatus.FORBIDDEN, "error.not_household_member"),
     NOT_A_GUARDIAN(HttpStatus.FORBIDDEN, "error.not_a_guardian"),
+    NOT_AN_OPERATOR(HttpStatus.FORBIDDEN, "error.not_an_operator"),
 
     // ---- consent (D-001, D-018) ----
     CONSENT_REQUIRED(HttpStatus.FORBIDDEN, "error.consent_required"),
@@ -47,6 +48,7 @@ public enum ErrorCode {
     EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "error.email_already_registered"),
     ALREADY_HOUSEHOLD_MEMBER(HttpStatus.CONFLICT, "error.already_household_member"),
     INVITATION_INVALID(HttpStatus.GONE, "error.invitation_invalid"),
+    CONTRIBUTION_ALREADY_REVIEWED(HttpStatus.CONFLICT, "error.contribution_already_reviewed"),
 
     // ---- product data (Constitution §77) ----
     BARCODE_AMBIGUOUS(HttpStatus.CONFLICT, "error.barcode_ambiguous"),

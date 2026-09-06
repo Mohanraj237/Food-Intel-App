@@ -21,7 +21,8 @@ public record SubmitContributionCommand(
         String servingDeclaredText,
         List<NutrientContribution> nutrients,
         String ingredientsRawText,
-        List<String> allergenCodes) {
+        List<String> allergenCodes,
+        boolean catalogueContributionAcknowledged) {
 
     public SubmitContributionCommand {
         nutrients = nutrients == null ? List.of() : List.copyOf(nutrients);

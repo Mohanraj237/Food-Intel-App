@@ -33,5 +33,9 @@ This is a lookup index only. **The authoritative record is `docs/decisions/decis
 | D-027 | Phase 5 Compare/Outcome capture: Compare composes existing endpoints client-side (no comparison backend); Outcome capture UI makes no network call and never claims persistence (`outcome.notPersisted`, not `outcome.thanks`) |
 | D-028 | Account erasure: two-phase (request → 30-day grace → scheduled hard erasure); `user_account` pseudonymised in place, never row-deleted; no cancellation endpoint; sole-guardian account deletion does not touch the child (known limitation) |
 | D-029 | Erased account's `product_contribution` rows: anonymise `submitted_by_user_id`, retain the submission content — it is catalogue-improvement data, not the submitter's personal data |
+| D-030 | D-026 resolved: `PRODUCT_IMPROVEMENT` is a required terms-of-contribution acknowledgment on the contribution row, not a consent-ledger grant — extending the ledger to an account-scoped subject was disproportionate for a purpose with no personal data |
+| D-031 | Dev catalogue import: Open Food Facts via the API, through `ProductIngestionService`, never marked `VERIFIED`, idempotent, ODbL attribution recorded per source row |
+| D-032 | Ops-review console: a single `UserAccount.role` (`MEMBER`/`OPS_REVIEWER`), checked server-side via `identity.application.OperatorAccess` on every call — no client-side admin assumption, no general permissions system |
+| D-033 | Recommendation module MVP scope: ranks by real allergen-safety deltas and (currently inert, D-024-ready) fired-rule deltas only — never an invented nutrient-direction judgment; empty `better_on`/`worse_on` is a first-class honest result until real scoring rules exist |
 
 To add a new decision: append it to `docs/decisions/decision-log.md` (never edit history — supersede with a new entry), then add its one-liner here.

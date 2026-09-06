@@ -37,7 +37,9 @@ class ModuleExistenceTest {
             "com.familyfood.consent",    // Phase 2 (domain, service and gate)
             "com.familyfood.scoring",    // Phase 4 (deterministic health score, personal/household fit)
             "com.familyfood.capture",    // Phase 3 (manual-entry contribution intake; OCR intake not yet built)
-            "com.familyfood.datarights"  // Phase 2 gate (data export, account/child erasure — NFR-09/CH-008/FR-010)
+            "com.familyfood.datarights", // Phase 2 gate (data export, account/child erasure — NFR-09/CH-008/FR-010)
+            "com.familyfood.recommendation", // Feature-completion sprint (D-013 alternatives, D-033)
+            "com.familyfood.activity"       // Feature-completion sprint (FR-012 outcome capture)
     );
 
     /**
@@ -45,9 +47,7 @@ class ModuleExistenceTest {
      * intent is visible in code, not only in a document.
      */
     private static final List<String> PLANNED_MODULES = List.of(
-            "com.familyfood.ai",              // Phase 3
-            "com.familyfood.recommendation",  // Phase 4
-            "com.familyfood.activity"         // Phase 4
+            "com.familyfood.ai"              // Phase 3
     );
 
     private static JavaClasses classes;

@@ -36,6 +36,18 @@ public class UserAccount {
     @Column(nullable = false)
     private AccountStatus status = AccountStatus.ACTIVE;
 
+    /**
+     * Operator role for the ops-review console (contribution approval). Not a general
+     * permissions system — a single boolean-shaped distinction, deliberately as small as
+     * the "smallest useful review console" this was built for needs. Never set from a
+     * client-supplied value; promoted only by direct database action (see
+     * {@code docs/operations/operations-guide.md}) until a real admin-management flow is
+     * justified by actual review volume.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OperatorRole role = OperatorRole.MEMBER;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -131,6 +143,10 @@ public class UserAccount {
         return status;
     }
 
+    public OperatorRole getRole() {
+        return role;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -145,5 +161,9 @@ public class UserAccount {
 
     public enum AccountStatus {
         ACTIVE, SUSPENDED, DELETION_REQUESTED, ERASED
+    }
+
+    public enum OperatorRole {
+        MEMBER, OPS_REVIEWER
     }
 }
