@@ -23,16 +23,12 @@
   color: var(--text-tertiary);
 }
 
+/* `.comparepage__slot` sits on top of the shared `Card` primitive (raised
+   surface, padding, radius, gap) — only the properties genuinely specific to
+   this screen live here: how the slot behaves inside the two-column row. */
 .comparepage__slot {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--card-bg);
 }
 
 .comparepage__slot--empty {
@@ -40,37 +36,76 @@
   justify-content: center;
   text-align: center;
   color: var(--text-tertiary);
-  min-height: 120px;
+  min-height: 132px;
+}
+
+/* Dashed + transparent reads as an outline waiting to be filled, distinct
+   from the solid, filled card either side of it once a product is picked.
+   Doubled-up class selector so this reliably wins over `Card`'s own
+   `.card--raised` regardless of the two stylesheets' load order. */
+.comparepage__slot.comparepage__slot--empty {
+  border-style: dashed;
+  border-color: var(--border-interactive);
+  background: transparent;
+}
+
+.comparepage__slot-plus {
+  font-size: 1.75rem;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--text-tertiary);
 }
 
 .comparepage__slot-label {
   font-size: var(--text-sm);
 }
 
+/* Image-then-identity, centered — each column reads as one confident product
+   header rather than a left-aligned label, which matters most once two of
+   these sit side by side and must compare as equals. */
 .comparepage__card {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-2);
+  text-align: center;
   color: inherit;
   text-decoration: none;
 }
 
 .comparepage__art {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.comparepage__art--fallback {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-md);
   filter: saturate(var(--cat-tile-dim)) brightness(calc(0.4 + 0.6 * var(--cat-tile-dim)));
 }
 
+/* `contain`, not `cover` — matches `ProductCard`/`ProductScreen`: a real pack
+   photo is rarely square and must never be cropped to fill the tile. */
+.comparepage__art--photo {
+  object-fit: contain;
+  background: var(--card-media-bg);
+  padding: var(--space-1);
+  box-sizing: border-box;
+}
+
 .comparepage__glyph {
-  font-size: 1.5rem;
+  font-size: 1.85rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.18));
 }
 
 .comparepage__identity {
   display: flex;
   flex-direction: column;
+  align-items: center;
   min-width: 0;
 }
 
@@ -95,8 +130,9 @@
 .comparepage__slot-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 
 .comparepage__view {
@@ -144,13 +180,29 @@
 }
 
 .comparepage__result-art {
-  display: grid;
-  place-items: center;
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.comparepage__result-art--fallback {
+  display: grid;
+  place-items: center;
   filter: saturate(var(--cat-tile-dim)) brightness(calc(0.4 + 0.6 * var(--cat-tile-dim)));
+}
+
+.comparepage__result-art--photo {
+  object-fit: contain;
+  background: var(--card-media-bg);
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.comparepage__result-glyph {
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 .comparepage__result-text {
@@ -196,17 +248,49 @@
   font-size: var(--text-sm);
 }
 
+/* A vertical rule after the row-label column and after the first product's
+   column — the same three-column split the header row establishes — so the
+   two products read as clearly separated, aligned lanes all the way down. */
+.comparetable th:not(:last-child),
+.comparetable td:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.comparetable tbody tr:nth-child(even) {
+  background: var(--surface);
+}
+
 .comparetable thead th {
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--text-tertiary);
   font-weight: 700;
+  border-bottom: 2px solid var(--border-interactive);
+}
+
+.comparetable__col-brand {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-tertiary);
+}
+
+.comparetable__col-name {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
 }
 
 .comparetable tbody th {
   font-weight: 600;
   width: 38%;
+  background: var(--surface);
 }
 
 .comparetable__ingredients {

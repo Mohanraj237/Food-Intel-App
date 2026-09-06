@@ -8,7 +8,8 @@ import { listMembers, type HouseholdMember } from '@/lib/household';
 import { formatAmount, getProduct, searchProducts, type ProductDetail, type ProductSummary } from '@/lib/catalog';
 import { getHouseholdFit, getProductHealth, type HouseholdFit } from '@/lib/scoring';
 import { recordActivity } from '@/lib/activity';
-import { categoryGlyph, categoryGradient } from '@/design-system/CategoryArt';
+import { ProductImage } from '@/design-system/ProductImage';
+import { Card } from '@/design-system/Card';
 import { ErrorState, Skeleton } from '@/design-system/States';
 import { VerdictChip, type Verdict } from '@/design-system/VerdictChip';
 import { Button } from '@/design-system/Button';
@@ -116,17 +117,18 @@ function ComparePanel({
           {t('compare.heading')}
         </span>
         {bId === null ? (
-          <div className="comparepage__slot comparepage__slot--empty">
+          <Card padding="sm" className="comparepage__slot comparepage__slot--empty">
+            <span className="comparepage__slot-plus" aria-hidden="true">+</span>
             <span className="comparepage__slot-label">{t('compare.addProduct')}</span>
-          </div>
+          </Card>
         ) : productB.isPending ? (
-          <div className="comparepage__slot">
+          <Card padding="sm" className="comparepage__slot">
             <Skeleton lines={3} label={t('loading.product')} />
-          </div>
+          </Card>
         ) : productB.isError ? (
-          <div className="comparepage__slot">
+          <Card padding="sm" className="comparepage__slot">
             <ErrorState error={productB.error} onRetry={() => void productB.refetch()} />
-          </div>
+          </Card>
         ) : (
           <ProductHeaderCard product={productB.data} onRemove={onRemoveB} />
         )}
@@ -157,15 +159,19 @@ function ProductHeaderCard({
   onRemove?: () => void;
 }) {
   return (
-    <div className="comparepage__slot">
+    <Card padding="sm" className="comparepage__slot">
       <div className="comparepage__card">
-        <span
-          className="comparepage__art"
-          style={{ backgroundImage: categoryGradient(product.categoryCode, product.id + product.name) }}
-          aria-hidden="true"
-        >
-          <span className="comparepage__glyph">{categoryGlyph(product.categoryCode)}</span>
-        </span>
+        <ProductImage
+          imageUrl={product.imageUrl}
+          categoryCode={product.categoryCode}
+          seed={product.id + product.name}
+          alt=""
+          classNames={{
+            img: 'comparepage__art comparepage__art--photo',
+            art: 'comparepage__art comparepage__art--fallback',
+            glyph: 'comparepage__glyph',
+          }}
+        />
         <span className="comparepage__identity">
           <span className="comparepage__brand">{product.brandName}</span>
           <span className="comparepage__name">{product.name}</span>
@@ -181,7 +187,7 @@ function ProductHeaderCard({
           </Button>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -221,13 +227,17 @@ function ProductPicker({ excludeId, onPick }: { excludeId: string; onPick: (id: 
           )}
           {items.map((item: ProductSummary) => (
             <li key={item.id} className="comparepage__result">
-              <span
-                className="comparepage__result-art"
-                style={{ backgroundImage: categoryGradient(item.categoryCode, item.id + item.name) }}
-                aria-hidden="true"
-              >
-                {categoryGlyph(item.categoryCode)}
-              </span>
+              <ProductImage
+                imageUrl={item.imageUrl}
+                categoryCode={item.categoryCode}
+                seed={item.id + item.name}
+                alt=""
+                classNames={{
+                  img: 'comparepage__result-art comparepage__result-art--photo',
+                  art: 'comparepage__result-art comparepage__result-art--fallback',
+                  glyph: 'comparepage__result-glyph',
+                }}
+              />
               <span className="comparepage__result-text">
                 <span className="comparepage__result-brand">{item.brandName}</span>
                 <span className="comparepage__result-name">{item.name}</span>
@@ -253,8 +263,14 @@ function ComparisonTable({ a, b }: { a: ProductDetail; b: ProductDetail }) {
         <thead>
           <tr>
             <th scope="col">{t('compare.heading')}</th>
-            <th scope="col">{a.name}</th>
-            <th scope="col">{b.name}</th>
+            <th scope="col">
+              <span className="comparetable__col-brand">{a.brandName}</span>
+              <span className="comparetable__col-name">{a.name}</span>
+            </th>
+            <th scope="col">
+              <span className="comparetable__col-brand">{b.brandName}</span>
+              <span className="comparetable__col-name">{b.name}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
