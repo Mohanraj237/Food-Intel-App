@@ -42,6 +42,13 @@ public record AppProperties(
             @NotBlank String endpoint,
             @NotBlank String region,
             @NotBlank String bucket,
+            /*
+             * A separate bucket from `bucket` (which stays scoped to private label
+             * photos, D-018 retention). Catalogue images sourced from OFF/brand-published
+             * material are not private and can be served public-read, so they must never
+             * share a bucket with label_image's authorization-gated contents.
+             */
+            @NotBlank String catalogueBucket,
             String accessKey,
             String secretKey,
             boolean pathStyleAccess,

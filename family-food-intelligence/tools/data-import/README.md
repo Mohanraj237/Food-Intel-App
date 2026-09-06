@@ -58,6 +58,28 @@ per-field provenance are honoured, and every version is `NEEDS_VERIFICATION` / `
 any GTIN that already has an active barcode mapping — safe to re-run after fetching a larger
 snapshot, or after a partial run.
 
+## 3. Backfill images (optional, separate step)
+
+The snapshot's `image_url`/`image_front_url` fields (fetched since this step was added — a
+re-run of step 1 is needed for an older snapshot) point at Open Food Facts' own image
+hosting. This step downloads each product's image once and stores it in this application's
+own catalogue-image bucket (`familyfood.storage.catalogue-bucket`) — the running app never
+hotlinks a user's browser to `images.openfoodfacts.org`. Deliberately a separate profile
+from step 2, since it makes a live network call per product against a source that has had
+sustained availability problems for this project (see `docs/decisions/decision-log.md`
+D-031):
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=local,seed-catalog-images
+```
+
+**Idempotent and resumable.** A product that already has an image is skipped without a
+network call, so re-running after a partial run or an Open Food Facts outage only tops up
+what's missing. See `catalog.seed.OpenFoodFactsImageBackfillRunner`'s own doc comment for
+the full behaviour, including what happens when Open Food Facts cannot be reached at all
+(the run completes and reports an honest zero, rather than failing or fabricating a
+placeholder image).
+
 ## Verify the count
 
 ```bash

@@ -7,7 +7,10 @@ import java.util.UUID;
 /**
  * Mirrors {@code ProductSummary} in frontend/src/lib/catalog.ts.
  *
- * <p>{@code imageUrl} is always {@code null} — there is no image storage wired up yet.
+ * <p>{@code imageUrl} is {@code null} until a {@code product_image} row exists for the
+ * product (see {@code catalog.application.ProductImageService}) — most products still have
+ * no image today, since the Open Food Facts image backfill is a separate, opt-in step from
+ * the base catalogue import (see {@code catalog.seed.OpenFoodFactsImageBackfillRunner}).
  * {@code brandName} is {@code ""} rather than {@code null} when the product has no brand:
  * the frontend type declares it non-nullable, and an unbranded product is not a data
  * error worth surfacing as a missing field.

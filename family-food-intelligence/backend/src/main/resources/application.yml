@@ -101,6 +101,9 @@ familyfood:
     endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
     region: ${STORAGE_REGION:ap-south-1}
     bucket: ${STORAGE_BUCKET:familyfood-labels}
+    # Catalogue images (public, non-personal) live in their own bucket — never
+    # familyfood-labels, which stays scoped to private, retention-bound label photos.
+    catalogue-bucket: ${STORAGE_CATALOGUE_BUCKET:familyfood-catalogue-images}
     access-key: ${STORAGE_ACCESS_KEY:}
     secret-key: ${STORAGE_SECRET_KEY:}
     path-style-access: ${STORAGE_PATH_STYLE:true}

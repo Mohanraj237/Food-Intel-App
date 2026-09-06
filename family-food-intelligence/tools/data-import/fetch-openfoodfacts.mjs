@@ -61,6 +61,12 @@ const FIELDS = [
   "nutriments",
   "nutrition_data_per",
   "countries_tags",
+  // Consumed by backend/.../catalog/seed/OpenFoodFactsImageBackfillRunner.java (a separate,
+  // opt-in step from the product-facts import — see that class's own doc comment). Not every
+  // OFF product has image_front_url specifically, so image_url (the generic "best" product
+  // photo) is fetched too as a fallback.
+  "image_url",
+  "image_front_url",
 ].join(",");
 
 function sleep(ms) {

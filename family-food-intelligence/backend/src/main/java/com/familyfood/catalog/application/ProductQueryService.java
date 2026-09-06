@@ -82,6 +82,7 @@ public class ProductQueryService {
     private final NutrientRepository nutrientRefs;
     private final AllergenRepository allergenRefs;
     private final IngredientRepository ingredientRefs;
+    private final ProductImageService productImages;
 
     public ProductQueryService(ProductRepository products,
                                ProductVersionRepository versions,
@@ -95,7 +96,8 @@ public class ProductQueryService {
                                CategoryRepository categories,
                                NutrientRepository nutrientRefs,
                                AllergenRepository allergenRefs,
-                               IngredientRepository ingredientRefs) {
+                               IngredientRepository ingredientRefs,
+                               ProductImageService productImages) {
         this.products = products;
         this.versions = versions;
         this.barcodes = barcodes;
@@ -109,6 +111,7 @@ public class ProductQueryService {
         this.nutrientRefs = nutrientRefs;
         this.allergenRefs = allergenRefs;
         this.ingredientRefs = ingredientRefs;
+        this.productImages = productImages;
     }
 
     // ------------------------------------------------------------------------ single product
@@ -255,6 +258,9 @@ public class ProductQueryService {
         Map<String, Nutrient> coreNutrientsByCode = nutrientRefs.findByCoreTrue().stream()
                 .collect(Collectors.toMap(Nutrient::getCode, Function.identity()));
 
+        Map<UUID, String> imageUrlsByProduct = productImages.currentImageUrls(
+                productList.stream().map(Product::getId).toList());
+
         List<ProductSummaryDto> result = new ArrayList<>();
         for (Product product : productList) {
             ProductVersion version = versionByProductId.get(product.getId());
@@ -286,7 +292,7 @@ public class ProductQueryService {
                     packSize,
                     category != null ? category.getCode() : null,
                     category != null ? category.getName() : null,
-                    null,
+                    imageUrlsByProduct.get(product.getId()),
                     version.getDataQuality().name(),
                     version.getServingSizeG(),
                     version.getServingSizeDeclared(),
