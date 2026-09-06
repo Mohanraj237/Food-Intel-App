@@ -5,6 +5,7 @@ import { t } from '@/lib/i18n';
 import { ApiError } from '@/lib/api';
 import { getCategories } from '@/lib/catalog';
 import { submitContribution } from '@/lib/capture';
+import { listPolicies } from '@/lib/consent';
 import { ALLERGEN_CODES, type AllergenCode } from '@/lib/profile';
 import { Button } from '@/design-system/Button';
 import './ContributeProductForm.css';
@@ -67,6 +68,15 @@ export function ContributeProductForm({ gtin, onExit }: ContributeProductFormPro
     staleTime: 30 * 60 * 1000,
   });
 
+  // D-026: the acknowledgment shown here is the real, seeded PRODUCT_IMPROVEMENT
+  // purpose text (public, unauthenticated) — never separately invented copy.
+  const policiesQuery = useQuery({
+    queryKey: ['consent', 'policies'],
+    queryFn: listPolicies,
+    staleTime: 30 * 60 * 1000,
+  });
+  const contributionPolicy = policiesQuery.data?.find((p) => p.purposeCode === 'PRODUCT_IMPROVEMENT');
+
   const [productName, setProductName] = useState('');
   const [brandName, setBrandName] = useState('');
   const [categoryCode, setCategoryCode] = useState('');
@@ -77,6 +87,7 @@ export function ContributeProductForm({ gtin, onExit }: ContributeProductFormPro
   const [perServing, setPerServing] = useState<AmountsByCode>(emptyAmounts);
   const [ingredientsRawText, setIngredientsRawText] = useState('');
   const [allergens, setAllergens] = useState<Set<AllergenCode>>(new Set());
+  const [acknowledged, setAcknowledged] = useState(false);
 
   const mutation = useMutation({
     mutationFn: submitContribution,
@@ -93,7 +104,7 @@ export function ContributeProductForm({ gtin, onExit }: ContributeProductFormPro
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!productName.trim()) return;
+    if (!productName.trim() || !acknowledged) return;
 
     mutation.mutate({
       gtin: gtin.trim() || null,
@@ -110,6 +121,7 @@ export function ContributeProductForm({ gtin, onExit }: ContributeProductFormPro
       })),
       ingredientsRawText: ingredientsRawText.trim() || null,
       allergenCodes: Array.from(allergens),
+      catalogueContributionAcknowledged: acknowledged,
     });
   }
 
@@ -285,13 +297,23 @@ export function ContributeProductForm({ gtin, onExit }: ContributeProductFormPro
           </div>
         </fieldset>
 
+        <label className="field contribute__check">
+          <input
+            type="checkbox"
+            checked={acknowledged}
+            onChange={(e) => setAcknowledged(e.target.checked)}
+            required
+          />
+          <span>{contributionPolicy?.purposeDescription ?? t('contribute.acknowledgeFallback')}</span>
+        </label>
+
         {errorMessage && (
           <p className="form-error" role="alert">
             {errorMessage}
           </p>
         )}
 
-        <Button type="submit" fullWidth loading={mutation.isPending}>
+        <Button type="submit" fullWidth loading={mutation.isPending} disabled={!acknowledged}>
           {t('contribute.submit')}
         </Button>
       </form>

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
 import { useIsSignedIn } from '@/lib/useSession';
 import { getCategories, headlineFact, searchProducts, type ProductSummary } from '@/lib/catalog';
+import { getRecentActivity } from '@/lib/activity';
 import {
   CategoryRail,
   CategoryRailSkeleton,
@@ -52,6 +53,18 @@ export function HomeScreen() {
     queryFn: () => searchProducts({ category: 'BEVERAGES', size: 10 }),
   });
 
+  // Real, never faked (FR-012): only rendered once the activity backend actually
+  // has rows for this account. A signed-out visitor or one with no history yet
+  // sees no section at all — not an empty placeholder pretending to be a feature.
+  const recent = useQuery({
+    queryKey: ['activity', 'recent'],
+    queryFn: getRecentActivity,
+    enabled: signedIn,
+  });
+  const recentProducts = (recent.data ?? [])
+    .map((entry) => entry.product)
+    .filter((p): p is ProductSummary => p !== null);
+
   const catalogueUnavailable = popular.isError;
 
   return (
@@ -98,6 +111,13 @@ export function HomeScreen() {
           <ErrorState error={categories.error} onRetry={() => void categories.refetch()} />
         )}
       </section>
+
+      {signedIn && recentProducts.length > 0 && (
+        <section className="home__rail">
+          <SectionHeader title={t('home.railRecent')} />
+          <ProductRail loading={false} products={recentProducts.map(toCardData)} />
+        </section>
+      )}
 
       {catalogueUnavailable ? (
         <section>

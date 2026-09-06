@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { ApiError, storedRefreshToken } from '@/lib/api';
+import { ApiError, currentAccountId, storedRefreshToken, subscribeToSession } from '@/lib/api';
 import { restoreSession } from '@/lib/auth';
 import { AppShell } from './AppShell';
 import { HomeScreen } from '@/features/home/HomeScreen';
@@ -11,6 +11,8 @@ import { CompareScreen } from '@/features/compare/CompareScreen';
 import { ScanScreen } from '@/features/scan/ScanScreen';
 import { FamilyScreen } from '@/features/household/FamilyScreen';
 import { SettingsScreen } from '@/features/settings/SettingsScreen';
+import { OpsQueueScreen } from '@/features/ops/OpsQueueScreen';
+import { OpsReviewScreen } from '@/features/ops/OpsReviewScreen';
 import { NotFoundScreen } from '@/features/shell/NotFoundScreen';
 
 const queryClient = new QueryClient({
@@ -30,6 +32,26 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
     },
   },
+});
+
+/**
+ * Clears every cached query the instant the signed-in account changes — sign-out (account id
+ * to `null`) or signing in as a different account in the same tab, without a page reload in
+ * between. Without this, `staleTime: 60_000` above means a screen like Home's "recently
+ * viewed" rail, the household list, or the ops-access check could keep showing a *previous*
+ * account's cached data to whoever is now signed in, for up to a minute (found during Phase 6
+ * hardening review — the backend re-checks authorization on every request regardless, but the
+ * client must not display stale private data it already fetched under a different identity).
+ * A token refresh that keeps the same account id is deliberately not a clear — that would
+ * needlessly refetch everything on every silent refresh.
+ */
+let lastNotifiedAccountId = currentAccountId();
+subscribeToSession(() => {
+  const nextAccountId = currentAccountId();
+  if (nextAccountId !== lastNotifiedAccountId) {
+    lastNotifiedAccountId = nextAccountId;
+    queryClient.clear();
+  }
 });
 
 export function App() {
@@ -60,6 +82,8 @@ export function App() {
             <Route path="/scan" element={<ScanScreen />} />
             <Route path="/family" element={<FamilyScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/ops" element={<OpsQueueScreen />} />
+            <Route path="/ops/:id" element={<OpsReviewScreen />} />
             <Route path="/404" element={<NotFoundScreen />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
           </Route>

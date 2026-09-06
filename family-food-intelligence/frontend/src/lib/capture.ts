@@ -28,6 +28,10 @@ export interface ContributionRequest {
   nutrients: ContributionNutrientInput[];
   ingredientsRawText: string | null;
   allergenCodes: string[];
+  /** Required (D-026): a terms-of-contribution acknowledgment, not a consent-ledger
+   *  grant — see backend V9__contribution_acknowledgment.sql. The backend rejects
+   *  `false` with a validation error. */
+  catalogueContributionAcknowledged: boolean;
 }
 
 export interface ContributionReceipt {

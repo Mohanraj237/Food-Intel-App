@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
@@ -7,6 +7,7 @@ import { useMyHousehold } from '@/lib/useMyHousehold';
 import { listMembers, type HouseholdMember } from '@/lib/household';
 import { formatAmount, getProduct, searchProducts, type ProductDetail, type ProductSummary } from '@/lib/catalog';
 import { getHouseholdFit, getProductHealth, type HouseholdFit } from '@/lib/scoring';
+import { recordActivity } from '@/lib/activity';
 import { categoryGlyph, categoryGradient } from '@/design-system/CategoryArt';
 import { ErrorState, Skeleton } from '@/design-system/States';
 import { VerdictChip, type Verdict } from '@/design-system/VerdictChip';
@@ -81,12 +82,24 @@ function ComparePanel({
   onRemoveB: () => void;
   onSwap: () => void;
 }) {
+  const signedIn = useIsSignedIn();
   const productA = useQuery({ queryKey: ['product', aId], queryFn: () => getProduct(aId) });
   const productB = useQuery({
     queryKey: ['product', bId],
     queryFn: () => getProduct(bId as string),
     enabled: bId !== null,
   });
+
+  // Best-effort, fire-and-forget — same posture as ProductScreen's VIEWED write.
+  useEffect(() => {
+    if (signedIn && productA.isSuccess && productB.isSuccess) {
+      recordActivity({
+        productId: productA.data.id,
+        alternativeProductId: productB.data.id,
+        eventType: 'COMPARED',
+      }).catch(() => undefined);
+    }
+  }, [signedIn, productA.isSuccess, productA.data?.id, productB.isSuccess, productB.data?.id]);
 
   if (productA.isPending) {
     return <Skeleton lines={4} label={t('loading.product')} />;
