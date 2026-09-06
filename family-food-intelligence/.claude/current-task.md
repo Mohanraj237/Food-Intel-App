@@ -85,16 +85,29 @@ Verified per-step: `npm run typecheck` clean, `npm run test` 8/8, and for the ba
 `mvn -o verify` 100 unit + 116 integration passing (Testcontainers, real Postgres, Flyway V11
 applied cleanly).
 
-**Now running (Wave 2, parallel, disjoint files): Steps 5–8 — Home, Search, Product Detail,
-Compare.** These were held back from Wave 1 because they render `ProductCard`/`Rails` and
-needed Step 4 to land first for visual coherence. Product Detail (Step 7) is building the
-first real ≥1024px two-column desktop composition for the product page — today it's a single
-column at every width. Not yet reviewed/committed as of this entry.
+**Steps 5–8 — done, committed (2026-09-07).** Home (utility vs. browsing zones, tinted
+quick-actions so they don't read as product cards; deliberately no dashboard element, no
+fake "recommended for you", no invented greeting — no backend/data-model support exists for
+any of those three). Search (a real, honestly-labeled client-side-only "best data quality"
+sort — the backend has no `sort` param, so this reorders the already-fetched page in memory
+only; no "family fit" filter was built since no such field/param exists anywhere). Product
+Detail (the first real ≥1024px two-column desktop layout — sticky image/identity left,
+scrolling facts right — a pure wrapping change, the fixed information order and every aria
+attribute are byte-identical to before). Compare (real `ProductImage` instead of raw
+`CategoryArt` calls, centered per-column identity headers, clearer table lanes; deliberately
+no value-vs-value "winner" highlighting — this app's tokens explicitly reject that judgment
+ramp, D-004).
 
-**Still to come:** Step 3 (app shell/nav polish — lower priority now, the shell already has a
-genuine responsive split), Step 11 (a dedicated Activity screen — does not exist yet, activity
-data today only surfaces via Home's "recently viewed" rail and per-product Outcome capture),
-Step 14 (global responsive/accessibility pass across everything above).
+**Now running (Wave 3, parallel, disjoint files): Step 3 (app shell/nav polish) and Step 11
+(a new Activity screen).** Navigation decision made before launching, to avoid the two
+colliding on `AppShell`: Activity is **not** a 6th bottom-nav slot (all 5 are already spoken
+for, matching the brief's own 5-item mobile-nav reference) — it's a new `/activity` route
+reached via a link from Settings. So Step 11 owns a new `features/activity/` + the route in
+`App.tsx` + one added link in `SettingsScreen.tsx`; Step 3 owns only `AppShell.tsx`/`.css`.
+Not yet reviewed/committed as of this entry.
+
+**Still to come after Wave 3:** Step 14 (global responsive/accessibility pass) — has to run
+alone, last, since by nature it touches everything already built above.
 
 ---
 
