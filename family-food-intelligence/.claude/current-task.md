@@ -98,16 +98,24 @@ attribute are byte-identical to before). Compare (real `ProductImage` instead of
 no value-vs-value "winner" highlighting — this app's tokens explicitly reject that judgment
 ramp, D-004).
 
-**Now running (Wave 3, parallel, disjoint files): Step 3 (app shell/nav polish) and Step 11
-(a new Activity screen).** Navigation decision made before launching, to avoid the two
-colliding on `AppShell`: Activity is **not** a 6th bottom-nav slot (all 5 are already spoken
-for, matching the brief's own 5-item mobile-nav reference) — it's a new `/activity` route
-reached via a link from Settings. So Step 11 owns a new `features/activity/` + the route in
-`App.tsx` + one added link in `SettingsScreen.tsx`; Step 3 owns only `AppShell.tsx`/`.css`.
-Not yet reviewed/committed as of this entry.
+**Steps 3 and 11 — done, committed (2026-09-07).** App shell: found and fixed a real bug
+(`.toplinks__item:hover` outranked `--active` on specificity, so hovering the current desktop
+nav link silently lost its "you are here" styling), plus a touch-target and glyph-alignment
+fix — the architecture itself was already correct, so this was targeted polish, not a rebuild.
+Activity: a brand-new `/activity` screen and route, reached via a link from Settings (not a
+6th bottom-nav slot, by design — see above), a plain grouped history (Viewed/Compared/
+Decisions) with zero gamification, reusing `HomeScreen`'s exact query pattern and
+`OutcomeCapture`'s own decision-label vocabulary rather than inventing a second one. One
+inconsistency fixed on review: its image tile used `object-fit: cover`, missed the `contain`
+convention established earlier in the sequence.
 
-**Still to come after Wave 3:** Step 14 (global responsive/accessibility pass) — has to run
-alone, last, since by nature it touches everything already built above.
+That's 12 of 14 steps done. **Now running (Step 14, alone — by nature touches everything
+built above, so it cannot run parallel with anything): global responsive/accessibility pass.**
+No browser-automation tool is available in this environment (a standing, documented gap —
+`.claude/state.md`'s "known limitations" going back several sessions), so this step's
+verification is a systematic code-level review (CSS breakpoint math, semantic HTML, aria,
+contrast tokens, touch targets, reduced-motion) rather than a rendered-in-browser walkthrough
+— flagged explicitly, not claimed as something it isn't.
 
 ---
 
