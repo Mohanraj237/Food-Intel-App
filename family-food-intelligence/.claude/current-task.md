@@ -51,14 +51,50 @@ recommendation and activity modules` (backend+tooling+docs, 100% prior-session c
 frontend, untouched by this step), `feat(ui): establish shared design system (...)` (this
 step's actual work). The working tree is clean as of this entry.
 
-**Next step (Step 2 of 14): product image infrastructure.** New `product_image` table
-(separate from `label_image`, which stays exactly as-is — private, retention-bound,
-OCR-capture-only — merging them would fight `label_image`'s own retention/purpose
-constraints). A real object-storage client wired to the currently-dead
-`AppProperties.Storage` config, but a **separate bucket** from `label-images`'s scope for
-public catalogue imagery. Backend populates `imageUrl` for real, sourced first from
-re-ingesting Open Food Facts' image URLs for the 893 already-imported products (respecting
-OFF's attribution/licensing terms — store + attribute, never hotlink). Has not been started.
+**Steps 2, 4, 9, 10, 12, 13 — done, committed (2026-09-07).** Ran as six parallel agents on
+disjoint file sets (backend image infra touches only `backend/`/`tools/`; each frontend
+agent owned exactly one screen's files), each reviewed and verified before merging:
+- **Step 2 — product image infrastructure**: new `product_image` table (V11, separate from
+  `label_image` exactly as planned), `platform.storage.ObjectStorageClient` (real S3/MinIO
+  client, credentials never leave the class), `ProductImageService` (idempotent-by-hash,
+  server-generated storage keys, reuses existing `AppProperties.Limits` MIME/size config),
+  `ProductQueryService` now batch-resolves real `imageUrl`, `OpenFoodFactsImageBackfillRunner`
+  (opt-in `seed-catalog-images` profile, store-and-attribute not hotlink, resumable). **One
+  real defect found and fixed on review**: the backfill runner's `User-Agent` header embedded
+  a real personal email address that would have been sent to Open Food Facts' servers on
+  every request — replaced with a project-level contact reference before merging.
+- **Step 4 — ProductCard/Rails**: `object-fit: contain` for real photos (was `cover`, would
+  have cropped a non-square pack), a fixed 320px viewport bug in `.pgrid` (two columns
+  silently collapsed to one), allergen-badge shadow for legibility over a photo.
+- **Step 9 — Family**: roster rows as nested `Card`s, one-letter avatar badges (no
+  photo-upload feature exists), self/child visual distinction via border-style + accent bar
+  (never a verdict/allergen color), equal-weight create-vs-join first-run choice.
+- **Step 10 — Scan/Contribution**: manual-entry button de-emphasized to secondary (camera is
+  the one primary CTA), the "reviewed before publication" promise promoted to a real trust
+  callout, contribution form sectioned.
+- **Step 12 — Settings**: regrouped into Account vs. "Privacy & data"; fixed the known
+  incomplete ARIA tablist pattern on the auth switcher by mirroring `OpsQueueScreen`'s
+  already-correct implementation.
+- **Step 13 — Ops**: queue rows onto `Card`, added a status badge reusing `ProductScreen`'s
+  provenance-badge color convention, surfaced `submittedAt`/`reviewedAt`/`reviewNotes` (were
+  on the wire, never rendered), densified spacing (deliberately, per the brief — this is the
+  one screen where that's correct).
+
+Seven commits total for this batch (one per step, plus the backend one) — see git log.
+Verified per-step: `npm run typecheck` clean, `npm run test` 8/8, and for the backend piece,
+`mvn -o verify` 100 unit + 116 integration passing (Testcontainers, real Postgres, Flyway V11
+applied cleanly).
+
+**Now running (Wave 2, parallel, disjoint files): Steps 5–8 — Home, Search, Product Detail,
+Compare.** These were held back from Wave 1 because they render `ProductCard`/`Rails` and
+needed Step 4 to land first for visual coherence. Product Detail (Step 7) is building the
+first real ≥1024px two-column desktop composition for the product page — today it's a single
+column at every width. Not yet reviewed/committed as of this entry.
+
+**Still to come:** Step 3 (app shell/nav polish — lower priority now, the shell already has a
+genuine responsive split), Step 11 (a dedicated Activity screen — does not exist yet, activity
+data today only surfaces via Home's "recently viewed" rail and per-product Outcome capture),
+Step 14 (global responsive/accessibility pass across everything above).
 
 ---
 
