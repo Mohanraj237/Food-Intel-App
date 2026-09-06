@@ -11,6 +11,7 @@ import { CompareScreen } from '@/features/compare/CompareScreen';
 import { ScanScreen } from '@/features/scan/ScanScreen';
 import { FamilyScreen } from '@/features/household/FamilyScreen';
 import { SettingsScreen } from '@/features/settings/SettingsScreen';
+import { ActivityScreen } from '@/features/activity/ActivityScreen';
 import { OpsQueueScreen } from '@/features/ops/OpsQueueScreen';
 import { OpsReviewScreen } from '@/features/ops/OpsReviewScreen';
 import { NotFoundScreen } from '@/features/shell/NotFoundScreen';
@@ -82,6 +83,7 @@ export function App() {
             <Route path="/scan" element={<ScanScreen />} />
             <Route path="/family" element={<FamilyScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/activity" element={<ActivityScreen />} />
             <Route path="/ops" element={<OpsQueueScreen />} />
             <Route path="/ops/:id" element={<OpsReviewScreen />} />
             <Route path="/404" element={<NotFoundScreen />} />

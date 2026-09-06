@@ -90,6 +90,9 @@ function AccountPanel() {
     <Card as="section" className="settings__section" aria-labelledby="account-heading">
       <h2 id="account-heading" className="settings__h2">{t('auth.accountHeading')}</h2>
       <p className="settings__signedin">{t('auth.signedIn')}</p>
+      <Link to="/activity" className="btn btn--secondary btn--sm">
+        {t('settings.activityLink' as Parameters<typeof t>[0])}
+      </Link>
       <Button
         variant="secondary"
         loading={signOut.isPending}
