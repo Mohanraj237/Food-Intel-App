@@ -27,13 +27,24 @@
 .pdp__hero--loading { min-height: 132px; }
 
 .pdp__art {
-  display: grid;
-  place-items: center;
   width: 104px;
   height: 104px;
   border-radius: var(--radius-md);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* The gradient+glyph fallback only — a real photo must not be desaturated. */
+.pdp__art--fallback {
+  display: grid;
+  place-items: center;
   filter: saturate(var(--cat-tile-dim)) brightness(calc(0.4 + 0.6 * var(--cat-tile-dim)));
+}
+
+.pdp__art--photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .pdp__glyph {

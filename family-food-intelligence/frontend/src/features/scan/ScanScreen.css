@@ -2,7 +2,10 @@
 .scanpage__switch { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: var(--space-5); padding: 3px; background: var(--surface-sunken); border-radius: var(--radius-md); }
 .scanpage__tab { min-height: var(--tap-min); display: grid; place-items: center; padding-inline: var(--space-2); border-radius: 9px; color: var(--text-secondary); text-decoration: none; font-size: var(--text-sm); font-weight: 700; text-align: center; }
 .scanpage__tab--active { background: var(--card-bg); color: var(--brand); box-shadow: var(--shadow-sm); }
-.scanpage__panel { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-4); padding: var(--space-5); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+/* Base card look (padding/gap/background/border/radius/shadow) comes from
+   `Card` (`padding="lg" elevated`); this is the one property specific to
+   this screen. */
+.scanpage__panel { align-items: stretch; }
 .scanpage__intro { display: flex; gap: var(--space-3); align-items: center; }
 .scanpage__intro p, .scanpage__label-copy { color: var(--text-secondary); margin-top: var(--space-1); }
 .scanpage__icon { display: grid; place-items: center; flex: 0 0 auto; width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--brand-subtle); color: var(--brand); font-size: 1.5rem; }
@@ -23,4 +26,4 @@
 .scanpage__contribute-cta { align-self: stretch; }
 .scanpage__search-link { align-self: center; min-height: var(--tap-min); display: inline-flex; align-items: center; font-size: var(--text-sm); font-weight: 700; }
 .scanpage__panel--label { align-items: center; text-align: center; padding-block: var(--space-7); }
-@media (min-width: 768px) { .scanpage { padding-top: var(--space-6); } .scanpage__panel { padding: var(--space-6); } }
+@media (min-width: 768px) { .scanpage { padding-top: var(--space-6); } }

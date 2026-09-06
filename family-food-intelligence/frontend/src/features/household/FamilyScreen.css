@@ -1,14 +1,3 @@
-.family__panel,
-.family__section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-}
-
 .family__h2 {
   font-size: var(--text-h2);
 }

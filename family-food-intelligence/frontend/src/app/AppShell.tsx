@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { t } from '@/lib/i18n';
 import { useIsSignedIn } from '@/lib/useSession';
+import { SearchBar } from '@/design-system/SearchBar';
 import './AppShell.css';
 
 /**
@@ -55,33 +56,9 @@ export function AppShell() {
     mainRef.current?.focus({ preventScroll: true });
   }, [location.pathname]);
 
-  function submitSearch(event: React.FormEvent) {
-    event.preventDefault();
-    const trimmed = query.trim();
+  function submitSearch(trimmed: string) {
     navigate(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : '/search');
   }
-
-  const searchField = (
-    <form className="searchbar" role="search" onSubmit={submitSearch}>
-      <label htmlFor="global-search" className="sr-only">
-        {t('search.placeholder')}
-      </label>
-      <span className="searchbar__icon" aria-hidden="true">⌕</span>
-      <input
-        id="global-search"
-        type="search"
-        className="searchbar__input"
-        placeholder={t('search.placeholder')}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        autoComplete="off"
-        enterKeyHint="search"
-      />
-      <Link className="searchbar__scan" to="/scan" aria-label={t('nav.scan')}>
-        <span aria-hidden="true">▣</span>
-      </Link>
-    </form>
-  );
 
   return (
     <div className="shell">
@@ -100,7 +77,12 @@ export function AppShell() {
             <span aria-hidden="true">{signedIn ? '☺' : '☰'}</span>
           </Link>
         </div>
-        {searchField}
+        <SearchBar
+          id="global-search-mobile"
+          value={query}
+          onChange={setQuery}
+          onSubmit={submitSearch}
+        />
       </header>
 
       {/* ---- desktop top bar ---- */}
@@ -111,7 +93,14 @@ export function AppShell() {
             <span className="wordmark__text">{t('app.name')}</span>
           </Link>
 
-          <div className="shell__topsearch">{searchField}</div>
+          <div className="shell__topsearch">
+            <SearchBar
+              id="global-search-desktop"
+              value={query}
+              onChange={setQuery}
+              onSubmit={submitSearch}
+            />
+          </div>
 
           <nav className="toplinks" aria-label={t('app.name')}>
             {NAV.filter((n) => n.to !== '/search' && n.to !== '/').map(({ to, key }) => (

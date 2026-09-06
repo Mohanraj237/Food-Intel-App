@@ -1,0 +1,53 @@
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--tap-primary);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border-interactive);
+  transition: border-color var(--dur-fast) var(--ease),
+              background var(--dur-fast) var(--ease);
+}
+
+.searchbar:focus-within {
+  border-color: var(--brand);
+  background: var(--card-bg);
+}
+
+.searchbar__icon {
+  color: var(--text-tertiary);
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+.searchbar__input {
+  flex: 1;
+  min-width: 0;              /* lets the field shrink inside a flex row */
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: var(--text-body); /* 16px — anything smaller zooms on iOS focus */
+  color: var(--text);
+}
+
+.searchbar__input::placeholder { color: var(--text-tertiary); }
+
+/* Removes the browser's own clear affordance, which sits at a different place
+   in every engine and fights the scan button beside it. */
+.searchbar__input::-webkit-search-cancel-button { display: none; }
+
+.searchbar__scan {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-subtle);
+  color: var(--brand);
+  text-decoration: none;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}

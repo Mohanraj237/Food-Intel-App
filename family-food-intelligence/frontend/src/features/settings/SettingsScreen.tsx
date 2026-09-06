@@ -1,12 +1,15 @@
 import { useState, type FormEvent } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
 import { ApiError, storedRefreshToken } from '@/lib/api';
 import { applySession, login, logout, register, signOutLocally } from '@/lib/auth';
 import { exportMyData, requestAccountDeletion } from '@/lib/account';
+import { getOpsAccess } from '@/lib/ops';
 import { useIsSignedIn } from '@/lib/useSession';
 import { ConsentPanel } from '@/features/consent/ConsentPanel';
 import { Button } from '@/design-system/Button';
+import { Card } from '@/design-system/Card';
 import './SettingsScreen.css';
 
 /**
@@ -26,7 +29,34 @@ export function SettingsScreen() {
       {signedIn ? <AccountPanel /> : <AuthPanel />}
       {signedIn && <ConsentPanel />}
       {signedIn && <DataRightsPanel />}
+      {signedIn && <OpsAccessPanel />}
     </div>
+  );
+}
+
+/**
+ * A UI affordance only — links to the ops-review console for the (rare) signed-in caller
+ * who holds the operator role. Every ops endpoint re-checks this server-side regardless
+ * (D-032); this panel simply avoids showing a link that would just 403 for everyone else.
+ * Renders nothing at all for a non-operator, not a disabled/greyed-out link.
+ */
+function OpsAccessPanel() {
+  const access = useQuery({
+    queryKey: ['ops', 'access'],
+    queryFn: getOpsAccess,
+  });
+
+  if (!access.isSuccess || !access.data.isOperator) {
+    return null;
+  }
+
+  return (
+    <Card as="section" className="settings__section" aria-labelledby="ops-heading">
+      <h2 id="ops-heading" className="settings__h2">{t('ops.consoleHeading')}</h2>
+      <Link to="/ops" className="btn btn--secondary btn--sm">
+        {t('ops.consoleLink')}
+      </Link>
+    </Card>
   );
 }
 
@@ -45,7 +75,7 @@ function AccountPanel() {
   });
 
   return (
-    <section className="settings__section" aria-labelledby="account-heading">
+    <Card as="section" className="settings__section" aria-labelledby="account-heading">
       <h2 id="account-heading" className="settings__h2">{t('auth.accountHeading')}</h2>
       <p className="settings__signedin">{t('auth.signedIn')}</p>
       <Button
@@ -55,7 +85,7 @@ function AccountPanel() {
       >
         {t('action.signOut')}
       </Button>
-    </section>
+    </Card>
   );
 }
 
@@ -91,7 +121,7 @@ function AuthPanel() {
     localError ?? (mutation.error instanceof ApiError ? mutation.error.message : null);
 
   return (
-    <section className="settings__section" aria-labelledby="auth-heading">
+    <Card as="section" className="settings__section" aria-labelledby="auth-heading">
       <div className="settings__switch" role="tablist" aria-label={t('auth.accountHeading')}>
         <button
           type="button"
@@ -163,18 +193,18 @@ function AuthPanel() {
           {mode === 'signin' ? t('action.signIn') : t('action.signUp')}
         </Button>
       </form>
-    </section>
+    </Card>
   );
 }
 
 /** Data export and account deletion (NFR-09, AC-9.2/AC-9.3). */
 function DataRightsPanel() {
   return (
-    <section className="settings__section" aria-labelledby="datarights-heading">
+    <Card as="section" className="settings__section" aria-labelledby="datarights-heading">
       <h2 id="datarights-heading" className="settings__h2">{t('privacy.dataRightsHeading')}</h2>
       <ExportSection />
       <DeleteAccountSection />
-    </section>
+    </Card>
   );
 }
 

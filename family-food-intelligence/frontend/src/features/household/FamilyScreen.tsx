@@ -19,6 +19,7 @@ import {
 } from '@/lib/household';
 import { getProfile } from '@/lib/profile';
 import { Button } from '@/design-system/Button';
+import { Card } from '@/design-system/Card';
 import { EmptyState, ErrorState, Skeleton } from '@/design-system/States';
 import { ProfilePanel } from './ProfilePanel';
 import './FamilyScreen.css';
@@ -152,7 +153,7 @@ function CreateHouseholdForm({ onCreated }: { onCreated: () => void }) {
   const errorMessage = mutation.error instanceof ApiError ? mutation.error.message : null;
 
   return (
-    <section className="family__panel" aria-labelledby="create-heading">
+    <Card as="section" className="family__panel" aria-labelledby="create-heading">
       <h2 id="create-heading" className="family__h2">
         {t('household.create')}
       </h2>
@@ -181,7 +182,7 @@ function CreateHouseholdForm({ onCreated }: { onCreated: () => void }) {
           {t('household.create')}
         </Button>
       </form>
-    </section>
+    </Card>
   );
 }
 
@@ -204,7 +205,7 @@ function JoinHouseholdForm({ onJoined }: { onJoined: () => void }) {
   const errorMessage = mutation.error instanceof ApiError ? mutation.error.message : null;
 
   return (
-    <section className="family__panel" aria-labelledby="join-heading">
+    <Card as="section" className="family__panel" aria-labelledby="join-heading">
       <h2 id="join-heading" className="family__h2">
         {t('household.joinHeading')}
       </h2>
@@ -232,7 +233,7 @@ function JoinHouseholdForm({ onJoined }: { onJoined: () => void }) {
           {t('action.join')}
         </Button>
       </form>
-    </section>
+    </Card>
   );
 }
 
@@ -355,7 +356,7 @@ function MembersList({
     eraseMutation.error instanceof ApiError ? eraseMutation.error.message : null;
 
   return (
-    <section className="family__section" aria-labelledby="members-heading">
+    <Card as="section" className="family__section" aria-labelledby="members-heading">
       <h2 id="members-heading" className="family__h2">
         {t('household.membersCount', { count: members.length })}
       </h2>
@@ -441,7 +442,7 @@ function MembersList({
           );
         })}
       </ul>
-    </section>
+    </Card>
   );
 }
 
@@ -500,7 +501,7 @@ function InviteAdultPanel({ householdId }: { householdId: string }) {
   const errorMessage = mutation.error instanceof ApiError ? mutation.error.message : null;
 
   return (
-    <section className="family__panel" aria-labelledby="invite-heading">
+    <Card as="section" className="family__panel" aria-labelledby="invite-heading">
       <h2 id="invite-heading" className="family__h2">
         {t('household.inviteAdult')}
       </h2>
@@ -555,7 +556,7 @@ function InviteAdultPanel({ householdId }: { householdId: string }) {
           </Button>
         </form>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -583,7 +584,7 @@ function AddChildPanel({ householdId }: { householdId: string }) {
   const errorMessage = mutation.error instanceof ApiError ? mutation.error.message : null;
 
   return (
-    <section className="family__panel" aria-labelledby="addchild-heading">
+    <Card as="section" className="family__panel" aria-labelledby="addchild-heading">
       <h2 id="addchild-heading" className="family__h2">
         {t('household.addChild')}
       </h2>
@@ -627,6 +628,6 @@ function AddChildPanel({ householdId }: { householdId: string }) {
           {t('action.addChild')}
         </Button>
       </form>
-    </section>
+    </Card>
   );
 }

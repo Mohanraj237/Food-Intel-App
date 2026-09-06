@@ -1,0 +1,23 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-radius: var(--radius-lg);
+}
+
+.card--raised {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+.card--sunken {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.card--pad-sm { padding: var(--space-3); }
+.card--pad-md { padding: var(--space-4); }
+.card--pad-lg { padding: var(--space-5); gap: var(--space-4); }
+
+.card--elevated { box-shadow: var(--shadow-sm); }

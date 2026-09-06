@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '@/lib/api';
 import { getProductByBarcode } from '@/lib/catalog';
 import { t } from '@/lib/i18n';
+import { Card } from '@/design-system/Card';
 import { ContributeProductForm } from './ContributeProductForm';
 import './ScanScreen.css';
 
@@ -90,7 +91,7 @@ export function ScanScreen() {
         <Link className={isLabelMode ? 'scanpage__tab scanpage__tab--active' : 'scanpage__tab'} to="/scan?mode=label" role="tab" aria-selected={isLabelMode}>{t('capture.heading')}</Link>
       </div>
       {isLabelMode ? <LabelCaptureNotice /> : (
-        <section className="scanpage__panel" aria-labelledby="scan-title">
+        <Card as="section" padding="lg" elevated className="scanpage__panel" aria-labelledby="scan-title">
           <div className="scanpage__intro"><span className="scanpage__icon" aria-hidden="true">▣</span><div><h1 id="scan-title">{t('scan.heading')}</h1><p>{t('scan.hint')}</p></div></div>
           {cameraState === 'active' ? (
             <div className="scanner-view"><video ref={videoRef} className="scanner-view__video" muted playsInline /><div className="scanner-view__guide" aria-hidden="true" /><button type="button" className="btn btn--secondary scanpage__camera-stop" onClick={stopCamera}>{t('scan.stopCamera')}</button></div>
@@ -113,12 +114,20 @@ export function ScanScreen() {
           )}
           {lookupState === 'error' && <p className="scanpage__notice">{t('error.service_unavailable')}</p>}
           <Link to="/search" className="scanpage__search-link">{t('scan.searchInstead')}</Link>
-        </section>
+        </Card>
       )}
     </div>
   );
 }
 
 function LabelCaptureNotice() {
-  return <section className="scanpage__panel scanpage__panel--label" aria-labelledby="label-title"><span className="scanpage__icon scanpage__icon--label" aria-hidden="true">◉</span><h1 id="label-title">{t('capture.heading')}</h1><p className="scanpage__label-copy">{t('capture.hint')}</p><p className="scanpage__notice">{t('capture.unavailable')}</p><Link to="/search" className="btn btn--primary">{t('scan.searchInstead')}</Link></section>;
+  return (
+    <Card as="section" padding="lg" elevated className="scanpage__panel scanpage__panel--label" aria-labelledby="label-title">
+      <span className="scanpage__icon scanpage__icon--label" aria-hidden="true">◉</span>
+      <h1 id="label-title">{t('capture.heading')}</h1>
+      <p className="scanpage__label-copy">{t('capture.hint')}</p>
+      <p className="scanpage__notice">{t('capture.unavailable')}</p>
+      <Link to="/search" className="btn btn--primary">{t('scan.searchInstead')}</Link>
+    </Card>
+  );
 }

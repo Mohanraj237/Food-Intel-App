@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { VerdictChip, type Verdict } from './VerdictChip';
-import { categoryGlyph, categoryGradient } from './CategoryArt';
+import { ProductImage } from './ProductImage';
 import { t } from '@/lib/i18n';
 import './ProductCard.css';
 
@@ -60,17 +60,13 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
       aria-label={`${brandName} ${name}${size ? `, ${size}` : ''}`}
     >
       <div className="pcard__media">
-        {imageUrl ? (
-          <img src={imageUrl} alt="" loading="lazy" decoding="async" className="pcard__img" />
-        ) : (
-          <div
-            className="pcard__art"
-            style={{ backgroundImage: categoryGradient(categoryCode, id + name) }}
-            aria-hidden="true"
-          >
-            <span className="pcard__glyph">{categoryGlyph(categoryCode)}</span>
-          </div>
-        )}
+        <ProductImage
+          imageUrl={imageUrl}
+          categoryCode={categoryCode}
+          seed={id + name}
+          alt=""
+          classNames={{ img: 'pcard__img', art: 'pcard__art', glyph: 'pcard__glyph' }}
+        />
 
         {allergenFlagged && (
           <span className="pcard__allergen" title={t('allergen.heading', { allergen: '' })}>

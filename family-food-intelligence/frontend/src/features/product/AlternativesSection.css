@@ -1,0 +1,57 @@
+.alternatives__empty {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.alternatives__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Base card look (background/border/radius/gap) comes from `Card`
+   (`surface="sunken" padding="sm"`); this widens the inline padding beyond
+   the default. */
+.alternatives__card {
+  padding-inline: var(--space-4);
+}
+
+.alternatives__name {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.alternatives__name:hover,
+.alternatives__name:focus-visible {
+  text-decoration: underline;
+}
+
+.alternatives__row {
+  font-size: var(--text-xs);
+}
+
+.alternatives__row ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+}
+
+.alternatives__label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-tertiary);
+}
+
+.alternatives__row--better {
+  color: var(--text-primary);
+}
+
+.alternatives__row--worse {
+  color: var(--text-secondary);
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
@@ -7,12 +7,14 @@ import { useMyHousehold } from '@/lib/useMyHousehold';
 import { listMembers, type HouseholdMember } from '@/lib/household';
 import { formatAmount, getProduct, type NutrientRow } from '@/lib/catalog';
 import { getHouseholdFit, type PersonalFit } from '@/lib/scoring';
-import { categoryGlyph, categoryGradient } from '@/design-system/CategoryArt';
+import { recordActivity } from '@/lib/activity';
+import { ProductImage } from '@/design-system/ProductImage';
 import { AllergenFlag } from '@/design-system/AllergenFlag';
 import { ErrorState, Skeleton } from '@/design-system/States';
 import { ReasonList } from '@/design-system/ReasonList';
 import { VerdictChip, type Verdict } from '@/design-system/VerdictChip';
 import { HealthAssessmentSection } from './HealthAssessmentSection';
+import { AlternativesSection } from './AlternativesSection';
 import { OutcomeCapture } from './OutcomeCapture';
 import './ProductScreen.css';
 
@@ -45,6 +47,16 @@ export function ProductScreen() {
     queryFn: () => getProduct(id),
     enabled: id !== '',
   });
+
+  // Best-effort, fire-and-forget: a failed VIEWED write must never affect what
+  // the visitor sees on the product page itself (FR-012 is additive, not a
+  // gate). Not a household-scoped fact, so this fires regardless of whether a
+  // household exists — it is simply "this account looked at this product."
+  useEffect(() => {
+    if (signedIn && product.isSuccess) {
+      recordActivity({ productId: product.data.id, eventType: 'VIEWED' }).catch(() => undefined);
+    }
+  }, [signedIn, product.isSuccess, product.data?.id]);
 
   if (product.isPending) {
     return (
@@ -83,13 +95,17 @@ export function ProductScreen() {
   return (
     <div className="pdp">
       <header className="pdp__hero">
-        <div
-          className="pdp__art"
-          style={{ backgroundImage: categoryGradient(p.categoryCode, p.id + p.name) }}
-          aria-hidden="true"
-        >
-          <span className="pdp__glyph">{categoryGlyph(p.categoryCode)}</span>
-        </div>
+        <ProductImage
+          imageUrl={p.imageUrl}
+          categoryCode={p.categoryCode}
+          seed={p.id + p.name}
+          alt=""
+          classNames={{
+            img: 'pdp__art pdp__art--photo',
+            art: 'pdp__art pdp__art--fallback',
+            glyph: 'pdp__glyph',
+          }}
+        />
         <div className="pdp__identity">
           <p className="pdp__brand">{p.brandName}</p>
           <h1 className="pdp__name">{p.name}</h1>
@@ -162,6 +178,13 @@ export function ProductScreen() {
           {p.hasOpenConflict && (
             <p className="provenance__conflict">{t('product.dataNeedsVerification')}</p>
           )}
+          {version.captureMethod === 'OFF_IMPORT' && (
+            <p className="provenance__line">
+              <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">
+                {t('product.openFoodFactsAttribution')}
+              </a>
+            </p>
+          )}
         </div>
       </section>
 
@@ -229,7 +252,7 @@ export function ProductScreen() {
       </section>
 
       <section className="pdp__section">
-        <OutcomeCapture />
+        <OutcomeCapture productId={p.id} />
       </section>
 
       <section className="pdp__section">
@@ -301,18 +324,23 @@ function FitSection({ productId, nutrients }: { productId: string; nutrients: Nu
   const fitByMemberId = new Map(fit.data.members.map((m) => [m.memberId, m]));
 
   return (
-    <ul className="pdp__fit-list">
-      {members.data.map((member: HouseholdMember) => {
-        const memberFit = fitByMemberId.get(member.id);
-        if (!memberFit) {
-          // Not in the response at all: either another adult (D-002 — their fit is
-          // theirs alone to see) or a defensive NOT_AUTHORIZED edge case. Either way,
-          // nothing honest to show, so nothing is shown — never a placeholder.
-          return null;
-        }
-        return <MemberFitRow key={member.id} member={member} fit={memberFit} nutrients={nutrients} />;
-      })}
-    </ul>
+    <>
+      <ul className="pdp__fit-list">
+        {members.data.map((member: HouseholdMember) => {
+          const memberFit = fitByMemberId.get(member.id);
+          if (!memberFit) {
+            // Not in the response at all: either another adult (D-002 — their fit is
+            // theirs alone to see) or a defensive NOT_AUTHORIZED edge case. Either way,
+            // nothing honest to show, so nothing is shown — never a placeholder.
+            return null;
+          }
+          return <MemberFitRow key={member.id} member={member} fit={memberFit} nutrients={nutrients} />;
+        })}
+      </ul>
+
+      {/* 5 — better options, built from the same per-member fit data above (D-013) */}
+      <AlternativesSection householdId={householdId} productId={productId} members={members.data} />
+    </>
   );
 }
 
