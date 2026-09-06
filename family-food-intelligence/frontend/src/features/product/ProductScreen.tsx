@@ -94,173 +94,185 @@ export function ProductScreen() {
 
   return (
     <div className="pdp">
-      <header className="pdp__hero">
-        <ProductImage
-          imageUrl={p.imageUrl}
-          categoryCode={p.categoryCode}
-          seed={p.id + p.name}
-          alt=""
-          classNames={{
-            img: 'pdp__art pdp__art--photo',
-            art: 'pdp__art pdp__art--fallback',
-            glyph: 'pdp__glyph',
-          }}
-        />
-        <div className="pdp__identity">
-          <p className="pdp__brand">{p.brandName}</p>
-          <h1 className="pdp__name">{p.name}</h1>
-          <p className="pdp__meta">
-            {p.packSize?.value != null && `${p.packSize.value} ${p.packSize.unit ?? ''}`}
-            {p.categoryName && ` · ${p.categoryName}`}
-          </p>
-        </div>
-      </header>
-
-      {/* 2 — allergen flag, above everything else it could be confused with */}
-      {declaredAllergens.length > 0 && (
-        <div className="pdp__section">
-          <AllergenFlag allergens={declaredAllergens.map((a) => a.displayName)} />
-        </div>
-      )}
-      {mayContain.length > 0 && declaredAllergens.length === 0 && (
-        <div className="pdp__section">
-          <AllergenFlag allergens={mayContain.map((a) => a.displayName)} mayContain />
-        </div>
-      )}
-
-      {/* 3 — per-person verdicts, or the sign-in boundary that explains itself */}
-      <section className="pdp__section" aria-labelledby="fit-heading">
-        <h2 id="fit-heading" className="pdp__h2">{t('fit.heading')}</h2>
-        {signedIn ? (
-          <FitSection productId={p.id} nutrients={p.nutrients} />
-        ) : (
-          <div className="pdp__signin">
-            <p className="pdp__signin-title">{t('fit.signInPrompt')}</p>
-            <p className="pdp__signin-sub">{t('fit.signInReason')}</p>
-            <Link to="/settings" className="btn btn--primary btn--sm">
-              {t('action.signIn')}
-            </Link>
-          </div>
-        )}
-      </section>
-
-      {/* Compare — a natural next step once a shopper has a fit result. Local
-          state only: the comparison itself is composed client-side from two
-          already-loaded products (no comparison API exists yet). */}
-      <section className="pdp__section">
-        <Link to={`/compare?a=${encodeURIComponent(p.id)}`} className="btn btn--secondary btn--sm">
-          {t('action.compare')}
-        </Link>
-      </section>
-
-      {/* Product-level health assessment (D-003) — collapsed, below the
-          per-person verdict, never the headline of the screen. */}
-      <section className="pdp__section">
-        <HealthAssessmentSection productId={p.id} nutrients={p.nutrients} />
-      </section>
-
-      {/* 6 — provenance, stated before the numbers rather than buried under them */}
-      <section className="pdp__section">
-        <div className="provenance">
-          <div className={`provenance__badge provenance__badge--${quality(version.dataQuality)}`}>
-            {t(`dataQuality.${version.dataQuality}` as Parameters<typeof t>[0])}
-          </div>
-          <p className="provenance__line">
-            {t('product.lastVerified', {
-              date: formatDate(version.verifiedAt ?? version.capturedAt),
-            })}
-          </p>
-          {version.versionNo > 1 && (
-            <p className="provenance__line">
-              {t('product.reformulated', { date: formatDate(version.effectiveFrom) })}
-            </p>
-          )}
-          {p.hasOpenConflict && (
-            <p className="provenance__conflict">{t('product.dataNeedsVerification')}</p>
-          )}
-          {version.captureMethod === 'OFF_IMPORT' && (
-            <p className="provenance__line">
-              <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">
-                {t('product.openFoodFactsAttribution')}
-              </a>
-            </p>
-          )}
-        </div>
-      </section>
-
-      {/* 7 — the panel. Both bases side by side, always (D-010). */}
-      <section className="pdp__section" aria-labelledby="nutrition-heading">
-        <h2 id="nutrition-heading" className="pdp__h2">{t('product.nutrition')}</h2>
-
-        {version.servingDeclaredText && (
-          <p className="pdp__serving">
-            {t('product.servingDeclared', { serving: version.servingDeclaredText })}
-          </p>
-        )}
-        {version.servingPlausible === false && (
-          <p className="pdp__serving-warn">{t('product.servingImplausible')}</p>
-        )}
-
-        {p.nutrients.length === 0 ? (
-          <p className="pdp__pending">{t('error.product_data_insufficient')}</p>
-        ) : (
-          <>
-            <div className="scroll-x">
-              <table className="nutri">
-                <thead>
-                  <tr>
-                    <th scope="col">{t('product.nutrition')}</th>
-                    <th scope="col">{t('product.perServing')}</th>
-                    <th scope="col">
-                      {p.packSize?.unit === 'ml' ? t('product.per100ml') : t('product.per100g')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shown.map((n) => (
-                    <NutrientLine key={n.nutrientCode} row={n} />
-                  ))}
-                </tbody>
-              </table>
+      {/* Below 1024px these two wrappers are transparent to layout (the
+          existing single-column stack is unchanged). At 1024px and up they
+          become the two columns: the image/identity stay in view on the left
+          (1) while everything from the allergen flag downward (2-7) scrolls
+          on the right, in the same fixed order — see the file-header comment
+          for why that order may never change. */}
+      <div className="pdp__layout">
+        <div className="pdp__col-left">
+          <header className="pdp__hero">
+            <ProductImage
+              imageUrl={p.imageUrl}
+              categoryCode={p.categoryCode}
+              seed={p.id + p.name}
+              alt=""
+              classNames={{
+                img: 'pdp__art pdp__art--photo',
+                art: 'pdp__art pdp__art--fallback',
+                glyph: 'pdp__glyph',
+              }}
+            />
+            <div className="pdp__identity">
+              <p className="pdp__brand">{p.brandName}</p>
+              <h1 className="pdp__name">{p.name}</h1>
+              <p className="pdp__meta">
+                {p.packSize?.value != null && `${p.packSize.value} ${p.packSize.unit ?? ''}`}
+                {p.categoryName && ` · ${p.categoryName}`}
+              </p>
             </div>
-            {p.nutrients.length > shown.length && (
-              <button
-                type="button"
-                className="btn btn--ghost btn--sm"
-                onClick={() => setShowAllNutrients(true)}
-              >
-                {t('product.showAllNutrients')}
-              </button>
+          </header>
+        </div>
+
+        <div className="pdp__col-right">
+          {/* 2 — allergen flag, above everything else it could be confused with */}
+          {declaredAllergens.length > 0 && (
+            <div className="pdp__section">
+              <AllergenFlag allergens={declaredAllergens.map((a) => a.displayName)} />
+            </div>
+          )}
+          {mayContain.length > 0 && declaredAllergens.length === 0 && (
+            <div className="pdp__section">
+              <AllergenFlag allergens={mayContain.map((a) => a.displayName)} mayContain />
+            </div>
+          )}
+
+          {/* 3 — per-person verdicts, or the sign-in boundary that explains itself */}
+          <section className="pdp__section" aria-labelledby="fit-heading">
+            <h2 id="fit-heading" className="pdp__h2">{t('fit.heading')}</h2>
+            {signedIn ? (
+              <FitSection productId={p.id} nutrients={p.nutrients} />
+            ) : (
+              <div className="pdp__signin">
+                <p className="pdp__signin-title">{t('fit.signInPrompt')}</p>
+                <p className="pdp__signin-sub">{t('fit.signInReason')}</p>
+                <Link to="/settings" className="btn btn--primary btn--sm">
+                  {t('action.signIn')}
+                </Link>
+              </div>
             )}
-          </>
-        )}
-      </section>
+          </section>
 
-      <section className="pdp__section" aria-labelledby="ingredients-heading">
-        <h2 id="ingredients-heading" className="pdp__h2">{t('product.ingredients')}</h2>
-        {p.ingredients.length === 0 ? (
-          <p className="pdp__pending">{t('product.notDeclared')}</p>
-        ) : (
-          <p className="pdp__ingredients">
-            {p.ingredients
-              .slice()
-              .sort((a, b) => a.position - b.position)
-              .map((i) => i.rawText)
-              .join(', ')}
-          </p>
-        )}
-      </section>
+          {/* Compare — a natural next step once a shopper has a fit result. Local
+              state only: the comparison itself is composed client-side from two
+              already-loaded products (no comparison API exists yet). */}
+          <section className="pdp__section">
+            <Link to={`/compare?a=${encodeURIComponent(p.id)}`} className="btn btn--secondary btn--sm">
+              {t('action.compare')}
+            </Link>
+          </section>
 
-      <section className="pdp__section">
-        <OutcomeCapture productId={p.id} />
-      </section>
+          {/* Product-level health assessment (D-003) — collapsed, below the
+              per-person verdict, never the headline of the screen. */}
+          <section className="pdp__section">
+            <HealthAssessmentSection productId={p.id} nutrients={p.nutrients} />
+          </section>
 
-      <section className="pdp__section">
-        <Link to={`/product/${p.id}/report`} className="pdp__report">
-          {t('action.reportData')}
-        </Link>
-        <p className="pdp__disclaimer">{t('medical.notice')}</p>
-      </section>
+          {/* 6 — provenance, stated before the numbers rather than buried under them */}
+          <section className="pdp__section">
+            <div className="provenance">
+              <div className={`provenance__badge provenance__badge--${quality(version.dataQuality)}`}>
+                {t(`dataQuality.${version.dataQuality}` as Parameters<typeof t>[0])}
+              </div>
+              <p className="provenance__line">
+                {t('product.lastVerified', {
+                  date: formatDate(version.verifiedAt ?? version.capturedAt),
+                })}
+              </p>
+              {version.versionNo > 1 && (
+                <p className="provenance__line">
+                  {t('product.reformulated', { date: formatDate(version.effectiveFrom) })}
+                </p>
+              )}
+              {p.hasOpenConflict && (
+                <p className="provenance__conflict">{t('product.dataNeedsVerification')}</p>
+              )}
+              {version.captureMethod === 'OFF_IMPORT' && (
+                <p className="provenance__line">
+                  <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">
+                    {t('product.openFoodFactsAttribution')}
+                  </a>
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* 7 — the panel. Both bases side by side, always (D-010). */}
+          <section className="pdp__section" aria-labelledby="nutrition-heading">
+            <h2 id="nutrition-heading" className="pdp__h2">{t('product.nutrition')}</h2>
+
+            {version.servingDeclaredText && (
+              <p className="pdp__serving">
+                {t('product.servingDeclared', { serving: version.servingDeclaredText })}
+              </p>
+            )}
+            {version.servingPlausible === false && (
+              <p className="pdp__serving-warn">{t('product.servingImplausible')}</p>
+            )}
+
+            {p.nutrients.length === 0 ? (
+              <p className="pdp__pending">{t('error.product_data_insufficient')}</p>
+            ) : (
+              <>
+                <div className="scroll-x">
+                  <table className="nutri">
+                    <thead>
+                      <tr>
+                        <th scope="col">{t('product.nutrition')}</th>
+                        <th scope="col">{t('product.perServing')}</th>
+                        <th scope="col">
+                          {p.packSize?.unit === 'ml' ? t('product.per100ml') : t('product.per100g')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((n) => (
+                        <NutrientLine key={n.nutrientCode} row={n} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {p.nutrients.length > shown.length && (
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    onClick={() => setShowAllNutrients(true)}
+                  >
+                    {t('product.showAllNutrients')}
+                  </button>
+                )}
+              </>
+            )}
+          </section>
+
+          <section className="pdp__section" aria-labelledby="ingredients-heading">
+            <h2 id="ingredients-heading" className="pdp__h2">{t('product.ingredients')}</h2>
+            {p.ingredients.length === 0 ? (
+              <p className="pdp__pending">{t('product.notDeclared')}</p>
+            ) : (
+              <p className="pdp__ingredients">
+                {p.ingredients
+                  .slice()
+                  .sort((a, b) => a.position - b.position)
+                  .map((i) => i.rawText)
+                  .join(', ')}
+              </p>
+            )}
+          </section>
+
+          <section className="pdp__section">
+            <OutcomeCapture productId={p.id} />
+          </section>
+
+          <section className="pdp__section">
+            <Link to={`/product/${p.id}/report`} className="pdp__report">
+              {t('action.reportData')}
+            </Link>
+            <p className="pdp__disclaimer">{t('medical.notice')}</p>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

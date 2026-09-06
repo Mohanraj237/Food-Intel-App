@@ -267,11 +267,43 @@
 
 .pdp__notfound-help { margin-block: var(--space-3); color: var(--text-secondary); }
 
-/* ---- desktop: two columns, hero stays full width ---- */
+/* ---- desktop: two columns ----
+   Below 1024px, `.pdp__layout`/`.pdp__col-left`/`.pdp__col-right` are plain
+   unstyled wrappers — the block below is the only place they do anything, so
+   the mobile stack (hero, then every section, in one column) is unchanged.
+
+   At 1024px+, the identity (image + brand/name/pack size, item 1 in the fixed
+   order) moves into a left column and stays in view; everything from the
+   allergen flag downward (items 2-7) becomes the right column and scrolls.
+   The left column is `position: sticky` — it is short and static (a photo and
+   three lines of text), so pinning it costs nothing, and it saves re-scrolling
+   back up to "what am I even looking at" while reading a long nutrition panel
+   or alternatives list on the right. */
 
 @media (min-width: 1024px) {
-  .pdp__hero { padding-block: var(--space-6); gap: var(--space-5); }
-  .pdp__art { width: 148px; height: 148px; }
+  .pdp__layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-6);
+  }
+
+  .pdp__col-left {
+    position: sticky;
+    top: calc(var(--topbar-h) + var(--space-5));
+  }
+
+  .pdp__col-right { min-width: 0; }
+
+  /* The hero becomes a vertical card in the sidebar instead of a full-width
+     row — same elements, same classes, just stacked. */
+  .pdp__hero {
+    flex-direction: column;
+    align-items: flex-start;
+    border-bottom: 0;
+  }
+
+  .pdp__art { width: 100%; max-width: 320px; height: auto; aspect-ratio: 1 / 1; }
   .pdp__glyph { font-size: 4rem; }
   .pdp__name { font-size: var(--text-display); }
   .pdp__section { max-width: 780px; }
