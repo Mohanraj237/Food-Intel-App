@@ -32,6 +32,10 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  /* The icon+text content is shorter than --tap-min on its own; grow the link's
+     own box so the Home tap target meets the same floor as its row neighbour
+     (.shell__avatar), rather than relying on the row's height to cover for it. */
+  min-height: var(--tap-min);
   text-decoration: none;
   color: var(--brand);
   font-weight: 800;
@@ -84,6 +88,11 @@
   font-weight: 600;
   font-size: var(--text-sm);
   white-space: nowrap;
+  /* Same timing/easing as .btn's state changes (Button.css) so hover across
+     the shell and the rest of the app feels like one interaction language. */
+  transition:
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 
 .toplinks__item:hover { background: var(--surface); color: var(--text); }
@@ -92,6 +101,13 @@
   color: var(--brand);
   background: var(--brand-subtle);
 }
+
+/* :hover alone outranks --active on specificity, so without this the "you are
+   here" link would flatten to the generic hover treatment the moment the
+   pointer crossed it — losing the current-page cue exactly when it's being
+   looked at. Keep the active treatment; hovering the current page shouldn't
+   look like leaving it. */
+.toplinks__item--active:hover { background: var(--brand-subtle); color: var(--brand); }
 
 /* ================================== main =================================== */
 
@@ -130,9 +146,22 @@
   font-size: var(--text-xs);
   font-weight: 600;
   touch-action: manipulation;
+  transition: color var(--dur-fast) var(--ease);
 }
 
-.bottom-nav__glyph { font-size: 1.25rem; line-height: 1; }
+/* The five glyphs (⌂ ⌕ ▣ ☖ ⚙) come from different Unicode symbol blocks and
+   have different natural ink height/optical centre at the same font-size —
+   side by side that reads as mismatched placeholder characters rather than an
+   icon set. A fixed, centred box makes every glyph occupy the same visual
+   footprint regardless of its own metrics, without needing real icon assets. */
+.bottom-nav__glyph {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  font-size: 1.25rem;
+  line-height: 1;
+}
 
 .bottom-nav__label {
   max-width: 100%;
