@@ -1,7 +1,13 @@
+/* Internal ops tool: density over whitespace (per the revamp brief — this is
+   the one screen where that's correct). Tighter page rhythm than the default
+   `.page` gap, since an operator scans many rows/facts per screen. */
+.page.ops {
+  gap: var(--space-3);
+}
+
 .ops__filter {
   display: flex;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
 }
 
 .ops__empty {
@@ -19,18 +25,25 @@
   gap: var(--space-2);
 }
 
+/* Bordered/background/padding chrome now comes from <Card as="li" padding="sm">
+   — this used to be redeclared here (border/background/radius/padding), which
+   is exactly the duplication the shared Card primitive exists to remove. */
 .ops__row-link {
-  display: block;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  padding: var(--space-3) var(--space-4);
-  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   color: var(--text-primary);
+  text-decoration: none;
+}
+
+.ops__row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .ops__row-name {
-  display: block;
   font-weight: 700;
   font-size: var(--text-sm);
 }
@@ -39,12 +52,10 @@
   display: block;
   font-size: var(--text-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
 }
 
 .ops__back {
   display: inline-block;
-  margin-bottom: var(--space-3);
   font-size: var(--text-sm);
   color: var(--text-secondary);
   background: none;
@@ -53,20 +64,32 @@
   padding: 0;
 }
 
-.ops__status {
+/* Status badge — same color-coding convention as ProductScreen's
+   `.provenance__badge--good/warn/stale/neutral` (same tokens, same shape),
+   applied to the ops PENDING/APPROVED/REJECTED vocabulary instead of
+   VERIFIED/CONFLICTING/STALE. Used both on each queue row and on the
+   detail/review screen so status reads the same way in both places. */
+.ops__badge {
+  display: inline-block;
   font-size: var(--text-xs);
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--text-tertiary);
+  text-transform: uppercase;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
 }
+
+.ops__badge--pending { color: var(--verdict-limit-fg); background: var(--verdict-limit-bg); }
+.ops__badge--approved { color: var(--verdict-everyday-fg); background: var(--verdict-everyday-bg); }
+.ops__badge--rejected { color: var(--danger-fg); background: var(--danger-bg); }
+.ops__badge--neutral { color: var(--verdict-insufficient-fg); background: var(--verdict-insufficient-bg); }
 
 .ops__detail {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: var(--space-1) var(--space-4);
   font-size: var(--text-sm);
-  margin: var(--space-3) 0;
 }
 
 .ops__detail dt {
@@ -77,7 +100,6 @@
 .ops__actions {
   display: flex;
   gap: var(--space-3);
-  margin-top: var(--space-4);
 }
 
 .ops__reject-form {
@@ -85,4 +107,9 @@
   flex-direction: column;
   gap: var(--space-2);
   width: 100%;
+}
+
+.ops__confirm-actions {
+  display: flex;
+  gap: var(--space-2);
 }

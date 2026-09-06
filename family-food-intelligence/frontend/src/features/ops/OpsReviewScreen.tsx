@@ -65,7 +65,11 @@ export function OpsReviewScreen() {
     <div className="page ops">
       <Link to="/ops" className="ops__back">{t('action.back')}</Link>
       <h1>{c.brandName ? `${c.brandName} — ${c.productName}` : c.productName}</h1>
-      <p className="ops__status">{t(`ops.status.${c.status}` as Parameters<typeof t>[0])}</p>
+      <div className="ops__status">
+        <span className={`ops__badge ops__badge--${statusVariant(c.status)}`}>
+          {t(`ops.status.${c.status}` as Parameters<typeof t>[0])}
+        </span>
+      </div>
 
       <dl className="ops__detail">
         <dt>{t('contribute.gtinLabel')}</dt>
@@ -76,9 +80,23 @@ export function OpsReviewScreen() {
         <dd>{c.packSizeValue != null ? `${c.packSizeValue} ${c.packSizeUnit ?? ''}` : t('profile.notSpecified')}</dd>
         <dt>{t('contribute.servingDeclaredLabel')}</dt>
         <dd>{c.servingDeclaredText ?? t('profile.notSpecified')}</dd>
+        <dt>{t('ops.submittedAtLabel' as Parameters<typeof t>[0])}</dt>
+        <dd>{formatDateTime(c.submittedAt)}</dd>
+        {c.reviewedAt && (
+          <>
+            <dt>{t('ops.reviewedAtLabel' as Parameters<typeof t>[0])}</dt>
+            <dd>{formatDateTime(c.reviewedAt)}{c.reviewedBy ? ` · ${c.reviewedBy}` : ''}</dd>
+          </>
+        )}
+        {c.reviewNotes && (
+          <>
+            <dt>{t('ops.reviewNotesLabel' as Parameters<typeof t>[0])}</dt>
+            <dd>{c.reviewNotes}</dd>
+          </>
+        )}
       </dl>
 
-      <h2 className="settings__h2">{t('contribute.nutrientsHeading')}</h2>
+      <h2>{t('contribute.nutrientsHeading')}</h2>
       {c.nutrients.length === 0 ? (
         <p className="ops__empty">{t('product.notDeclared')}</p>
       ) : (
@@ -95,10 +113,10 @@ export function OpsReviewScreen() {
         </table>
       )}
 
-      <h2 className="settings__h2">{t('contribute.ingredientsLabel')}</h2>
+      <h2>{t('contribute.ingredientsLabel')}</h2>
       <p>{c.ingredientsRawText ?? t('product.notDeclared')}</p>
 
-      <h2 className="settings__h2">{t('contribute.allergensLabel')}</h2>
+      <h2>{t('contribute.allergensLabel')}</h2>
       <p>
         {c.allergenCodes.length === 0
           ? t('product.notDeclared')
@@ -124,7 +142,7 @@ export function OpsReviewScreen() {
                 <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
               </label>
               {rejectError && <p className="form-error" role="alert">{rejectError}</p>}
-              <div className="settings__actions">
+              <div className="ops__confirm-actions">
                 <Button
                   variant="destructive"
                   disabled={!reason.trim()}
@@ -155,4 +173,27 @@ export function OpsReviewScreen() {
       )}
     </div>
   );
+}
+
+/** Same status → color mapping as OpsQueueScreen's badge, mirroring the
+ *  convention in ProductScreen's `.provenance__badge--*` modifiers. */
+function statusVariant(status: string): 'pending' | 'approved' | 'rejected' | 'neutral' {
+  switch (status) {
+    case 'PENDING':
+      return 'pending';
+    case 'APPROVED':
+      return 'approved';
+    case 'REJECTED':
+      return 'rejected';
+    default:
+      return 'neutral';
+  }
+}
+
+function formatDateTime(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
 }

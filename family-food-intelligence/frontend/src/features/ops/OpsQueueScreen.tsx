@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
 import { listQueue, type ContributionQueueEntry } from '@/lib/ops';
+import { Card } from '@/design-system/Card';
 import { ErrorState, Skeleton } from '@/design-system/States';
 import './OpsScreens.css';
 
@@ -62,10 +63,15 @@ export function OpsQueueScreen() {
 
 function QueueRow({ entry }: { entry: ContributionQueueEntry }) {
   return (
-    <li className="ops__row">
+    <Card as="li" padding="sm" className="ops__row">
       <Link to={`/ops/${entry.id}`} className="ops__row-link">
-        <span className="ops__row-name">
-          {entry.brandName ? `${entry.brandName} — ${entry.productName}` : entry.productName}
+        <span className="ops__row-top">
+          <span className="ops__row-name">
+            {entry.brandName ? `${entry.brandName} — ${entry.productName}` : entry.productName}
+          </span>
+          <span className={`ops__badge ops__badge--${statusVariant(entry.status)}`}>
+            {t(`ops.status.${entry.status}` as Parameters<typeof t>[0])}
+          </span>
         </span>
         <span className="ops__row-meta">
           {entry.gtin && `${entry.gtin} · `}
@@ -75,6 +81,23 @@ function QueueRow({ entry }: { entry: ContributionQueueEntry }) {
           )}
         </span>
       </Link>
-    </li>
+    </Card>
   );
+}
+
+/** Mirrors the color-coding convention in ProductScreen's `.provenance__badge--*`
+ *  modifiers (good/warn/stale/neutral) so a reviewer reads status at a glance,
+ *  scanning down a dense queue, the same way they already read data quality on
+ *  the product page. */
+function statusVariant(status: string): 'pending' | 'approved' | 'rejected' | 'neutral' {
+  switch (status) {
+    case 'PENDING':
+      return 'pending';
+    case 'APPROVED':
+      return 'approved';
+    case 'REJECTED':
+      return 'rejected';
+    default:
+      return 'neutral';
+  }
 }
