@@ -28,6 +28,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Backfills {@code product_image} rows for products already imported by
@@ -74,6 +75,26 @@ public class OpenFoodFactsImageBackfillRunner implements CommandLineRunner {
      *  malformed/unexpected Content-Type header must never crash the whole run. */
     private static final Set<String> ACCEPTABLE_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
+    /**
+     * Open Food Facts' {@code image_url}/{@code image_front_url} fields point at a
+     * pre-resized "display" derivative — {@code front_en.11.400.jpg} is at most 400px on the
+     * long edge. Measured directly against this project's own fetched snapshot: 872 of 882
+     * downloaded images were under 400px, some as small as 101×61 — nowhere near large enough
+     * for the card sizes this app actually renders (150-360px), so they get upscaled and come
+     * out blurry. OFF also serves the original upload at the same path with the size segment
+     * replaced by the literal {@code full} — e.g. {@code front_en.11.full.jpg}, confirmed
+     * directly (2535×2735 for the same image the {@code .400} variant above came from). This
+     * pattern rewrites a sized URL to that original; {@link #fetchAndAttach} tries it first
+     * and falls back to the URL Open Food Facts actually gave us if the original isn't there
+     * for that particular image (not every upload has one).
+     */
+    private static final Pattern SIZED_IMAGE_URL = Pattern.compile("\\.(\\d{2,4})\\.(jpg|jpeg|png|webp)$",
+            Pattern.CASE_INSENSITIVE);
+
+    private static String fullResolutionUrl(String imageUrl) {
+        return SIZED_IMAGE_URL.matcher(imageUrl).replaceFirst(".full.$2");
+    }
+
     private static final String USER_AGENT =
             "FamilyFoodIntelligence-DevCatalogueImageBackfill/1.0 (+https://github.com/family-food-intelligence)";
 
@@ -111,6 +132,7 @@ public class OpenFoodFactsImageBackfillRunner implements CommandLineRunner {
         int noMatchingProduct = 0;
         int alreadyHasImage = 0;
         int downloaded = 0;
+        int rejected = 0;
         int failed = 0;
 
         log.info("Starting Open Food Facts image backfill from {}", sourcePath);
@@ -150,15 +172,16 @@ public class OpenFoodFactsImageBackfillRunner implements CommandLineRunner {
                         continue;
                     }
 
-                    if (fetchAndAttach(productId, imageUrl)) {
-                        downloaded++;
-                    } else {
-                        failed++;
+                    switch (fetchAndAttach(productId, imageUrl)) {
+                        case DOWNLOADED -> downloaded++;
+                        case REJECTED -> rejected++;
+                        case FAILED -> failed++;
                     }
 
-                    if ((downloaded + failed) % 200 == 0 && (downloaded + failed) > 0) {
-                        log.info("...processed {} downloads ({} ok, {} failed) of {} rows read",
-                                downloaded + failed, downloaded, failed, read);
+                    int attempted = downloaded + rejected + failed;
+                    if (attempted % 200 == 0 && attempted > 0) {
+                        log.info("...processed {} of {} rows read ({} ok, {} rejected, {} failed)",
+                                attempted, read, downloaded, rejected, failed);
                     }
                 } catch (Exception rowError) {
                     failed++;
@@ -168,12 +191,13 @@ public class OpenFoodFactsImageBackfillRunner implements CommandLineRunner {
         }
 
         log.info("=== Open Food Facts image backfill complete ===");
-        log.info("Rows read:                {}", read);
-        log.info("No image_url in source:   {}", noImageUrl);
-        log.info("No matching product:      {}", noMatchingProduct);
-        log.info("Already had an image:     {}", alreadyHasImage);
-        log.info("Downloaded and stored:    {}", downloaded);
-        log.info("Failed (network/decode):  {}", failed);
+        log.info("Rows read:                    {}", read);
+        log.info("No image_url in source:       {}", noImageUrl);
+        log.info("No matching product:          {}", noMatchingProduct);
+        log.info("Already had an image:         {}", alreadyHasImage);
+        log.info("Downloaded and stored:        {}", downloaded);
+        log.info("Rejected (too small/wrong type): {}", rejected);
+        log.info("Failed (network/HTTP error):  {}", failed);
         if (downloaded == 0 && (noMatchingProduct + noImageUrl) < read) {
             log.warn("Zero images stored this run — if this is unexpected, Open Food Facts "
                     + "may be unreachable (a documented, sustained outage for this project). "
@@ -191,7 +215,24 @@ public class OpenFoodFactsImageBackfillRunner implements CommandLineRunner {
         return matches.get(0).getProductId();
     }
 
-    private boolean fetchAndAttach(UUID productId, String imageUrl) {
+    private enum FetchOutcome { DOWNLOADED, REJECTED, FAILED }
+
+    /** Tries the full-resolution rewrite first (see {@link #fullResolutionUrl}); if that
+     *  isn't available for this particular image (a 404 is common — not every OFF upload
+     *  has one) or gets rejected, falls back to the URL Open Food Facts actually gave us
+     *  rather than leaving the product with no image at all over a resolution preference. */
+    private FetchOutcome fetchAndAttach(UUID productId, String sourceUrl) {
+        String fullUrl = fullResolutionUrl(sourceUrl);
+        FetchOutcome outcome = attemptDownload(productId, fullUrl);
+        if (outcome == FetchOutcome.DOWNLOADED || fullUrl.equals(sourceUrl)) {
+            return outcome;
+        }
+        log.debug("Full-resolution image unavailable for product {} ({}), trying {}",
+                productId, fullUrl, sourceUrl);
+        return attemptDownload(productId, sourceUrl);
+    }
+
+    private FetchOutcome attemptDownload(UUID productId, String imageUrl) {
         try {
             HttpRequest request = HttpRequest.newBuilder(URI.create(imageUrl))
                     .header("User-Agent", USER_AGENT)
@@ -203,7 +244,7 @@ public class OpenFoodFactsImageBackfillRunner implements CommandLineRunner {
             if (response.statusCode() != 200) {
                 log.warn("Image fetch for product {} returned HTTP {}: {}",
                         productId, response.statusCode(), imageUrl);
-                return false;
+                return FetchOutcome.FAILED;
             }
 
             String contentType = response.headers().firstValue("Content-Type")
@@ -213,22 +254,23 @@ public class OpenFoodFactsImageBackfillRunner implements CommandLineRunner {
             if (!ACCEPTABLE_CONTENT_TYPES.contains(contentType)) {
                 log.warn("Image fetch for product {} had unacceptable content type '{}': {}",
                         productId, contentType, imageUrl);
-                return false;
+                return FetchOutcome.FAILED;
             }
 
             productImages.attachImage(productId, response.body(), contentType, ImageSource.OFF_IMPORT);
-            return true;
+            return FetchOutcome.DOWNLOADED;
         } catch (AppException appError) {
-            // ProductImageService rejected the content (bad size/type) or storage was
-            // unreachable — either way, this one product's image is skipped, not the run.
+            // ProductImageService rejected the content — too small to render well, wrong
+            // type, or over the byte-size cap. Distinct from a network/HTTP failure: this is
+            // a real image that simply isn't good enough, not an unreachable one.
             log.warn("Rejected image for product {} ({}): {}", productId, appError.code(), imageUrl);
-            return false;
+            return FetchOutcome.REJECTED;
         } catch (IOException | InterruptedException networkError) {
             if (networkError instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
             log.warn("Network error fetching image for product {}: {}", productId, networkError.getMessage());
-            return false;
+            return FetchOutcome.FAILED;
         }
     }
 

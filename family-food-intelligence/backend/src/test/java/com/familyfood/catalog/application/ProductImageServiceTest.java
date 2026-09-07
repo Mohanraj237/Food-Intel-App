@@ -13,6 +13,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -176,6 +181,47 @@ class ProductImageServiceTest {
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).code())
                 .isEqualTo(ErrorCode.IMAGE_REJECTED);
+    }
+
+    /** A real, decodable JPEG (unlike {@link #SMALL_JPEG_BYTES}, which is a handful of magic
+     *  bytes ImageIO can't decode — deliberately, for the tests above that only care about
+     *  the byte-level checks). The dimension check below only fires when ImageIO can actually
+     *  read a width/height, so it needs real image data to exercise. */
+    private static byte[] realJpeg(int width, int height) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            if (!ImageIO.write(image, "jpg", out)) {
+                throw new IllegalStateException("no JPEG writer available in this JVM");
+            }
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("an image below the minimum dimension on either edge is rejected before any upload")
+    void rejectsImageBelowMinimumDimension() {
+        byte[] tooSmall = realJpeg(200, 400); // width under the 300px floor
+
+        assertThatThrownBy(() -> service.attachImage(PRODUCT_ID, tooSmall, "image/jpeg", ImageSource.OFF_IMPORT))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).code())
+                .isEqualTo(ErrorCode.IMAGE_REJECTED);
+
+        verify(storage, never()).putObject(anyString(), anyString(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("an image meeting the minimum dimension on both edges is accepted")
+    void acceptsImageAtMinimumDimension() {
+        byte[] bigEnough = realJpeg(300, 300);
+
+        UUID id = service.attachImage(PRODUCT_ID, bigEnough, "image/jpeg", ImageSource.OFF_IMPORT);
+
+        assertThat(id).isNotNull();
+        verify(storage).putObject(eq("familyfood-catalogue-images"), anyString(), eq(bigEnough), eq("image/jpeg"));
     }
 
     @Test

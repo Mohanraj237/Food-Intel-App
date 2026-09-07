@@ -73,9 +73,10 @@ public class ProductImageService {
      *
      * @return the id of the (possibly pre-existing) {@code product_image} row.
      * @throws AppException {@link ErrorCode#RESOURCE_NOT_FOUND} if the product does not
-     *                       exist, {@link ErrorCode#IMAGE_REJECTED} if the content type or
-     *                       size is not acceptable, {@link ErrorCode#STORAGE_UNAVAILABLE} if
-     *                       the upload itself fails.
+     *                       exist, {@link ErrorCode#IMAGE_REJECTED} if the content type,
+     *                       byte size or pixel dimensions are not acceptable (below
+     *                       {@link #MIN_DIMENSION_PX} on either edge), {@link ErrorCode#STORAGE_UNAVAILABLE}
+     *                       if the upload itself fails.
      */
     @Transactional
     public UUID attachImage(UUID productId, byte[] content, String mimeType, ImageSource source) {
@@ -84,6 +85,11 @@ public class ProductImageService {
         }
         String extension = validateAndExtensionFor(mimeType);
         validateSize(content);
+
+        // Decoded and checked before anything is uploaded — a rejected image should never
+        // reach storage in the first place (an orphaned object nobody references).
+        Dimensions dimensions = readDimensions(content);
+        validateDimensions(dimensions);
 
         String contentHash = sha256Hex(content);
 
@@ -96,8 +102,6 @@ public class ProductImageService {
 
         String storageKey = productId + "/" + contentHash + "." + extension;
         storage.putObject(properties.storage().catalogueBucket(), storageKey, content, mimeType);
-
-        Dimensions dimensions = readDimensions(content);
 
         images.findByProductIdAndPrimaryTrue(productId).ifPresent(previous -> {
             previous.clearPrimary();
@@ -150,6 +154,21 @@ public class ProductImageService {
     private void validateSize(byte[] content) {
         if (content.length == 0 || content.length > properties.limits().maxImageBytes()) {
             throw new AppException(ErrorCode.IMAGE_REJECTED, Map.of("byteSize", content.length));
+        }
+    }
+
+    /** Below this on either edge, a card-sized (150-360px) render has to upscale the image
+     *  and the result looks blurry/untrustworthy rather than like a real product photo —
+     *  exactly the complaint a tiny thumbnail earns. Only enforced when the dimensions were
+     *  actually decoded; a format {@code ImageIO} can't read is left to {@link #readDimensions}
+     *  own "never reject on that basis" rule. */
+    private static final int MIN_DIMENSION_PX = 300;
+
+    private void validateDimensions(Dimensions dimensions) {
+        Integer width = dimensions.width();
+        Integer height = dimensions.height();
+        if (width != null && height != null && (width < MIN_DIMENSION_PX || height < MIN_DIMENSION_PX)) {
+            throw new AppException(ErrorCode.IMAGE_REJECTED, Map.of("width", width, "height", height));
         }
     }
 

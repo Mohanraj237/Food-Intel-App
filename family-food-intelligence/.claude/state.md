@@ -1,6 +1,39 @@
 # Project State
 
-**Last updated:** 2026-09-07 (consumer visual-quality pass, this entry's author). The prior
+**Addendum (2026-09-07, same day, same author):** the human visual check the entry below
+says never happened, happened — the user opened the real rendered app and reported two
+concrete defects, both fixed and verified, not just visually but by rendering and reading the
+actual data this time (the user's own screenshots were the first real look either of us had
+at any of this):
+
+1. **Checkbox groups (Family/Profile, Contribute, Consent) rendered as two disconnected
+   columns** — every checkbox and its label pulled apart, no visible pairing. Root cause:
+   `base.css`'s `.field input, .field select { width: 100%; ... }` is a descendant selector,
+   so it also matched every checkbox nested inside a `.field` fieldset and stretched each one
+   into a full-width bordered box. Fixed by excluding `[type=checkbox]`/`[type=radio]`.
+2. **Product photos looked "not trustable" — blurry, low quality.** Real cause, confirmed by
+   downloading and measuring: `image_url`/`image_front_url` from Open Food Facts point at a
+   pre-resized 400px-max derivative; 872 of 882 stored images were under 400px, some as small
+   as 101×61, upscaled to fill 150-360px card boxes. OFF also serves the original upload at
+   the same path with the size segment replaced by `full` (confirmed: 371×400 → 2535×2735 for
+   the same image). `OpenFoodFactsImageBackfillRunner` now tries that rewritten URL first,
+   and `ProductImageService` now rejects anything still under 300px on either edge rather
+   than storing it. Re-ran against the (cleared, fully regenerable) `product_image` table:
+   **870 of 893 now have a real image, average 2140×2890px** (up from 281×372px average, 872
+   of 882 previously under 400px) — 12 rejected outright because neither their full nor
+   400px source met the floor, and correctly fall back to the gradient-art placeholder rather
+   than showing a bad photo. The user separately asked whether images could be pulled from
+   Blinkit/HealthifyMe or "the web" — declined and explained: those aren't ours to use
+   (copyright, and outside this project's own image-provenance policy), and the actual
+   problem turned out to be fixable within the already-licensed OFF source anyway.
+
+Frontend `typecheck`/`test`/`build` clean; backend `ProductImageServiceTest` 14/14 (2 new
+tests added for the dimension floor, using a real decodable JPEG rather than the existing
+tests' deliberately-undecodable fixture bytes).
+
+---
+
+**Previous entry (2026-09-07, consumer visual-quality pass, same day). The prior
 "14 steps complete" entry below was accurate about what got built but not about how it would
 actually look: it shipped with **no dark-mode override** (the whole app silently switched to
 dark via `prefers-color-scheme`, with no toggle to get back to light — the palette that entry

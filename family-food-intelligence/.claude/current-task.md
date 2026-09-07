@@ -1,6 +1,18 @@
 # Current Task
 
-**As of:** 2026-09-07 (consumer visual-quality pass — this entry's author). Full detail in
+**Addendum (2026-09-07, same day):** the human visual check below says was outstanding,
+happened. Two real defects reported and fixed — see `.claude/state.md`'s addendum for full
+detail. Short version: a checkbox-alignment CSS bug (descendant selector over-matching), and
+low-resolution product images (OFF's `image_url` is a 400px-max derivative; the backend now
+prefers the full-resolution original and rejects anything under 300px). Image count: 870 of
+893 now have a real image, average 2140×2890px. **Next step, if continued:** still no way to
+render this app and look at it directly in this environment — every fix so far has come from
+either reading code/CSS or from the user's own screenshots, never from this session looking
+at the app itself. That gap is unchanged.
+
+---
+
+**Previous entry (2026-09-07, consumer visual-quality pass). Full detail in
 `.claude/state.md`'s top entry, not duplicated here. Summary: the prior "14 steps complete"
 revamp below was correct about what it built but was never checked against the actual
 rendered app (no browser tool existed then, or now); a real look at it found a dark-mode-only
