@@ -189,7 +189,14 @@ a {
   font-size: var(--text-xs);
 }
 
-.field input,
+/* Excludes checkbox/radio: this is a descendant selector, so it was also
+   matching every checkbox nested inside a `.field` fieldset (goals,
+   allergens, consent, contribution forms) and stretching each one into a
+   full-width, 48px-tall bordered box — which pushed the checkbox and its own
+   label apart into what looked like two unrelated columns. A checkbox is
+   never a full-width text field; it keeps its native size and sits inline
+   with its label instead. */
+.field input:not([type='checkbox']):not([type='radio']),
 .field select {
   min-height: var(--tap-primary);
   padding-inline: var(--space-3);
@@ -202,6 +209,23 @@ a {
 .field input:disabled,
 .field select:disabled {
   opacity: 0.6;
+}
+
+.field input[type='checkbox'],
+.field input[type='radio'] {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--brand);
+}
+
+/* `.field` itself is a column flex container (label above its control) —
+   right for a text field, wrong for `<label class="field ...">` wrapping a
+   single checkbox beside its own text (ContributeProductForm's
+   acknowledgement row). That combination needs the row direction instead. */
+.field:has(> input[type='checkbox']) {
+  flex-direction: row;
+  align-items: center;
 }
 
 .form-error {
