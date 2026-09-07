@@ -21,19 +21,10 @@ import { getProfile } from '@/lib/profile';
 import { Button } from '@/design-system/Button';
 import { Card } from '@/design-system/Card';
 import { EmptyState, ErrorState, Skeleton } from '@/design-system/States';
+import { HouseholdMemberCard } from '@/design-system/HouseholdMemberCard';
+import { ConfirmSheet } from '@/design-system/BottomSheet';
 import { ProfilePanel } from './ProfilePanel';
 import './FamilyScreen.css';
-
-/**
- * A short, stable stand-in for a photo we will never have (no user-photo
- * feature — see the household brief). One capital letter is enough to give a
- * roster row or a profile header a visual anchor without pretending to be an
- * avatar upload.
- */
-function memberInitial(label: string): string {
-  const trimmed = label.trim();
-  return trimmed.length > 0 ? trimmed.charAt(0).toUpperCase() : '?';
-}
 
 /**
  * "Who is eating?" — see/manage the signed-in account's household, then set up
@@ -363,6 +354,13 @@ function MembersList({
   const selfMember = members.find((m) => m.userAccountId !== null && m.userAccountId === accountId);
   const isOwner = selfMember?.role === 'OWNER';
 
+  // Replaces three separate `window.confirm()` calls (leave, remove, erase) —
+  // a native browser prompt cannot be styled, cannot explain why the action
+  // matters, and reads as the OS interrupting rather than part of the product.
+  const [confirmAction, setConfirmAction] = useState<
+    { type: 'leave' | 'remove' | 'erase'; member: HouseholdMember } | null
+  >(null);
+
   const removeMutation = useMutation({
     mutationFn: (member: HouseholdMember) => removeMember(householdId, member.id),
     onSuccess: (_result, member) => {
@@ -398,8 +396,42 @@ function MembersList({
   const eraseErrorMessage =
     eraseMutation.error instanceof ApiError ? eraseMutation.error.message : null;
 
+  function confirmSheetProps(): {
+    title: string;
+    confirmLabel: string;
+    tone: 'default' | 'danger';
+    onConfirm: () => void;
+  } | null {
+    if (!confirmAction) return null;
+    const { type, member } = confirmAction;
+    if (type === 'leave') {
+      return {
+        title: t('household.leaveConfirm'),
+        confirmLabel: t('action.leave'),
+        tone: 'default',
+        onConfirm: () => removeMutation.mutate(member),
+      };
+    }
+    if (type === 'remove') {
+      return {
+        title: t('household.confirmRemove', { name: member.displayLabel }),
+        confirmLabel: t('action.remove'),
+        tone: 'default',
+        onConfirm: () => removeMutation.mutate(member),
+      };
+    }
+    return {
+      title: t('privacy.deleteChildConfirm', { name: member.displayLabel }),
+      confirmLabel: t('privacy.deleteChildData'),
+      tone: 'danger',
+      onConfirm: () => eraseMutation.mutate(member),
+    };
+  }
+
+  const sheet = confirmSheetProps();
+
   return (
-    <Card as="section" className="family__section" aria-labelledby="members-heading">
+    <section aria-labelledby="members-heading">
       <h2 id="members-heading" className="family__h2">
         {t('household.membersCount', { count: members.length })}
       </h2>
@@ -420,100 +452,75 @@ function MembersList({
           const isSelf = member.userAccountId !== null && member.userAccountId === accountId;
           const canEditProfile = member.memberType === 'CHILD' || isSelf;
           const isRemoving = removeMutation.isPending && removeMutation.variables?.id === member.id;
-
           const isChild = member.memberType === 'CHILD';
 
           return (
-            <Card
+            <HouseholdMemberCard
               as="li"
               key={member.id}
-              surface="sunken"
-              padding="sm"
-              className={[
-                'family__member',
-                isSelf ? 'family__member--self' : '',
-                isChild ? 'family__member--child' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-            >
-              <div className="family__member-main">
-                <span
-                  className={[
-                    'family__avatar',
-                    isSelf ? 'family__avatar--self' : '',
-                    isChild ? 'family__avatar--child' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  aria-hidden="true"
-                >
-                  {memberInitial(member.displayLabel)}
-                </span>
-                <div className="family__member-info">
-                  <span className="family__member-name">
-                    {member.displayLabel}
-                    {isSelf && <span className="family__you">{t('household.you')}</span>}
-                  </span>
-                  <span className="family__role">{t(`household.role.${member.role}`)}</span>
-                </div>
-              </div>
-              <div className="family__member-actions">
-                {canEditProfile && (
-                  <ProfileActionButton
-                    householdId={householdId}
-                    member={member}
-                    onOpen={() => onEditProfile(member)}
-                  />
-                )}
-                {isSelf && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    loading={isRemoving}
-                    onClick={() => {
-                      if (window.confirm(t('household.leaveConfirm'))) {
-                        removeMutation.mutate(member);
-                      }
-                    }}
-                  >
-                    {t('action.leave')}
-                  </Button>
-                )}
-                {!isSelf && isOwner && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    loading={isRemoving}
-                    onClick={() => {
-                      if (window.confirm(t('household.confirmRemove', { name: member.displayLabel }))) {
-                        removeMutation.mutate(member);
-                      }
-                    }}
-                  >
-                    {t('action.remove')}
-                  </Button>
-                )}
-                {member.memberType === 'CHILD' && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    loading={eraseMutation.isPending && eraseMutation.variables?.id === member.id}
-                    onClick={() => {
-                      if (window.confirm(t('privacy.deleteChildConfirm', { name: member.displayLabel }))) {
-                        eraseMutation.mutate(member);
-                      }
-                    }}
-                  >
-                    {t('privacy.deleteChildData')}
-                  </Button>
-                )}
-              </div>
-            </Card>
+              name={member.displayLabel}
+              roleLabel={t(`household.role.${member.role}`)}
+              isSelf={isSelf}
+              isChild={isChild}
+              youLabel={t('household.you')}
+              actions={
+                <>
+                  {canEditProfile && (
+                    <ProfileActionButton
+                      householdId={householdId}
+                      member={member}
+                      onOpen={() => onEditProfile(member)}
+                    />
+                  )}
+                  {isSelf && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      loading={isRemoving}
+                      onClick={() => setConfirmAction({ type: 'leave', member })}
+                    >
+                      {t('action.leave')}
+                    </Button>
+                  )}
+                  {!isSelf && isOwner && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      loading={isRemoving}
+                      onClick={() => setConfirmAction({ type: 'remove', member })}
+                    >
+                      {t('action.remove')}
+                    </Button>
+                  )}
+                  {member.memberType === 'CHILD' && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      loading={eraseMutation.isPending && eraseMutation.variables?.id === member.id}
+                      onClick={() => setConfirmAction({ type: 'erase', member })}
+                    >
+                      {t('privacy.deleteChildData')}
+                    </Button>
+                  )}
+                </>
+              }
+            />
           );
         })}
       </ul>
-    </Card>
+
+      <ConfirmSheet
+        open={sheet !== null}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          sheet?.onConfirm();
+          setConfirmAction(null);
+        }}
+        title={sheet?.title ?? ''}
+        confirmLabel={sheet?.confirmLabel ?? ''}
+        tone={sheet?.tone ?? 'default'}
+      />
+    </section>
   );
 }
 

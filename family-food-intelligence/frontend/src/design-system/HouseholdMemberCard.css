@@ -5,6 +5,18 @@
   gap: var(--space-4);
   padding: var(--space-4);
   border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* A visible (not just colour) accent for "this is your own row" and "this is
+   a guardian-managed child" — never a verdict/allergen colour, since this is
+   people, not a scored product. */
+.member-card--self {
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.member-card--child {
+  box-shadow: inset 3px 0 0 var(--border-interactive);
 }
 
 .member-card__avatar {
