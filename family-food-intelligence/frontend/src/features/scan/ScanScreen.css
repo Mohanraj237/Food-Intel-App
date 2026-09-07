@@ -1,33 +1,134 @@
-.scanpage { max-width: 640px; margin-inline: auto; padding: var(--space-4) var(--page-gutter) var(--space-6); }
+.scanpage { max-width: 480px; margin-inline: auto; padding: var(--space-4) var(--page-gutter) var(--space-6); }
+
 .scanpage__switch { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: var(--space-5); padding: 3px; background: var(--surface-sunken); border-radius: var(--radius-md); }
 .scanpage__tab { min-height: var(--tap-min); display: grid; place-items: center; padding-inline: var(--space-2); border-radius: 9px; color: var(--text-secondary); text-decoration: none; font-size: var(--text-sm); font-weight: 700; text-align: center; }
 .scanpage__tab--active { background: var(--card-bg); color: var(--brand); box-shadow: var(--shadow-sm); }
-/* Base card look (padding/gap/background/border/radius/shadow) comes from
-   `Card` (`padding="lg" elevated`); this is the one property specific to
-   this screen. */
-.scanpage__panel { align-items: stretch; }
-.scanpage__intro { display: flex; gap: var(--space-3); align-items: center; }
-.scanpage__intro p, .scanpage__label-copy { color: var(--text-secondary); margin-top: var(--space-1); }
-.scanpage__icon { display: grid; place-items: center; flex: 0 0 auto; width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--brand-subtle); color: var(--brand); font-size: 1.5rem; }
-.scanpage__icon--label { margin-inline: auto; background: var(--verdict-occasional-bg); color: var(--verdict-occasional-fg); }
-.scanpage__camera { min-height: 156px; border: 2px dashed var(--border-interactive); border-radius: var(--radius-md); background: var(--surface); color: var(--brand); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); font-weight: 700; cursor: pointer; }
-.scanpage__camera:hover { background: var(--brand-subtle); border-color: var(--brand); }
-.scanpage__camera-icon { font-size: 2.5rem; line-height: 1; }
-.scanner-view { position: relative; overflow: hidden; min-height: 220px; border-radius: var(--radius-md); background: #111; }
-.scanner-view__video { width: 100%; height: 240px; object-fit: cover; }
-.scanner-view__guide { position: absolute; inset: 50% var(--space-5) auto; height: 84px; transform: translateY(-50%); border: 2px solid #fff; border-radius: var(--radius-sm); box-shadow: 0 0 0 999px rgb(0 0 0 / .25); }
-.scanpage__camera-stop { position: absolute; z-index: 1; bottom: var(--space-3); left: 50%; transform: translateX(-50%); background: #fff; }
-.scanpage__divider { display: flex; align-items: center; gap: var(--space-3); color: var(--text-tertiary); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .06em; }
-.scanpage__divider::before, .scanpage__divider::after { content: ''; height: 1px; background: var(--border); flex: 1; }
-/* De-emphasised relative to `.scanpage__camera`: manual entry is the
-   fallback path, so its label reads quieter and its submit button
-   (`btn--secondary`, see ScanScreen.tsx) stays outlined rather than filled. */
-.scanpage__manual { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-sm); }
+
+/* ---- main: camera-first, no card wrapper ----
+   Scanning is a high-intent action — it should feel immediate, not like a form
+   inside a bordered panel. The camera area is the one visually dominant
+   surface on the screen; everything else is plain text/links beneath it. */
+
+.scanpage__main { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-4); }
+
+.scanpage__title {
+  font-size: var(--text-h1);
+  font-weight: 800;
+  text-align: center;
+  color: var(--text);
+}
+
+.scanpage__camera {
+  min-height: 320px;
+  border: 2px dashed var(--border-interactive);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--surface-sunken), var(--surface));
+  color: var(--brand);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  font-weight: 700;
+  font-size: var(--text-h2);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .scanpage__camera:hover { background: var(--brand-subtle); border-color: var(--brand); }
+}
+
+.scanpage__camera-icon { font-size: 3.75rem; line-height: 1; }
+
+.scanner-view {
+  position: relative;
+  overflow: hidden;
+  min-height: 320px;
+  border-radius: var(--radius-lg);
+  background: #111;
+}
+
+.scanner-view__video { width: 100%; height: 320px; object-fit: cover; display: block; }
+
+.scanner-view__guide {
+  position: absolute;
+  inset: 50% var(--space-5) auto;
+  height: 96px;
+  transform: translateY(-50%);
+  border: 2px solid #fff;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 999px rgb(0 0 0 / .25);
+}
+
+.scanpage__camera-stop {
+  position: absolute;
+  z-index: 1;
+  bottom: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+}
+
+.scanpage__hint {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.scanpage__notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--verdict-occasional-bg);
+  color: var(--verdict-occasional-fg);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.scanpage__contribute-cta { align-self: stretch; }
+
+/* ---- secondary paths: manual entry and search, deliberately smaller ---- */
+
+.scanpage__secondary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.scanpage__manual-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  color: var(--brand);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.scanpage__manual { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; font-size: var(--text-sm); }
 .scanpage__manual > label { font-weight: 600; color: var(--text-secondary); }
 .scanpage__fieldrow { display: flex; gap: var(--space-2); }
 .scanpage__fieldrow input { min-width: 0; flex: 1; height: var(--tap-primary); padding-inline: var(--space-3); background: var(--bg); border: 1px solid var(--border-interactive); border-radius: var(--radius-sm); }
-.scanpage__notice { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); background: var(--verdict-occasional-bg); color: var(--verdict-occasional-fg); border-radius: var(--radius-sm); font-size: var(--text-sm); line-height: var(--leading-normal); }
-.scanpage__contribute-cta { align-self: stretch; }
-.scanpage__search-link { align-self: center; min-height: var(--tap-min); display: inline-flex; align-items: center; font-size: var(--text-sm); font-weight: 700; }
+
+.scanpage__or { color: var(--text-tertiary); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .06em; }
+
+.scanpage__search-link { min-height: var(--tap-min); display: inline-flex; align-items: center; font-size: var(--text-sm); font-weight: 700; }
+
+/* ---- label capture: unavailable notice, still a single card (a genuinely
+   discrete informational block, not a form) ---- */
+
 .scanpage__panel--label { align-items: center; text-align: center; padding-block: var(--space-7); }
+.scanpage__icon { display: grid; place-items: center; flex: 0 0 auto; width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--brand-subtle); color: var(--brand); font-size: 1.5rem; }
+.scanpage__icon--label { margin-inline: auto; background: var(--verdict-occasional-bg); color: var(--verdict-occasional-fg); }
+.scanpage__label-copy { color: var(--text-secondary); margin-top: var(--space-1); }
+
 @media (min-width: 768px) { .scanpage { padding-top: var(--space-6); } }

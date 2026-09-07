@@ -143,7 +143,7 @@
   "capture.contribute": "Also add this product to the shared catalogue",
   "capture.unavailable": "Label capture will be available once the secure label-reading service is connected. Until then, search by name or use the barcode on the pack.",
   "contribute.heading": "Add this product",
-  "contribute.explainer": "Help other households find this product. We will check it before it appears in search.",
+  "contribute.explainer": "Your contribution helps improve the shared catalogue for every household. We ask for the product's name, pack size and nutrition panel, and a person checks it before it appears in search.",
   "contribute.gtinLabel": "Barcode",
   "contribute.brandLabel": "Brand",
   "contribute.brandOptional": "Optional",

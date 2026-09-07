@@ -20,6 +20,10 @@ export function ScanScreen() {
   const [barcode, setBarcode] = useState('');
   const [cameraState, setCameraState] = useState<'idle' | 'active' | 'unavailable'>('idle');
   const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'not-found' | 'error'>('idle');
+  // Manual entry starts collapsed behind a text link — scanning is the primary,
+  // high-intent action, and a permanently-visible form beside it competed for
+  // the same weight (the "desktop form" feeling the redesign brief called out).
+  const [manualOpen, setManualOpen] = useState(false);
   // A barcode this app has never seen: offer the hand-entry contribution form,
   // pre-filled with the code that was just looked up. This is a plain local
   // toggle within the scan screen, the same mechanism it already uses to swap
@@ -110,19 +114,31 @@ export function ScanScreen() {
         </Link>
       </nav>
       {isLabelMode ? <LabelCaptureNotice /> : (
-        <Card as="section" padding="lg" elevated className="scanpage__panel" aria-labelledby="scan-title">
-          <div className="scanpage__intro"><span className="scanpage__icon" aria-hidden="true">▣</span><div><h1 id="scan-title">{t('scan.heading')}</h1><p>{t('scan.hint')}</p></div></div>
+        <div className="scanpage__main">
+          <h1 className="scanpage__title">{t('scan.heading')}</h1>
+
+          {/* The camera is the dominant element on this screen — scanning is a
+              high-intent action, not a form to fill in. Everything else (manual
+              entry, search by name) is deliberately smaller and below it. */}
           {cameraState === 'active' ? (
-            <div className="scanner-view"><video ref={videoRef} className="scanner-view__video" muted playsInline /><div className="scanner-view__guide" aria-hidden="true" /><button type="button" className="btn btn--secondary scanpage__camera-stop" onClick={stopCamera}>{t('scan.stopCamera')}</button></div>
+            <div className="scanner-view">
+              <video ref={videoRef} className="scanner-view__video" muted playsInline />
+              <div className="scanner-view__guide" aria-hidden="true" />
+              <button type="button" className="btn btn--secondary scanpage__camera-stop" onClick={stopCamera}>
+                {t('scan.stopCamera')}
+              </button>
+            </div>
           ) : (
-            <button type="button" className="scanpage__camera" onClick={() => void startCamera()}><span className="scanpage__camera-icon" aria-hidden="true">⌁</span><span>{t('scan.openCamera')}</span></button>
+            <button type="button" className="scanpage__camera" onClick={() => void startCamera()}>
+              <span className="scanpage__camera-icon" aria-hidden="true">⌁</span>
+              <span>{t('scan.openCamera')}</span>
+            </button>
           )}
+
+          <p className="scanpage__hint">{t('scan.hint')}</p>
+
           {cameraState === 'unavailable' && <p className="scanpage__notice">{t('scan.notSupported')}</p>}
-          <div className="scanpage__divider"><span>{t('scan.or')}</span></div>
-          <form className="scanpage__manual" onSubmit={(event) => { event.preventDefault(); void lookUp(barcode); }}>
-            <label htmlFor="barcode">{t('scan.enterManually')}</label>
-            <div className="scanpage__fieldrow"><input id="barcode" inputMode="numeric" autoComplete="off" placeholder={t('scan.barcodePlaceholder')} value={barcode} onChange={(event) => { setBarcode(event.target.value); setLookupState('idle'); }} /><button className="btn btn--secondary" type="submit" disabled={!barcode.trim() || lookupState === 'loading'}>{lookupState === 'loading' ? t('loading.default') : t('action.lookUp')}</button></div>
-          </form>
+
           {lookupState === 'not-found' && (
             <div className="scanpage__notice">
               <p>{t('scan.notFound')}</p>
@@ -132,8 +148,27 @@ export function ScanScreen() {
             </div>
           )}
           {lookupState === 'error' && <p className="scanpage__notice">{t('error.service_unavailable')}</p>}
-          <Link to="/search" className="scanpage__search-link">{t('scan.searchInstead')}</Link>
-        </Card>
+
+          <div className="scanpage__secondary">
+            {manualOpen ? (
+              <form className="scanpage__manual" onSubmit={(event) => { event.preventDefault(); void lookUp(barcode); }}>
+                <label htmlFor="barcode">{t('scan.enterManually')}</label>
+                <div className="scanpage__fieldrow">
+                  <input id="barcode" inputMode="numeric" autoComplete="off" placeholder={t('scan.barcodePlaceholder')} value={barcode} onChange={(event) => { setBarcode(event.target.value); setLookupState('idle'); }} />
+                  <button className="btn btn--secondary" type="submit" disabled={!barcode.trim() || lookupState === 'loading'}>
+                    {lookupState === 'loading' ? t('loading.default') : t('action.lookUp')}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button type="button" className="scanpage__manual-toggle" onClick={() => setManualOpen(true)}>
+                {t('scan.enterManually')}
+              </button>
+            )}
+            <span className="scanpage__or">{t('scan.or')}</span>
+            <Link to="/search" className="scanpage__search-link">{t('scan.searchInstead')}</Link>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -141,7 +176,7 @@ export function ScanScreen() {
 
 function LabelCaptureNotice() {
   return (
-    <Card as="section" padding="lg" elevated className="scanpage__panel scanpage__panel--label" aria-labelledby="label-title">
+    <Card as="section" padding="lg" elevated className="scanpage__panel--label" aria-labelledby="label-title">
       <span className="scanpage__icon scanpage__icon--label" aria-hidden="true">◉</span>
       <h1 id="label-title">{t('capture.heading')}</h1>
       <p className="scanpage__label-copy">{t('capture.hint')}</p>
