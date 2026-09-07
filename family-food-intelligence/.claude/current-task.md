@@ -1,6 +1,22 @@
 # Current Task
 
-**As of:** 2026-09-06 (UI/UX revamp, Step 1 of 14 — this entry's author).
+**As of:** 2026-09-07 (consumer visual-quality pass — this entry's author). Full detail in
+`.claude/state.md`'s top entry, not duplicated here. Summary: the prior "14 steps complete"
+revamp below was correct about what it built but was never checked against the actual
+rendered app (no browser tool existed then, or now); a real look at it found a dark-mode-only
+default, undersized category tiles, `window.confirm()` everywhere, a form-like Scan screen,
+and Card-in-Card nesting in Settings/Family. Fixed across 9 commits without discarding the
+prior foundation (tokens/verdict system/components stayed), plus one concrete, externally-
+verified win: the Open Food Facts image backfill was actually run (OFF was reachable again,
+if only briefly) — 882 of 894 products now have a real photo, up from 0. Catalogue size is
+still stuck at 894 (OFF degraded again after ~10 pages of a fresh fetch attempt) — that part
+of the backlog is unchanged. **Next step, if continued:** a human visual check of the running
+app is still outstanding — no session so far, including this one, has had a way to render and
+look at it.
+
+---
+
+**Previous entry (2026-09-06, UI/UX revamp, Step 1 of 14 — this entry's author).
 
 ## UI/UX revamp — Step 1: design-system foundation
 

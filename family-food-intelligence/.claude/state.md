@@ -1,6 +1,66 @@
 # Project State
 
-**Last updated:** 2026-09-07 (UI/UX revamp complete — all 14 steps). Full detail:
+**Last updated:** 2026-09-07 (consumer visual-quality pass, this entry's author). The prior
+"14 steps complete" entry below was accurate about what got built but not about how it would
+actually look: it shipped with **no dark-mode override** (the whole app silently switched to
+dark via `prefers-color-scheme`, with no toggle to get back to light — the palette that entry
+calls "light-first" was in practice unreachable for anyone on a dark-mode OS), plus several
+concrete instances of the "admin console" feel a real look at the rendered app surfaced: small
+type, weak/undersized category identity, Card-in-Card-in-Card nesting in Settings/Family,
+`window.confirm()` for every destructive action, a Scan screen built as a bordered form around
+a small camera button, and Activity grouped by raw event type instead of by day. None of this
+required discarding the prior work — the design-token system, verdict/allergen vocabulary, and
+component architecture were the right foundation. This pass changed visual execution and
+information architecture on top of it, across 9 commits:
+
+1. Light made the actual default (explicit `data-theme` opt-in only, `lib/theme.ts`, a real
+   toggle in Settings > Appearance) + a type-scale bump + `RowGroup`/`Row`/`Switch`/
+   `BottomSheet`/`HouseholdMemberCard`/`NutritionSummary` design-system primitives.
+2. Home: a restrained hero, full-bleed category discovery tiles (132–156px, was 68px).
+3. Product Detail: full-width image-first hero on mobile (was a 104px thumbnail beside text),
+   `contain` not `cover`.
+4. Scan: camera is the dominant element, no card wrapper; manual entry collapses behind a
+   text link instead of a permanently-visible peer form.
+5. Family: `HouseholdMemberCard` + `ConfirmSheet` replacing `window.confirm()`.
+6. Compare: header images 72px → 96–128px.
+7. Activity: regrouped by day (Today/Yesterday/date) with human sentences, not by event type.
+8. Settings: plain row lists (`RowGroup`/`Row`) instead of stacked bordered Cards; account
+   deletion's confirm flow moved into a `BottomSheet`.
+9. **Image backfill actually run against live Open Food Facts** — see below.
+
+Frontend `npm run typecheck` clean and `npm run test` 8/8 after every commit; `npm run build`
+clean throughout. Backend was not touched (no Java changed) except the seed data file and
+`infrastructure/docker-compose.yml` — see the image-backfill note below — so the existing
+204/204 backend regression was not re-run this session; nothing in this pass had reason to
+affect it. **Still no browser-automation tool in this environment** — the same limitation the
+prior entry disclosed. Every visual claim above was verified by reading the real CSS/markup and
+computing box-model/contrast values against `tokens.css`, same method as before, applied more
+skeptically this time given that method's own track record. This still cannot substitute for
+a human opening the app and looking at it, and that check has not happened yet for this pass.
+
+**Image backfill — the one part of this session with an end-to-end, externally-verifiable
+result:** Open Food Facts was reachable again (intermittently — see below). Ran
+`OpenFoodFactsImageBackfillRunner` (`seed-catalog-images` profile) against the local dev DB.
+Result: **882 of 894 products now have a real, stored photo** (up from 0), verified by querying
+`/api/v1/search` for a real `imageUrl` and confirming a sampled storage key serves an actual
+JPEG from MinIO (HTTP 200, `image/jpeg`). Two things had to happen first: (1) re-fetched from
+Open Food Facts to get `image_url`/`image_front_url` fields the committed seed snapshot
+predated — the fetch itself degraded again after ~10 pages (mixed 401/503) and self-terminated
+at 893 products, so **the catalogue is still stuck at 894, not the 5,000+ target** — OFF's
+availability for this project is still genuinely unreliable, this is not a resolved blocker,
+just one that happened to stay up long enough to backfill images for the existing rows; (2) the
+dev environment's MinIO never provisioned the public `familyfood-catalogue-images` bucket the
+pipeline writes to (only the private labels bucket existed) — fixed in `docker-compose.yml`.
+
+**Not done, and why:** catalogue growth past 894 (external OFF availability, unchanged);
+multi-image galleries and an image verify/reject review UI (schema-ready, unused, unchanged);
+a formal e2e suite; an actual rendered-in-browser visual walkthrough of this pass's work; a
+backend re-run to reconfirm the 204/204 regression (no backend code changed, so treated as
+still valid rather than re-verified).
+
+---
+
+**Previous entry (2026-09-07, UI/UX revamp complete — all 14 steps). Full detail:
 `.claude/current-task.md`'s top entry. Summary: a full consumer-grade UI/UX revamp
 (referencing Zomato/Blinkit/Flipkart/HealthifyMe interaction patterns only, never their
 branding/layout) was commissioned and completed end to end — a shared design-system
