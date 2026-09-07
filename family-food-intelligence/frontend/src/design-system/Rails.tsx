@@ -39,10 +39,12 @@ export interface CategoryTileData {
 /**
  * Category tiles.
  *
- * The fastest route into a catalogue for someone who does not yet have a product
- * in mind — and the reason a home screen feels like a shop rather than a search
- * box. Each tile carries its category's gradient and glyph so the row is
- * recognisable by shape and colour before the labels are read.
+ * The fastest route into a catalogue for someone who does not yet have a
+ * product in mind — and the reason a home screen feels like a shop rather
+ * than a search box. Each tile is its category's full-bleed gradient art with
+ * the name overlaid at the bottom on a scrim, so a row reads as a place to
+ * browse rather than a row of labelled icons. Deliberately stylised, never a
+ * stock photo standing in for a real pack — see CategoryArt.tsx.
  */
 export function CategoryRail({ categories }: { categories: CategoryTileData[] }) {
   return (
@@ -53,13 +55,10 @@ export function CategoryRail({ categories }: { categories: CategoryTileData[] })
           to={`/search?category=${encodeURIComponent(c.code)}`}
           className="cat-tile"
           role="listitem"
+          style={{ backgroundImage: categoryGradient(c.code, c.code) }}
         >
-          <span
-            className="cat-tile__art"
-            style={{ backgroundImage: categoryGradient(c.code, c.code) }}
-            aria-hidden="true"
-          >
-            <span className="cat-tile__glyph">{categoryGlyph(c.code)}</span>
+          <span className="cat-tile__glyph" aria-hidden="true">
+            {categoryGlyph(c.code)}
           </span>
           <span className="cat-tile__label">{c.name}</span>
         </Link>
@@ -72,10 +71,7 @@ export function CategoryRailSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div className="rail rail--categories scroll-x" aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="cat-tile">
-          <span className="cat-tile__art pcard__shimmer" />
-          <span className="cat-tile__label pcard__shimmer" style={{ height: 10, width: 48 }} />
-        </div>
+        <div key={i} className="cat-tile pcard__shimmer" />
       ))}
     </div>
   );

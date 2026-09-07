@@ -69,6 +69,15 @@ export function HomeScreen() {
 
   return (
     <div className="home">
+      {/* The value statement — restrained, not a marketing banner. Answers
+          "what is this app" for a first-time visitor in one line, then gets
+          out of the way; everything below is browsing, not more pitching. */}
+      <section className="home__hero">
+        {signedIn && <p className="home__hero-eyebrow">{t(timeGreetingKey())}</p>}
+        <h1 className="home__hero-title">{t('home.heroTitle')}</h1>
+        <p className="home__hero-sub">{t('home.heroSub')}</p>
+      </section>
+
       {/* Utility zone: the two actions search cannot serve, plus the one
           boundary-stated consent prompt. Grouped and spaced tighter than the
           browsing surface below so they read as one entry strip rather than
@@ -104,9 +113,10 @@ export function HomeScreen() {
         )}
       </div>
 
-      {/* Browsing surface: categories, recent activity, curated rails. Evenly
-          spaced as one continuous shelf rather than a stack of independent
-          widgets. */}
+      {/* Browsing surface: categories, curated rails, then recent activity
+          last — a returning household's history is a bonus, not something
+          that should interrupt discovery for everyone else. Evenly spaced as
+          one continuous shelf rather than a stack of independent widgets. */}
       <div className="home__browse">
         <section aria-labelledby="cat-heading">
           <SectionHeader title={t('home.browseCategories')} />
@@ -121,13 +131,6 @@ export function HomeScreen() {
             <ErrorState error={categories.error} onRetry={() => void categories.refetch()} />
           )}
         </section>
-
-        {signedIn && recentProducts.length > 0 && (
-          <section className="home__rail">
-            <SectionHeader title={t('home.railRecent')} />
-            <ProductRail loading={false} products={recentProducts.map(toCardData)} />
-          </section>
-        )}
 
         {catalogueUnavailable ? (
           <section>
@@ -153,11 +156,29 @@ export function HomeScreen() {
             />
           </>
         )}
+
+        {signedIn && recentProducts.length > 0 && (
+          <section className="home__rail">
+            <SectionHeader title={t('home.railRecent')} />
+            <ProductRail loading={false} products={recentProducts.map(toCardData)} />
+          </section>
+        )}
       </div>
 
       <p className="home__disclaimer">{t('medical.notice')}</p>
     </div>
   );
+}
+
+/** A time-of-day greeting — a function of the visitor's own clock, not of any
+ *  stored data about them. Shown only when signed in, and only as a small
+ *  eyebrow above the hero title, never as a headline of its own — this is not
+ *  personalisation (D-020/D-024), just a plain courtesy. */
+function timeGreetingKey(): 'home.greetingMorning' | 'home.greetingAfternoon' | 'home.greetingEvening' {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'home.greetingMorning';
+  if (hour < 17) return 'home.greetingAfternoon';
+  return 'home.greetingEvening';
 }
 
 /** One curated rail. Renders nothing at all when the catalogue has no match —
