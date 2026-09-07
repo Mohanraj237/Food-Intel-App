@@ -398,7 +398,6 @@
   "profile.ageBandRequired": "Pick an age band to save this profile.",
   "settings.intro": "Your account, and what this app knows about your household.",
   "settings.activityLink": "Activity",
-  "settings.privacyHeading": "Privacy & data",
   "auth.accountHeading": "Account",
   "auth.signedIn": "You are signed in.",
   "auth.confirmPassword": "Confirm password",

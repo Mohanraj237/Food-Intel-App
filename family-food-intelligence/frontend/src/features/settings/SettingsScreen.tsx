@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
 import { ApiError, storedRefreshToken } from '@/lib/api';
@@ -13,6 +12,7 @@ import { Button } from '@/design-system/Button';
 import { Card } from '@/design-system/Card';
 import { RowGroup, Row } from '@/design-system/RowGroup';
 import { Switch } from '@/design-system/Switch';
+import { BottomSheet } from '@/design-system/BottomSheet';
 import './SettingsScreen.css';
 
 /**
@@ -35,17 +35,14 @@ export function SettingsScreen() {
 
       <AppearancePanel />
 
-      <div className="settings__group">
-        {signedIn ? <AccountPanel /> : <AuthPanel />}
-      </div>
+      {signedIn ? <AccountPanel /> : <AuthPanel />}
 
       {signedIn && (
-        <div className="settings__group settings__group--privacy">
-          <h2 className="settings__group-heading">{t('settings.privacyHeading')}</h2>
+        <>
           <ConsentPanel />
           <DataRightsPanel />
           <OpsAccessPanel />
-        </div>
+        </>
       )}
     </div>
   );
@@ -93,12 +90,9 @@ function OpsAccessPanel() {
   }
 
   return (
-    <Card as="section" className="settings__section" aria-labelledby="ops-heading">
-      <h2 id="ops-heading" className="settings__h2">{t('ops.consoleHeading')}</h2>
-      <Link to="/ops" className="btn btn--secondary btn--sm">
-        {t('ops.consoleLink')}
-      </Link>
-    </Card>
+    <RowGroup>
+      <Row label={t('ops.consoleHeading')} description={t('ops.consoleLink')} to="/ops" />
+    </RowGroup>
   );
 }
 
@@ -117,20 +111,17 @@ function AccountPanel() {
   });
 
   return (
-    <Card as="section" className="settings__section" aria-labelledby="account-heading">
-      <h2 id="account-heading" className="settings__h2">{t('auth.accountHeading')}</h2>
-      <p className="settings__signedin">{t('auth.signedIn')}</p>
-      <Link to="/activity" className="btn btn--secondary btn--sm">
-        {t('settings.activityLink' as Parameters<typeof t>[0])}
-      </Link>
-      <Button
-        variant="secondary"
-        loading={signOut.isPending}
-        onClick={() => signOut.mutate()}
-      >
-        {t('action.signOut')}
-      </Button>
-    </Card>
+    <RowGroup title={t('auth.accountHeading')}>
+      <Row label={t('nav.family')} to="/family" />
+      <Row label={t('settings.activityLink' as Parameters<typeof t>[0])} to="/activity" />
+      <Row
+        label={t('action.signOut')}
+        onClick={() => {
+          if (!signOut.isPending) signOut.mutate();
+        }}
+        trailing={signOut.isPending ? <span>{t('loading.default')}</span> : undefined}
+      />
+    </RowGroup>
   );
 }
 
@@ -251,15 +242,14 @@ function AuthPanel() {
 /** Data export and account deletion (NFR-09, AC-9.2/AC-9.3). */
 function DataRightsPanel() {
   return (
-    <Card as="section" className="settings__section" aria-labelledby="datarights-heading">
-      <h2 id="datarights-heading" className="settings__h2">{t('privacy.dataRightsHeading')}</h2>
-      <ExportSection />
-      <DeleteAccountSection />
-    </Card>
+    <RowGroup title={t('privacy.dataRightsHeading')}>
+      <ExportRow />
+      <DeleteAccountRow />
+    </RowGroup>
   );
 }
 
-function ExportSection() {
+function ExportRow() {
   const mutation = useMutation({
     mutationFn: exportMyData,
     onSuccess: (data) => {
@@ -276,24 +266,23 @@ function ExportSection() {
   });
 
   const errorMessage = mutation.error instanceof ApiError ? mutation.error.message : null;
+  const description = errorMessage
+    ?? (mutation.isSuccess ? t('privacy.exportSuccess') : t('privacy.exportExplainer'));
 
   return (
-    <div className="settings__subsection">
-      <h3 className="settings__h3">{t('privacy.exportHeading')}</h3>
-      <p className="field__hint">{t('privacy.exportExplainer')}</p>
-      {mutation.isSuccess && (
-        <p className="profile__saved" role="status">{t('privacy.exportSuccess')}</p>
-      )}
-      {errorMessage && <p className="form-error" role="alert">{errorMessage}</p>}
-      <Button variant="secondary" loading={mutation.isPending} onClick={() => mutation.mutate()}>
-        {t('privacy.exportData')}
-      </Button>
-    </div>
+    <Row
+      label={t('privacy.exportData')}
+      description={description}
+      onClick={() => {
+        if (!mutation.isPending) mutation.mutate();
+      }}
+      trailing={mutation.isPending ? <span>{t('loading.default')}</span> : undefined}
+    />
   );
 }
 
-function DeleteAccountSection() {
-  const [confirming, setConfirming] = useState(false);
+function DeleteAccountRow() {
+  const [open, setOpen] = useState(false);
   const [typedConfirm, setTypedConfirm] = useState('');
 
   const mutation = useMutation({
@@ -311,51 +300,43 @@ function DeleteAccountSection() {
   const errorMessage = mutation.error instanceof ApiError ? mutation.error.message : null;
 
   if (mutation.isSuccess) {
-    return (
-      <div className="settings__subsection">
-        <h3 className="settings__h3">{t('privacy.deleteHeading')}</h3>
-        <p className="profile__saved" role="status">{t('privacy.deleteSuccess')}</p>
-      </div>
-    );
+    return <Row label={t('privacy.deleteHeading')} description={t('privacy.deleteSuccess')} />;
   }
 
   return (
-    <div className="settings__subsection">
-      <h3 className="settings__h3">{t('privacy.deleteHeading')}</h3>
-      <p className="field__hint">{t('privacy.deleteExplainer')}</p>
-      <p className="field__hint">{t('privacy.otherMembersUnaffected')}</p>
-
-      {!confirming ? (
-        <Button variant="destructive" onClick={() => setConfirming(true)}>
-          {t('privacy.deleteAccount')}
-        </Button>
-      ) : (
-        <div className="settings__delete-confirm">
-          <p className="form-error" role="alert">{t('privacy.deleteWarning')}</p>
-          <label className="field">
-            <span className="field__label">{t('privacy.deleteTypeConfirmLabel')}</span>
-            <input
-              value={typedConfirm}
-              onChange={(e) => setTypedConfirm(e.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          {errorMessage && <p className="form-error" role="alert">{errorMessage}</p>}
-          <div className="settings__actions">
-            <Button
-              variant="destructive"
-              disabled={typedConfirm !== 'DELETE'}
-              loading={mutation.isPending}
-              onClick={() => mutation.mutate()}
-            >
-              {t('privacy.deleteConfirm')}
-            </Button>
-            <Button variant="ghost" onClick={() => { setConfirming(false); setTypedConfirm(''); }}>
-              {t('action.done')}
-            </Button>
-          </div>
+    <>
+      <Row
+        label={t('privacy.deleteAccount')}
+        description={t('privacy.deleteExplainer')}
+        tone="danger"
+        onClick={() => setOpen(true)}
+      />
+      <BottomSheet open={open} onClose={() => setOpen(false)} title={t('privacy.deleteHeading')}>
+        <p>{t('privacy.deleteWarning')}</p>
+        <p>{t('privacy.otherMembersUnaffected')}</p>
+        <label className="field">
+          <span className="field__label">{t('privacy.deleteTypeConfirmLabel')}</span>
+          <input value={typedConfirm} onChange={(e) => setTypedConfirm(e.target.value)} autoComplete="off" />
+        </label>
+        {errorMessage && (
+          <p className="form-error" role="alert">
+            {errorMessage}
+          </p>
+        )}
+        <div className="sheet__actions">
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            {t('action.cancel')}
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={typedConfirm !== 'DELETE'}
+            loading={mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            {t('privacy.deleteConfirm')}
+          </Button>
         </div>
-      )}
-    </div>
+      </BottomSheet>
+    </>
   );
 }
