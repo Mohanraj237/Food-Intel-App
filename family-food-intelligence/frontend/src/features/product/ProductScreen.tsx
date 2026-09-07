@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
 import { useIsSignedIn } from '@/lib/useSession';
 import { useMyHousehold } from '@/lib/useMyHousehold';
 import { listMembers, type HouseholdMember } from '@/lib/household';
-import { formatAmount, getProduct, type NutrientRow } from '@/lib/catalog';
+import { getProduct, type NutrientRow } from '@/lib/catalog';
 import { getHouseholdFit, type PersonalFit } from '@/lib/scoring';
 import { recordActivity } from '@/lib/activity';
 import { ProductImage } from '@/design-system/ProductImage';
 import { AllergenFlag } from '@/design-system/AllergenFlag';
+import { NutritionSummary } from '@/design-system/NutritionSummary';
 import { ErrorState, Skeleton } from '@/design-system/States';
 import { ReasonList } from '@/design-system/ReasonList';
 import { VerdictChip, type Verdict } from '@/design-system/VerdictChip';
@@ -40,7 +41,6 @@ import './ProductScreen.css';
 export function ProductScreen() {
   const { id = '' } = useParams();
   const signedIn = useIsSignedIn();
-  const [showAllNutrients, setShowAllNutrients] = useState(false);
 
   const product = useQuery({
     queryKey: ['product', id],
@@ -85,12 +85,6 @@ export function ProductScreen() {
   const declaredAllergens = p.allergens.filter((a) => a.declarationType === 'CONTAINS');
   const mayContain = p.allergens.filter((a) => a.declarationType === 'MAY_CONTAIN');
   const version = p.currentVersion;
-
-  const coreCodes = ['ENERGY_KCAL', 'ADDED_SUGAR_G', 'TOTAL_SUGAR_G', 'SODIUM_MG',
-    'SAT_FAT_G', 'PROTEIN_G', 'FIBRE_G'];
-  const shown = showAllNutrients
-    ? p.nutrients
-    : p.nutrients.filter((n) => coreCodes.includes(n.nutrientCode));
 
   return (
     <div className="pdp">
@@ -201,49 +195,12 @@ export function ProductScreen() {
           {/* 7 — the panel. Both bases side by side, always (D-010). */}
           <section className="pdp__section" aria-labelledby="nutrition-heading">
             <h2 id="nutrition-heading" className="pdp__h2">{t('product.nutrition')}</h2>
-
-            {version.servingDeclaredText && (
-              <p className="pdp__serving">
-                {t('product.servingDeclared', { serving: version.servingDeclaredText })}
-              </p>
-            )}
-            {version.servingPlausible === false && (
-              <p className="pdp__serving-warn">{t('product.servingImplausible')}</p>
-            )}
-
-            {p.nutrients.length === 0 ? (
-              <p className="pdp__pending">{t('error.product_data_insufficient')}</p>
-            ) : (
-              <>
-                <div className="scroll-x">
-                  <table className="nutri">
-                    <thead>
-                      <tr>
-                        <th scope="col">{t('product.nutrition')}</th>
-                        <th scope="col">{t('product.perServing')}</th>
-                        <th scope="col">
-                          {p.packSize?.unit === 'ml' ? t('product.per100ml') : t('product.per100g')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {shown.map((n) => (
-                        <NutrientLine key={n.nutrientCode} row={n} />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {p.nutrients.length > shown.length && (
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--sm"
-                    onClick={() => setShowAllNutrients(true)}
-                  >
-                    {t('product.showAllNutrients')}
-                  </button>
-                )}
-              </>
-            )}
+            <NutritionSummary
+              nutrients={p.nutrients}
+              per100Unit={p.packSize?.unit === 'ml' ? 'ml' : 'g'}
+              servingDeclaredText={version.servingDeclaredText}
+              servingImplausible={version.servingPlausible === false}
+            />
           </section>
 
           <section className="pdp__section" aria-labelledby="ingredients-heading">
@@ -414,38 +371,6 @@ function NoHouseholdMembers() {
         {t('nav.family')}
       </Link>
     </div>
-  );
-}
-
-/**
- * A nutrient row.
- *
- * An absent value renders as "not declared", never as a zero — the distinction
- * between "this product contains no added sugar" and "the label does not say"
- * is exactly the kind of thing a nutrition app must not blur (AC-5.2).
- */
-function NutrientLine({ row }: { row: NutrientRow }) {
-  return (
-    <tr>
-      <th scope="row">
-        {row.displayName}
-        {row.isEstimated && <span className="nutri__est">{t('product.estimated')}</span>}
-      </th>
-      <td>{cell(row.amountPerServing, row.unit)}</td>
-      <td>{cell(row.amountPer100, row.unit)}</td>
-    </tr>
-  );
-}
-
-function cell(value: number | null, unit: string) {
-  if (value == null) {
-    return <span className="nutri__missing">{t('product.notDeclared')}</span>;
-  }
-  return (
-    <span className="nutri__value">
-      {formatAmount(value)}
-      <span className="nutri__unit">{unit}</span>
-    </span>
   );
 }
 

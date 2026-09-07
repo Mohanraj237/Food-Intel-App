@@ -7,9 +7,12 @@ import { applySession, login, logout, register, signOutLocally } from '@/lib/aut
 import { exportMyData, requestAccountDeletion } from '@/lib/account';
 import { getOpsAccess } from '@/lib/ops';
 import { useIsSignedIn } from '@/lib/useSession';
+import { getStoredTheme, setTheme, type ThemeChoice } from '@/lib/theme';
 import { ConsentPanel } from '@/features/consent/ConsentPanel';
 import { Button } from '@/design-system/Button';
 import { Card } from '@/design-system/Card';
+import { RowGroup, Row } from '@/design-system/RowGroup';
+import { Switch } from '@/design-system/Switch';
 import './SettingsScreen.css';
 
 /**
@@ -30,6 +33,8 @@ export function SettingsScreen() {
         <p className="settings__lede">{t('settings.intro')}</p>
       </div>
 
+      <AppearancePanel />
+
       <div className="settings__group">
         {signedIn ? <AccountPanel /> : <AuthPanel />}
       </div>
@@ -43,6 +48,31 @@ export function SettingsScreen() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Light is the primary consumer experience; dark is a real but explicit
+ * choice, never inferred from the OS (see lib/theme.ts). This is the only
+ * place that choice can be made.
+ */
+function AppearancePanel() {
+  const [theme, setThemeState] = useState<ThemeChoice>(() => getStoredTheme());
+
+  function toggle(checked: boolean) {
+    const next: ThemeChoice = checked ? 'dark' : 'light';
+    setTheme(next);
+    setThemeState(next);
+  }
+
+  return (
+    <RowGroup title={t('settings.appearanceHeading')}>
+      <Row
+        label={t('settings.appearanceDark')}
+        description={t('settings.appearanceDarkHint')}
+        trailing={<Switch checked={theme === 'dark'} onChange={toggle} label={t('settings.appearanceDark')} />}
+      />
+    </RowGroup>
   );
 }
 

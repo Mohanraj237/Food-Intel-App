@@ -8,7 +8,11 @@
    ============================================================================= */
 
 :root {
-  color-scheme: light dark;
+  /* Light is the primary consumer experience (see docs/design/design-system.md
+     "Light-first"). Dark stays fully supported, but only as an explicit choice
+     — set via `data-theme="dark"` in Settings → Appearance, never inferred from
+     the OS. `color-scheme` therefore tracks the explicit choice, not the OS. */
+  color-scheme: light;
 
   /* ---- surfaces ---- */
   --bg: #ffffff;
@@ -71,9 +75,15 @@
     'Noto Sans Devanagari', Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  --text-display: 1.75rem;
-  --text-h1: 1.375rem;
-  --text-h2: 1.125rem;
+  /* Hero: the Home value statement only. Display: page-level titles (product
+     name, screen headings). H1/H2: section titles. Card title has its own
+     token rather than sharing --text-sm, so a card's name and a metadata line
+     can move independently. */
+  --text-hero: 2.25rem;
+  --text-display: 2rem;
+  --text-h1: 1.5rem;
+  --text-h2: 1.25rem;
+  --text-card-title: 0.9375rem;
   --text-body: 1rem;       /* floor for body copy; also prevents iOS input zoom */
   --text-sm: 0.875rem;
   --text-xs: 0.75rem;
@@ -125,61 +135,12 @@
 }
 
 /* =============================================================================
-   Dark theme. Only the tokens that change are redefined; every value has its
-   primary definition on bare :root above, so nothing depends on a media query
-   having matched.
+   Dark theme. Explicit opt-in only — set via lib/theme.ts (Settings →
+   Appearance), never inferred from `prefers-color-scheme`. Light is the
+   primary consumer experience; a user who has never touched the toggle always
+   gets the light palette regardless of their OS setting.
    ============================================================================= */
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #121513;
-    --surface: #1b1f1d;
-    --surface-raised: #232826;
-    --surface-sunken: #0d100e;
-    --overlay: rgb(0 0 0 / 0.64);
-
-    --text: #e8edea;              /* 15.52:1 */
-    --text-secondary: #a8b2ae;    /*  8.44:1 */
-    --text-tertiary: #8a9490;     /*  5.88:1 */
-    --text-inverse: #0a1f1b;
-
-    --border: #2a302d;
-    --border-interactive: #6e7873;  /* 4.02:1 */
-    --border-strong: #a8b2ae;
-
-    --brand: #4ecfb6;             /*  9.56:1 */
-    --brand-hover: #3fbfa6;
-    --brand-subtle: #12302a;
-    --on-brand: #0a1f1b;
-    --focus-ring: #4ecfb6;
-
-    --verdict-everyday-fg: #6fd3a6;      /* 8.50:1 on its tint */
-    --verdict-everyday-bg: #16281f;
-    --verdict-occasional-fg: #7cc2ec;    /* 8.13:1 */
-    --verdict-occasional-bg: #152430;
-    --verdict-limit-fg: #e8b75a;         /* 8.57:1 */
-    --verdict-limit-bg: #2a2113;
-    --verdict-doesnt-fit-fg: #b3a4e8;    /* 7.22:1 */
-    --verdict-doesnt-fit-bg: #221e33;
-    --verdict-insufficient-fg: #a6afb5;  /* 7.19:1 */
-    --verdict-insufficient-bg: #1e2224;
-
-    --allergen-fg: #f09bbb;              /* 8.11:1 */
-    --allergen-bg: #2e1522;
-    --allergen-border: #8f1746;
-
-    --danger-fg: #f0a0a0;
-    --danger-bg: #2e1616;
-    --success-fg: #6fd3a6;
-    --success-bg: #16281f;
-
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-md: 0 4px 12px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 -8px 28px rgb(0 0 0 / 0.6);
-  }
-}
-
-/* Explicit user choice wins in both directions. */
 :root[data-theme='dark'] {
   --bg: #121513;
   --surface: #1b1f1d;
@@ -286,23 +247,24 @@
   --rail-fade: #ffffff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --card-bg: #1b1f1d;
-    --card-media-bg: #232826;
-    --card-border: #2a302d;
-    --rail-fade: #121513;
-    /* Category tints are darkened rather than swapped: the hue is the category's
-       identity and must survive the theme, but full-strength pastels glare on a
-       dark ground. */
-    --cat-tile-dim: 0.42;
-  }
-}
-
+/* Category tints are darkened rather than swapped, in the same explicit-opt-in
+   dark block above: the hue is the category's identity and must survive the
+   theme, but full-strength pastels glare on a dark ground. */
 :root[data-theme='dark'] {
   --card-bg: #1b1f1d;
   --card-media-bg: #232826;
   --card-border: #2a302d;
   --rail-fade: #121513;
   --cat-tile-dim: 0.42;
+}
+
+/* Two numeric tokens grow on a larger viewport: the hero only appears on Home,
+   and a card title has more room once cards themselves grow (see ProductCard.css
+   @768px). Every other type token stays fixed across breakpoints on purpose —
+   scanability, not screen real estate, should decide most text sizes. */
+@media (min-width: 768px) {
+  :root {
+    --text-hero: 2.75rem;
+    --text-card-title: 1rem;
+  }
 }

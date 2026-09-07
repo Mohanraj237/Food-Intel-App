@@ -392,5 +392,8 @@
   "auth.signedIn": "You are signed in.",
   "auth.confirmPassword": "Confirm password",
   "auth.passwordMismatch": "These passwords do not match.",
-  "consent.essential": "Always on — needed to use the app"
+  "consent.essential": "Always on — needed to use the app",
+  "settings.appearanceHeading": "Appearance",
+  "settings.appearanceDark": "Dark mode",
+  "settings.appearanceDarkHint": "Off by default. Turn on for a dark palette across the app."
 }

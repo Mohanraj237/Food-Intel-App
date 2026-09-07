@@ -116,7 +116,7 @@
 }
 
 .pcard__name {
-  font-size: var(--text-sm);
+  font-size: var(--text-card-title);
   font-weight: 600;
   line-height: var(--leading-snug);
   color: var(--text);
@@ -125,7 +125,7 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: calc(2 * var(--text-sm) * var(--leading-snug));
+  min-height: calc(2 * var(--text-card-title) * var(--leading-snug));
 }
 
 .pcard__size {
@@ -215,5 +215,4 @@
 
 @media (min-width: 1024px) {
   .pcard--rail { width: 196px; }
-  .pcard__name { font-size: var(--text-body); }
 }

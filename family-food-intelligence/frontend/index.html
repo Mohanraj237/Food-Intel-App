@@ -3,11 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0E7C6B" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#121513" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#0E7C6B" />
     <meta name="description" content="Understand what a packaged food product means for the people in your household." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Family Food Intelligence</title>
+    <script>
+      // Applies a previously chosen dark theme before first paint, so there is
+      // no light-then-dark flash. Light is the default for everyone who has
+      // never touched the Appearance toggle in Settings — this never reads
+      // the OS preference (see src/lib/theme.ts).
+      (function () {
+        try {
+          if (localStorage.getItem('ffi-theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
