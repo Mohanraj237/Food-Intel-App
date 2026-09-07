@@ -44,7 +44,8 @@ services:
       retries: 20
     restart: unless-stopped
 
-  # One-shot: creates the bucket and locks it to private access.
+  # One-shot: creates both buckets the app expects (platform.storage.ObjectStorageClient /
+  # AppProperties.Storage) and sets the access level each one's data actually needs.
   minio-init:
     image: minio/mc:RELEASE.2025-04-16T18-13-26Z
     container_name: ffi-minio-init
@@ -56,7 +57,9 @@ services:
       mc alias set local http://minio:9000 minioadmin minioadmin &&
       mc mb --ignore-existing local/familyfood-labels &&
       mc anonymous set none local/familyfood-labels &&
-      echo 'bucket ready (private)'
+      mc mb --ignore-existing local/familyfood-catalogue-images &&
+      mc anonymous set download local/familyfood-catalogue-images &&
+      echo 'buckets ready (labels: private, catalogue-images: public-read)'
       "
 
 volumes:
