@@ -88,7 +88,6 @@
 .comparepage__art--fallback {
   display: grid;
   place-items: center;
-  filter: saturate(var(--cat-tile-dim)) brightness(calc(0.4 + 0.6 * var(--cat-tile-dim)));
 }
 
 /* `contain`, not `cover` — matches `ProductCard`/`ProductScreen`: a real pack
@@ -101,9 +100,9 @@
 }
 
 .comparepage__glyph {
-  font-size: 2.5rem;
+  font-size: 2rem;
   line-height: 1;
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.18));
+  opacity: 0.75;
 }
 
 .comparepage__identity {
@@ -194,7 +193,6 @@
 .comparepage__result-art--fallback {
   display: grid;
   place-items: center;
-  filter: saturate(var(--cat-tile-dim)) brightness(calc(0.4 + 0.6 * var(--cat-tile-dim)));
 }
 
 .comparepage__result-art--photo {

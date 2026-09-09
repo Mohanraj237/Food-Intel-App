@@ -61,53 +61,50 @@
 .rail--products > * { flex: 0 0 auto; }
 
 /* ---- category tiles ----
-   A full-bleed art card, not an icon-with-a-caption: the category's gradient
-   fills the whole tile and the name sits on a scrim at the bottom, the way a
-   photo-backed category tile would if we had real photography. The white
-   label-on-scrim is a deliberate, narrow exception to reading text colour off
-   theme tokens — it sits on generated art, not the page background, and the
-   scrim keeps it legible against any of the 13 category hues in either
-   theme. */
+   A small icon on a soft flat tint, label underneath — the "browse by
+   category" pattern a grocery app's own category row uses, not a row of big
+   saturated colour blocks. The tint (CategoryArt.tsx's categoryTint) mixes
+   into the theme's own card background, so it's automatically correct in
+   dark mode with no separate filter. */
 
-.rail--categories { gap: var(--space-3); }
+.rail--categories { gap: var(--space-4); }
 
 .cat-tile {
-  position: relative;
   flex: 0 0 auto;
-  display: block;
-  width: 132px;
-  height: 100px;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 76px;
   text-decoration: none;
   scroll-snap-align: start;
-  filter: saturate(var(--cat-tile-dim)) brightness(calc(0.5 + 0.5 * var(--cat-tile-dim)));
+}
+
+.cat-tile__art {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--card-border);
   transition: transform var(--dur-fast) var(--ease);
 }
 
 @media (hover: hover) {
-  .cat-tile:hover { transform: translateY(-2px); }
+  .cat-tile:hover .cat-tile__art { transform: translateY(-2px); }
 }
 
 .cat-tile__glyph {
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
-  font-size: 1.5rem;
+  font-size: 1.625rem;
   line-height: 1;
   opacity: 0.85;
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.2));
 }
 
 .cat-tile__label {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  padding: var(--space-5) var(--space-3) var(--space-2);
-  background: linear-gradient(to top, rgb(10 15 13 / 0.62), transparent);
-  color: #fff;
-  font-size: var(--text-sm);
-  font-weight: 700;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
   line-height: var(--leading-snug);
   /* Two lines max keeps every tile in a row the same height. */
   display: -webkit-box;
@@ -117,7 +114,10 @@
 }
 
 @media (min-width: 768px) {
-  .cat-tile { width: 156px; height: 116px; }
+  .cat-tile { width: 84px; }
+  .cat-tile__art { width: 72px; height: 72px; }
+  .cat-tile__glyph { font-size: 1.875rem; }
+  .cat-tile__label { font-size: var(--text-sm); }
 }
 
 /* ---- product grid ---- */

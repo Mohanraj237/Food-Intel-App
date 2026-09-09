@@ -5,12 +5,19 @@
  * can browse. But we have no product photography, and inventing one would mean
  * putting an image next to a real brand's name that the brand never produced.
  *
- * So every category gets a deliberately stylised gradient and glyph instead. It
+ * So every category gets a deliberately stylised tint and glyph instead — a
+ * small icon-on-a-soft-background, not a photograph standing in for one. It
  * gives a card and a tile the visual anchor they need, it is consistent for a
  * given product on every screen, and it is obviously a graphic rather than a
  * photograph of a pack — which is the honest position while `imageUrl` is null.
  * When real, sourced imagery exists, `ProductImage` uses it and this becomes the
  * fallback.
+ *
+ * `categoryTint` (a flat, muted wash) replaced an earlier full-saturation
+ * two-stop gradient: with real photo coverage still partial, a rail of mixed
+ * real photos and fallback tiles needs the fallback to read as "a calm icon
+ * placeholder", not "a big colourful block" competing with the photos next to
+ * it for attention.
  */
 
 export type CategoryCode =
@@ -77,6 +84,19 @@ export function categoryGradient(code: string | null | undefined, seed = ''): st
   const { from, to } = categoryStyle(code);
   const angle = Math.round(120 + hashUnit(seed) * 120); // 120deg–240deg
   return `linear-gradient(${angle}deg, ${from} 0%, ${to} 100%)`;
+}
+
+/**
+ * A soft, flat wash — 20% of the category colour mixed into the current
+ * theme's own card surface, so the tint is pastel in light mode and a muted
+ * dark tone in dark mode without a separate dimming multiplier. This is the
+ * fallback background for a product's own image (small, one product among
+ * real photos); {@link categoryGradient} remains available for the category
+ * discovery tiles, where a bolder, more saturated identity is the point.
+ */
+export function categoryTint(code: string | null | undefined): string {
+  const { from } = categoryStyle(code);
+  return `color-mix(in srgb, ${from} 20%, var(--card-bg))`;
 }
 
 export function categoryGlyph(code: string | null | undefined): string {

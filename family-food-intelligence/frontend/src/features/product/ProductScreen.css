@@ -42,10 +42,10 @@
 }
 
 /* The gradient+glyph fallback only — a real photo must not be desaturated. */
+/* Flat, muted tint (CategoryArt.tsx's categoryTint) — see ProductCard.css. */
 .pdp__art--fallback {
   display: grid;
   place-items: center;
-  filter: saturate(var(--cat-tile-dim)) brightness(calc(0.4 + 0.6 * var(--cat-tile-dim)));
 }
 
 /* `contain`, not `cover` — matches ProductCard: a real photo is rarely
@@ -61,8 +61,8 @@
 }
 
 .pdp__glyph {
-  font-size: 3.5rem;
-  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.2));
+  font-size: 3rem;
+  opacity: 0.75;
 }
 
 .pdp__identity { min-width: 0; }
@@ -256,7 +256,7 @@
   .pdp__hero { border-bottom: 0; }
 
   .pdp__art { max-width: 320px; }
-  .pdp__glyph { font-size: 4rem; }
+  .pdp__glyph { font-size: 3.5rem; }
   .pdp__name { font-size: var(--text-display); }
   .pdp__section { max-width: 780px; }
 }

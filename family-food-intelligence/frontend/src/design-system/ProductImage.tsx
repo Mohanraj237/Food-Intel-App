@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { categoryGlyph, categoryGradient } from './CategoryArt';
+import { categoryGlyph, categoryTint } from './CategoryArt';
 
 interface ProductImageProps {
   // `| undefined` alongside the optional `?` because callers destructure an
@@ -33,7 +33,7 @@ interface ProductImageProps {
  * each consumer keep its own existing class names so their sizing CSS needs
  * no change.
  */
-export function ProductImage({ imageUrl, categoryCode, seed, alt, classNames }: ProductImageProps) {
+export function ProductImage({ imageUrl, categoryCode, alt, classNames }: ProductImageProps) {
   const [broken, setBroken] = useState(false);
 
   if (imageUrl && !broken) {
@@ -52,7 +52,7 @@ export function ProductImage({ imageUrl, categoryCode, seed, alt, classNames }: 
   return (
     <div
       className={classNames?.art}
-      style={{ backgroundImage: categoryGradient(categoryCode, seed) }}
+      style={{ backgroundColor: categoryTint(categoryCode) }}
       aria-hidden={alt === '' ? true : undefined}
     >
       <span className={classNames?.glyph}>{categoryGlyph(categoryCode)}</span>

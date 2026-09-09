@@ -60,17 +60,19 @@
   box-sizing: border-box;
 }
 
+/* A flat, muted tint (see CategoryArt.tsx's categoryTint) — a calm icon
+   placeholder, not a saturated block competing with the real photos next to
+   it in the same rail. No filter needed: the tint already mixes into the
+   theme's own card background, so it's automatically correct in dark mode. */
 .pcard__art {
   display: grid;
   place-items: center;
-  filter: saturate(var(--cat-tile-dim)) brightness(calc(0.4 + 0.6 * var(--cat-tile-dim)));
 }
 
 .pcard__glyph {
-  font-size: 2.25rem;
+  font-size: 1.75rem;
   line-height: 1;
-  /* A soft shadow keeps the glyph legible on the lighter end of every gradient. */
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.18));
+  opacity: 0.75;
 }
 
 /* The allergen marker is the one thing allowed to interrupt the media area,
@@ -210,7 +212,7 @@
 
 @media (min-width: 768px) {
   .pcard--rail { width: 178px; }
-  .pcard__glyph { font-size: 2.75rem; }
+  .pcard__glyph { font-size: 2rem; }
 }
 
 @media (min-width: 1024px) {

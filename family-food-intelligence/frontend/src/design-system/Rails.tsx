@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { categoryGlyph, categoryGradient } from './CategoryArt';
+import { categoryGlyph, categoryTint } from './CategoryArt';
 import { ProductCard, ProductCardSkeleton, type ProductCardData } from './ProductCard';
 import './Rails.css';
 
@@ -41,10 +41,12 @@ export interface CategoryTileData {
  *
  * The fastest route into a catalogue for someone who does not yet have a
  * product in mind — and the reason a home screen feels like a shop rather
- * than a search box. Each tile is its category's full-bleed gradient art with
- * the name overlaid at the bottom on a scrim, so a row reads as a place to
- * browse rather than a row of labelled icons. Deliberately stylised, never a
- * stock photo standing in for a real pack — see CategoryArt.tsx.
+ * than a search box. A small icon on a soft, flat tint with its label
+ * underneath — the same "small icon + caption" shape a grocery app's own
+ * category row uses, since that's the pattern that actually reads as
+ * "browse by category" rather than "here are some big colourful shapes".
+ * Deliberately stylised, never a stock photo standing in for a real pack —
+ * see CategoryArt.tsx.
  */
 export function CategoryRail({ categories }: { categories: CategoryTileData[] }) {
   return (
@@ -55,10 +57,13 @@ export function CategoryRail({ categories }: { categories: CategoryTileData[] })
           to={`/search?category=${encodeURIComponent(c.code)}`}
           className="cat-tile"
           role="listitem"
-          style={{ backgroundImage: categoryGradient(c.code, c.code) }}
         >
-          <span className="cat-tile__glyph" aria-hidden="true">
-            {categoryGlyph(c.code)}
+          <span
+            className="cat-tile__art"
+            style={{ backgroundColor: categoryTint(c.code) }}
+            aria-hidden="true"
+          >
+            <span className="cat-tile__glyph">{categoryGlyph(c.code)}</span>
           </span>
           <span className="cat-tile__label">{c.name}</span>
         </Link>
@@ -71,7 +76,10 @@ export function CategoryRailSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div className="rail rail--categories scroll-x" aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="cat-tile pcard__shimmer" />
+        <div key={i} className="cat-tile">
+          <span className="cat-tile__art pcard__shimmer" />
+          <span className="cat-tile__label pcard__shimmer" style={{ height: 10, width: 44 }} />
+        </div>
       ))}
     </div>
   );
