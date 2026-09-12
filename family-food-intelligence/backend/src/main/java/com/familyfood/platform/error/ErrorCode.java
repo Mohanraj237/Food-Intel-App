@@ -50,6 +50,31 @@ public enum ErrorCode {
     INVITATION_INVALID(HttpStatus.GONE, "error.invitation_invalid"),
     CONTRIBUTION_ALREADY_REVIEWED(HttpStatus.CONFLICT, "error.contribution_already_reviewed"),
 
+    // ---- wellness metrics (D-036, D-037) ----
+    /**
+     * The metric is not permitted for this subject's age band — a body or clinical metric on
+     * a child subject (D-036). A distinct code rather than ACCESS_DENIED because it is not
+     * an authorization failure: no actor, however privileged, may record it. The guardian is
+     * not being told "you lack permission", they are being told "we do not store this for a
+     * child", which is a different sentence and a deliberate product commitment.
+     */
+    METRIC_NOT_PERMITTED_FOR_AGE(HttpStatus.UNPROCESSABLE_ENTITY, "error.metric_not_permitted_for_age"),
+    /**
+     * The subject has no current profile, so their age band is unknown and the D-036 gate
+     * cannot be evaluated. Fails closed: an unknown age is treated as possibly a child.
+     */
+    PROFILE_REQUIRED_FOR_METRIC(HttpStatus.UNPROCESSABLE_ENTITY, "error.profile_required_for_metric"),
+
+    // ---- nutrition / goals / habits (Phase 2, D-039) ----
+    /** A meal must name at least one member's portion, or it records nothing for anyone. */
+    MEAL_HAS_NO_PORTIONS(HttpStatus.UNPROCESSABLE_ENTITY, "error.meal_has_no_portions"),
+    /** A meal must contain at least one item. */
+    MEAL_HAS_NO_ITEMS(HttpStatus.UNPROCESSABLE_ENTITY, "error.meal_has_no_items"),
+    /** A portion names someone who is not a live member of this meal's household. */
+    PORTION_MEMBER_NOT_IN_HOUSEHOLD(HttpStatus.UNPROCESSABLE_ENTITY, "error.portion_member_not_in_household"),
+    /** A goal already exists for this member and metric; end it before starting another. */
+    GOAL_ALREADY_ACTIVE(HttpStatus.CONFLICT, "error.goal_already_active"),
+
     // ---- product data (Constitution §77) ----
     BARCODE_AMBIGUOUS(HttpStatus.CONFLICT, "error.barcode_ambiguous"),
     PRODUCT_DATA_INSUFFICIENT(HttpStatus.UNPROCESSABLE_ENTITY, "error.product_data_insufficient"),

@@ -5,7 +5,10 @@ import { t } from '@/lib/i18n';
 import { useIsSignedIn } from '@/lib/useSession';
 import { useMyHousehold } from '@/lib/useMyHousehold';
 import { listMembers, type HouseholdMember } from '@/lib/household';
-import { formatAmount, getProduct, searchProducts, type ProductDetail, type ProductSummary } from '@/lib/catalog';
+import { getProduct, searchProducts, type ProductDetail, type ProductSummary } from '@/lib/catalog';
+import { formatAmount, isPlausible } from '@/lib/nutrition';
+import { displayProductName, normaliseBrand } from '@/lib/productName';
+import { useDocumentTitleKey } from '@/lib/useDocumentTitle';
 import { getHouseholdFit, getProductHealth, type HouseholdFit } from '@/lib/scoring';
 import { recordActivity } from '@/lib/activity';
 import { ProductImage } from '@/design-system/ProductImage';
@@ -26,6 +29,7 @@ import './CompareScreen.css';
  * only when the underlying fact is real; nothing here is computed by guessing.
  */
 export function CompareScreen() {
+  useDocumentTitleKey('compare.heading');
   const [params, setParams] = useSearchParams();
   const aId = params.get('a');
   const bId = params.get('b');
@@ -173,8 +177,8 @@ function ProductHeaderCard({
           }}
         />
         <span className="comparepage__identity">
-          <span className="comparepage__brand">{product.brandName}</span>
-          <span className="comparepage__name">{product.name}</span>
+          <span className="comparepage__brand">{normaliseBrand(product.brandName)}</span>
+          <span className="comparepage__name">{displayProductName(product).text}</span>
         </span>
       </div>
       <div className="comparepage__slot-actions">
@@ -239,8 +243,13 @@ function ProductPicker({ excludeId, onPick }: { excludeId: string; onPick: (id: 
                 }}
               />
               <span className="comparepage__result-text">
-                <span className="comparepage__result-brand">{item.brandName}</span>
-                <span className="comparepage__result-name">{item.name}</span>
+                <span className="comparepage__result-brand">{normaliseBrand(item.brandName)}</span>
+                <span className="comparepage__result-name">{displayProductName(item).text}</span>
+                {item.packSize?.value != null && item.packSize.unit && (
+                  <span className="comparepage__result-size">
+                    {formatAmount(item.packSize.value)} {item.packSize.unit}
+                  </span>
+                )}
               </span>
               <Button variant="secondary" size="sm" onClick={() => onPick(item.id)}>
                 {t('compare.pick')}
@@ -256,66 +265,146 @@ function ProductPicker({ excludeId, onPick }: { excludeId: string; onPick: (id: 
 /* --------------------------------------------------------------- the table */
 
 function ComparisonTable({ a, b }: { a: ProductDetail; b: ProductDetail }) {
+  // Comparing instant noodles against dark chocolate per 100 g is arithmetically
+  // valid and practically meaningless. We still allow it — a shopper may have a
+  // real reason — but we say so, rather than letting "compared per 100 g so the
+  // products line up" imply the two are interchangeable.
+  const differentCategories =
+    a.categoryCode !== null && b.categoryCode !== null && a.categoryCode !== b.categoryCode;
+
   return (
-    <div className="scroll-x">
-      <table className="comparetable">
-        <caption className="sr-only">{t('compare.heading')}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t('compare.heading')}</th>
-            <th scope="col">
-              <span className="comparetable__col-brand">{a.brandName}</span>
-              <span className="comparetable__col-name">{a.name}</span>
-            </th>
-            <th scope="col">
-              <span className="comparetable__col-brand">{b.brandName}</span>
-              <span className="comparetable__col-name">{b.name}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th scope="row">{t('compare.dimension.health')}</th>
-            <td><HealthCell productId={a.id} /></td>
-            <td><HealthCell productId={b.id} /></td>
-          </tr>
-          <tr>
-            <th scope="row">{t('compare.dimension.familyFit')}</th>
-            <td><FamilyFitCell product={a} /></td>
-            <td><FamilyFitCell product={b} /></td>
-          </tr>
-          {NUTRIENT_ROWS.map((row) => (
-            <tr key={row.code}>
-              <th scope="row">{t(row.labelKey)}</th>
-              <td>{nutrientCell(a, row.code)}</td>
-              <td>{nutrientCell(b, row.code)}</td>
+    <>
+      {differentCategories && (
+        <p className="comparetable__mismatch" role="note">
+          {t('compare.differentCategories')}
+        </p>
+      )}
+      <div className="scroll-x">
+        <table className="comparetable">
+          <caption className="sr-only">{t('compare.heading')}</caption>
+          <thead>
+            <tr>
+              {/* This column holds the row labels, not a comparison. It was
+                  headed "Compare", which made the word mean three different
+                  things on one screen. */}
+              <th scope="col">{t('compare.perColumn')}</th>
+              <th scope="col">
+                <span className="comparetable__col-brand">{normaliseBrand(a.brandName)}</span>
+                <span className="comparetable__col-name">{displayProductName(a).text}</span>
+              </th>
+              <th scope="col">
+                <span className="comparetable__col-brand">{normaliseBrand(b.brandName)}</span>
+                <span className="comparetable__col-name">{displayProductName(b).text}</span>
+              </th>
             </tr>
-          ))}
-          <tr>
-            <th scope="row">{t('compare.dimension.allergens')}</th>
-            <td>{allergenCell(a)}</td>
-            <td>{allergenCell(b)}</td>
-          </tr>
-          <tr>
-            <th scope="row">{t('compare.dimension.ingredients')}</th>
-            <td className="comparetable__ingredients">{ingredientsCell(a)}</td>
-            <td className="comparetable__ingredients">{ingredientsCell(b)}</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">{t('compare.dimension.health')}</th>
+              <td><HealthCell productId={a.id} /></td>
+              <td><HealthCell productId={b.id} /></td>
+            </tr>
+            <tr>
+              <th scope="row">{t('compare.dimension.familyFit')}</th>
+              <td><FamilyFitCell product={a} /></td>
+              <td><FamilyFitCell product={b} /></td>
+            </tr>
+            {NUTRIENT_ROWS.map((row) => (
+              <NutrientComparisonRow key={row.code} a={a} b={b} row={row} />
+            ))}
+            <tr>
+              <th scope="row">{t('compare.dimension.allergens')}</th>
+              <td>{allergenCell(a)}</td>
+              <td>{allergenCell(b)}</td>
+            </tr>
+            <tr>
+              <th scope="row">{t('compare.dimension.ingredients')}</th>
+              <td>{ingredientsCell(a)}</td>
+              <td>{ingredientsCell(b)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p className="comparetable__note">{t('compare.basisNote')}</p>
-    </div>
+    </>
   );
 }
 
-const NUTRIENT_ROWS: ReadonlyArray<{ code: string; labelKey: 'compare.dimension.energy' | 'compare.dimension.protein' | 'compare.dimension.sugar' | 'compare.dimension.addedSugar' | 'compare.dimension.sodium' | 'compare.dimension.satFat' | 'compare.dimension.fibre' }> = [
-  { code: 'ENERGY_KCAL', labelKey: 'compare.dimension.energy' },
-  { code: 'PROTEIN_G', labelKey: 'compare.dimension.protein' },
-  { code: 'TOTAL_SUGAR_G', labelKey: 'compare.dimension.sugar' },
-  { code: 'ADDED_SUGAR_G', labelKey: 'compare.dimension.addedSugar' },
-  { code: 'SODIUM_MG', labelKey: 'compare.dimension.sodium' },
-  { code: 'SAT_FAT_G', labelKey: 'compare.dimension.satFat' },
-  { code: 'FIBRE_G', labelKey: 'compare.dimension.fibre' },
+/**
+ * One nutrient row, with the more favourable of the two values marked.
+ *
+ * A comparison that styles 45.1 g and 2.9 g of sugar identically leaves the
+ * reader to do the arithmetic the screen exists to do for them. The marking is
+ * deliberately restrained — a quiet label and a weight change, not a red/green
+ * verdict — because "lower sodium" is a fact about two numbers, not a judgement
+ * about which product someone should buy.
+ *
+ * Direction matters: less is better for sugar, sodium and saturated fat; more
+ * is better for protein and fibre; energy is left unmarked because neither
+ * direction is a goal on its own.
+ */
+function NutrientComparisonRow({
+  a,
+  b,
+  row,
+}: {
+  a: ProductDetail;
+  b: ProductDetail;
+  row: (typeof NUTRIENT_ROWS)[number];
+}) {
+  const left = comparableAmount(a, row.code);
+  const right = comparableAmount(b, row.code);
+
+  let better: 'a' | 'b' | null = null;
+  if (row.better !== null && left !== null && right !== null && left !== right) {
+    const leftWins = row.better === 'lower' ? left < right : left > right;
+    better = leftWins ? 'a' : 'b';
+  }
+
+  const marker = row.better === 'lower' ? t('compare.betterValue') : t('compare.betterValueHigher');
+
+  return (
+    <tr>
+      <th scope="row">{t(row.labelKey)}</th>
+      <td className={better === 'a' ? 'comparetable__cell--better' : undefined}>
+        {nutrientCell(a, row.code)}
+        {better === 'a' && <span className="comparetable__marker">{marker}</span>}
+      </td>
+      <td className={better === 'b' ? 'comparetable__cell--better' : undefined}>
+        {nutrientCell(b, row.code)}
+        {better === 'b' && <span className="comparetable__marker">{marker}</span>}
+      </td>
+    </tr>
+  );
+}
+
+/** The per-100 amount, or `null` when it is missing or cannot be true. */
+function comparableAmount(product: ProductDetail, code: string): number | null {
+  const row = product.nutrients.find((n) => n.nutrientCode === code);
+  if (!row || !isPlausible(row.amountPer100, row.unit)) return null;
+  return row.amountPer100;
+}
+
+const NUTRIENT_ROWS: ReadonlyArray<{
+  code: string;
+  labelKey:
+    | 'compare.dimension.energy'
+    | 'compare.dimension.protein'
+    | 'compare.dimension.sugar'
+    | 'compare.dimension.addedSugar'
+    | 'compare.dimension.sodium'
+    | 'compare.dimension.satFat'
+    | 'compare.dimension.fibre';
+  /** Which direction is more favourable, or `null` where neither is a goal. */
+  better: 'lower' | 'higher' | null;
+}> = [
+  { code: 'ENERGY_KCAL', labelKey: 'compare.dimension.energy', better: null },
+  { code: 'PROTEIN_G', labelKey: 'compare.dimension.protein', better: 'higher' },
+  { code: 'TOTAL_SUGAR_G', labelKey: 'compare.dimension.sugar', better: 'lower' },
+  { code: 'ADDED_SUGAR_G', labelKey: 'compare.dimension.addedSugar', better: 'lower' },
+  { code: 'SODIUM_MG', labelKey: 'compare.dimension.sodium', better: 'lower' },
+  { code: 'SAT_FAT_G', labelKey: 'compare.dimension.satFat', better: 'lower' },
+  { code: 'FIBRE_G', labelKey: 'compare.dimension.fibre', better: 'higher' },
 ];
 
 function nutrientCell(product: ProductDetail, code: string) {
@@ -323,9 +412,18 @@ function nutrientCell(product: ProductDetail, code: string) {
   if (!row || row.amountPer100 == null) {
     return <span className="nutri__missing">{t('product.notDeclared')}</span>;
   }
+  // Same rule as the product panel: a figure that cannot be true is withheld
+  // rather than compared. See lib/nutrition.ts.
+  if (!isPlausible(row.amountPer100, row.unit)) {
+    return (
+      <span className="nutri__implausible" title={t('product.valueImplausible')}>
+        {t('product.valueImplausibleShort')}
+      </span>
+    );
+  }
   return (
     <span className="nutri__value">
-      {formatAmount(row.amountPer100)}
+      {formatAmount(row.amountPer100)}{' '}
       <span className="nutri__unit">{row.unit}</span>
     </span>
   );
@@ -339,15 +437,24 @@ function allergenCell(product: ProductDetail) {
   return <span>{declared.map((a) => a.displayName).join(', ')}</span>;
 }
 
+/**
+ * The clamp lives on an inner element, never on the `<td>`.
+ *
+ * `.comparetable__ingredients` set `display: -webkit-box` directly on the cell,
+ * which takes it out of table layout altogether — the sibling cell then fell
+ * below this one instead of sitting beside it, breaking row alignment on the
+ * one row where two products differ most.
+ */
 function ingredientsCell(product: ProductDetail) {
   if (product.ingredients.length === 0) {
     return <span className="nutri__missing">{t('product.notDeclared')}</span>;
   }
-  return product.ingredients
+  const text = product.ingredients
     .slice()
     .sort((x, y) => x.position - y.position)
     .map((i) => i.rawText)
     .join(', ');
+  return <span className="comparetable__ingredients">{text}</span>;
 }
 
 function HealthCell({ productId }: { productId: string }) {
@@ -392,11 +499,38 @@ function FamilyFitCell({ product }: { product: ProductDetail }) {
     );
   }
 
-  if (myHousehold.isPending || members.isPending || fit.isPending) {
+  // Order matters, and getting it wrong is what made this cell spin forever.
+  //
+  // `members` and `fit` are disabled until a household id exists, and a disabled
+  // React Query stays `isPending` indefinitely — it is not loading, it has
+  // simply never been asked to run. Testing `isPending` first therefore showed
+  // "Working out results…" permanently to every signed-in user without a
+  // household, and made the `householdId === null` branch below unreachable.
+  // Resolve the household first, then distinguish a real in-flight fetch
+  // (`isLoading`) from a query that is merely idle.
+  if (myHousehold.isError) {
+    return <span className="nutri__missing">{t('fit.noMembers')}</span>;
+  }
+
+  if (myHousehold.isPending) {
     return <span className="nutri__missing">{t('loading.fit')}</span>;
   }
 
-  if (myHousehold.isError || members.isError || fit.isError || householdId === null) {
+  if (householdId === null) {
+    return <span className="nutri__missing">{t('fit.noMembers')}</span>;
+  }
+
+  if (members.isError || fit.isError) {
+    // A failure is not the same as "no members" — say so, and let the reader
+    // retry from the product page rather than staring at a spinner.
+    return <span className="nutri__missing">{t('compare.fitUnavailable')}</span>;
+  }
+
+  if (members.isLoading || fit.isLoading) {
+    return <span className="nutri__missing">{t('loading.fit')}</span>;
+  }
+
+  if (!members.isSuccess || !fit.isSuccess) {
     return <span className="nutri__missing">{t('fit.noMembers')}</span>;
   }
 

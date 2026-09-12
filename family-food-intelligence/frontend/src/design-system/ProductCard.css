@@ -35,9 +35,20 @@
   scroll-snap-align: start;
 }
 
+/* `flex: none` + `min-height: 0` are load-bearing, not defensive.
+   As a column flex item this box's automatic minimum size is its *content's*
+   intrinsic height, and a tall product photo (say 1530x3859) reports a height
+   far beyond the square this declares — so `aspect-ratio` silently lost and
+   cards rendered anywhere from 194px to 465px tall at the same width, leaving
+   ragged rows and large voids under the shorter ones. Pinning the item's size
+   to its aspect ratio makes every media box square again, which also removes
+   the layout shift as images arrive. */
 .pcard__media {
   position: relative;
   aspect-ratio: 1 / 1;
+  flex: none;
+  min-height: 0;
+  overflow: hidden;
   background: var(--card-media-bg);
 }
 
@@ -45,6 +56,7 @@
 .pcard__art {
   width: 100%;
   height: 100%;
+  max-height: 100%;
 }
 
 /* `contain`, not `cover`: a real product photo is rarely square (a bottle, a
@@ -128,6 +140,14 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   min-height: calc(2 * var(--text-card-title) * var(--leading-snug));
+}
+
+/* A name we had to construct because the stored one was only a barcode. Muted
+   and italic so it reads as a gap in our data, not as the product's real name. */
+.pcard__name--placeholder {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-weight: 500;
 }
 
 .pcard__size {

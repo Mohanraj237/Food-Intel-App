@@ -295,14 +295,52 @@
   background: var(--surface);
 }
 
+/* The clamp is on a span inside the cell, never on the cell itself. Setting
+   `display: -webkit-box` on a <td> removes it from table layout, which made the
+   second product's ingredients render underneath the first column instead of
+   beside it. */
 .comparetable__ingredients {
-  max-width: 220px;
+  display: -webkit-box;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   color: var(--text-secondary);
+}
+
+/* The more favourable of two values. Restrained on purpose: a weight change and
+   a quiet label, not a green "winner" badge — this states a fact about two
+   numbers, it does not recommend a purchase. */
+.comparetable__cell--better .nutri__value {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.comparetable__marker {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--brand);
+}
+
+/* Says plainly that a per-100 g comparison across two different kinds of food
+   only tells you so much. */
+.comparetable__mismatch {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--verdict-limit-fg);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.comparepage__result-size {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
 }
 
 .comparetable__chips {

@@ -17,6 +17,12 @@
   border-radius: var(--radius-md);
 }
 
+.consent-panel__empty-title {
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
 .consent-panel__empty-text { color: var(--text-secondary); }
 
 .consent-panel__members {

@@ -1,0 +1,84 @@
+/* Individual Mode.
+   Sections are separated by rules rather than boxed into cards: this is a page someone
+   reads top to bottom once a day, not a control panel they scan. Only the totals get a
+   surface, because they are the answer to the question in the heading. */
+
+.today__lede {
+  margin: 0 0 var(--space-6);
+  color: var(--text-secondary);
+  max-width: 60ch;
+}
+
+.today__section {
+  padding-top: var(--space-5);
+  margin-bottom: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.today__h2 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-lg);
+}
+
+.today__totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today__total {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.today__total-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.today__total-value {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.today__total-unit {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Distinct from a value on purpose. "Not logged" must never be mistaken for a measured
+   zero — they mean opposite things and only one of them is a fact about the person. */
+.today__total-none {
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--text-tertiary);
+}
+
+.today__meal-link {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.today__profile-note {
+  padding: var(--space-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { VerdictChip, type Verdict } from './VerdictChip';
 import { ProductImage } from './ProductImage';
 import { t } from '@/lib/i18n';
+import { formatAmount } from '@/lib/nutrition';
+import { displayProductName, normaliseBrand } from '@/lib/productName';
 import './ProductCard.css';
 
 export interface ProductCardData {
@@ -48,16 +50,22 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
 
   const size =
     packSize?.value != null && packSize.unit
-      ? `${formatNumber(packSize.value)} ${packSize.unit}`
+      ? `${formatAmount(packSize.value)} ${packSize.unit}`
       : null;
 
   const needsVerification = dataQuality === 'CONFLICTING' || dataQuality === 'NEEDS_REVIEW';
+
+  // A row whose stored name is only its barcode gets a description built from
+  // what is actually known, and is marked so it reads as a gap rather than a
+  // confident label. See lib/productName.ts.
+  const brand = normaliseBrand(brandName);
+  const displayName = displayProductName({ name, brandName, packSize, categoryName: product.categoryName ?? null });
 
   return (
     <Link
       to={`/product/${id}`}
       className={`pcard pcard--${layout}`}
-      aria-label={`${brandName} ${name}${size ? `, ${size}` : ''}`}
+      aria-label={`${brand} ${displayName.text}${size ? `, ${size}` : ''}`}
     >
       <div className="pcard__media">
         <ProductImage
@@ -77,8 +85,13 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
       </div>
 
       <div className="pcard__body">
-        <p className="pcard__brand">{brandName}</p>
-        <p className="pcard__name">{name}</p>
+        <p className="pcard__brand">{brand}</p>
+        <p className={displayName.isPlaceholder ? 'pcard__name pcard__name--placeholder' : 'pcard__name'}>
+          {displayName.text}
+        </p>
+        {displayName.isPlaceholder && (
+          <p className="pcard__size">{t('product.nameMissing')}</p>
+        )}
         {size && <p className="pcard__size">{size}</p>}
 
         <div className="pcard__decision">
@@ -101,10 +114,6 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
       </div>
     </Link>
   );
-}
-
-function formatNumber(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 /** Matches the card's exact box sizes so a grid does not reflow when data lands. */

@@ -6,6 +6,9 @@ import { useIsSignedIn } from '@/lib/useSession';
 import { useMyHousehold } from '@/lib/useMyHousehold';
 import { listMembers, type HouseholdMember } from '@/lib/household';
 import { getProduct, type NutrientRow } from '@/lib/catalog';
+import { formatAmount } from '@/lib/nutrition';
+import { displayProductName, normaliseBrand } from '@/lib/productName';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { getHouseholdFit, type PersonalFit } from '@/lib/scoring';
 import { recordActivity } from '@/lib/activity';
 import { ProductImage } from '@/design-system/ProductImage';
@@ -58,6 +61,13 @@ export function ProductScreen() {
     }
   }, [signedIn, product.isSuccess, product.data?.id]);
 
+  // Called before the early returns below, so the hook order never changes.
+  useDocumentTitle(
+    product.data
+      ? `${normaliseBrand(product.data.brandName)} ${displayProductName(product.data).text}`.trim()
+      : null,
+  );
+
   if (product.isPending) {
     return (
       <div className="pdp">
@@ -82,6 +92,17 @@ export function ProductScreen() {
   }
 
   const p = product.data;
+  const brand = normaliseBrand(p.brandName);
+  const displayName = displayProductName({
+    name: p.name,
+    brandName: p.brandName,
+    packSize: p.packSize,
+    categoryName: p.categoryName,
+  });
+  const metaParts = [
+    p.packSize?.value != null ? `${formatAmount(p.packSize.value)} ${p.packSize.unit ?? ''}`.trim() : '',
+    p.categoryName ?? '',
+  ].filter((part) => part.length > 0);
   const declaredAllergens = p.allergens.filter((a) => a.declarationType === 'CONTAINS');
   const mayContain = p.allergens.filter((a) => a.declarationType === 'MAY_CONTAIN');
   const version = p.currentVersion;
@@ -96,6 +117,22 @@ export function ProductScreen() {
           for why that order may never change. */}
       <div className="pdp__layout">
         <div className="pdp__col-left">
+          {/* A way back out. A product page is most often entered directly —
+              from a scan, a shared link, or search — so without this the only
+              route back to the catalogue is the browser's own back button,
+              which does not exist as an affordance on the page. */}
+          <nav className="pdp__crumbs" aria-label={t('product.breadcrumbAll')}>
+            <Link to="/search">{t('product.breadcrumbAll')}</Link>
+            {p.categoryName && p.categoryCode && (
+              <>
+                <span aria-hidden="true">›</span>
+                <Link to={`/search?category=${encodeURIComponent(p.categoryCode)}`}>
+                  {p.categoryName}
+                </Link>
+              </>
+            )}
+          </nav>
+
           <header className="pdp__hero">
             <ProductImage
               imageUrl={p.imageUrl}
@@ -104,17 +141,21 @@ export function ProductScreen() {
               alt=""
               classNames={{
                 img: 'pdp__art pdp__art--photo',
-                art: 'pdp__art pdp__art--fallback',
+                art: `pdp__art pdp__art--fallback${p.imageUrl ? '' : ' pdp__art--placeholder'}`,
                 glyph: 'pdp__glyph',
               }}
             />
             <div className="pdp__identity">
-              <p className="pdp__brand">{p.brandName}</p>
-              <h1 className="pdp__name">{p.name}</h1>
-              <p className="pdp__meta">
-                {p.packSize?.value != null && `${p.packSize.value} ${p.packSize.unit ?? ''}`}
-                {p.categoryName && ` · ${p.categoryName}`}
-              </p>
+              <p className="pdp__brand">{brand}</p>
+              <h1 className={displayName.isPlaceholder ? 'pdp__name pdp__name--placeholder' : 'pdp__name'}>
+                {displayName.text}
+              </h1>
+              {/* Joined, not concatenated: building this inline left a dangling
+                  "· Category" whenever a product had no declared pack size. */}
+              {metaParts.length > 0 && <p className="pdp__meta">{metaParts.join(' · ')}</p>}
+              {displayName.isPlaceholder && (
+                <p className="pdp__meta">{t('product.nameMissing')}</p>
+              )}
             </div>
           </header>
         </div>

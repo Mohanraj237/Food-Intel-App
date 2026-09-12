@@ -46,6 +46,16 @@ public enum AuditAction {
     PROFILE_CREATED,
     PROFILE_UPDATED,
 
+    // wellness observations (D-038). Separate from the child-data actions above on
+    // purpose: filing an adult's blood-pressure read under CHILD_DATA_ACCESSED would
+    // make the strictest audit category unusable for the thing it exists to track.
+    HEALTH_DATA_ACCESSED,
+    HEALTH_DATA_ACCESS_DENIED,
+    HEALTH_METRIC_RECORDED,
+    HEALTH_METRIC_REFUSED_FOR_AGE,
+    HEALTH_VISIBILITY_GRANTED,
+    HEALTH_VISIBILITY_REVOKED,
+
     // catalogue
     PRODUCT_VERSION_PUBLISHED,
     PRODUCT_VERSION_SUPERSEDED,

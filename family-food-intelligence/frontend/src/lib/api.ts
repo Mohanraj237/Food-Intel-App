@@ -45,8 +45,12 @@ export class ApiError extends Error {
     details?: Record<string, unknown> | undefined;
     isTransportFailure?: boolean;
   }) {
+    // No interpolation here. The reference code is carried on the error and
+    // rendered as its own labelled line by ErrorState, so a message can never
+    // ship an unsubstituted `{correlationId}` when the server returns a body
+    // without one — which is exactly what users saw on any bare 5xx.
     const key = init.messageKey as MessageKey;
-    super(t(key, init.correlationId ? { correlationId: init.correlationId } : undefined));
+    super(t(key));
     this.name = 'ApiError';
     this.status = init.status;
     this.code = init.code;

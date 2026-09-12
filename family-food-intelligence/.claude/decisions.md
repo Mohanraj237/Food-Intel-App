@@ -37,5 +37,12 @@ This is a lookup index only. **The authoritative record is `docs/decisions/decis
 | D-031 | Dev catalogue import: Open Food Facts via the API, through `ProductIngestionService`, never marked `VERIFIED`, idempotent, ODbL attribution recorded per source row |
 | D-032 | Ops-review console: a single `UserAccount.role` (`MEMBER`/`OPS_REVIEWER`), checked server-side via `identity.application.OperatorAccess` on every call — no client-side admin assumption, no general permissions system |
 | D-033 | Recommendation module MVP scope: ranks by real allergen-safety deltas and (currently inert, D-024-ready) fired-rule deltas only — never an invented nutrient-direction judgment; empty `better_on`/`worse_on` is a first-class honest result until real scoring rules exist |
+| D-034 | **Product pivot to individual + family wellness platform.** Safety boundaries explicitly NOT relaxed (no diagnosis, no child weight targets, no child engagement mechanics, D-011/D-012 intact) |
+| D-035 | Individual Mode is a household of one (`household.is_individual`) — one person model, not two |
+| D-036 | **Supersedes D-017 for adults only.** Age band is the safety gate; weight/body metrics permitted for adults, refused in the domain for child bands (`METRIC_NOT_PERMITTED_FOR_AGE`) |
+| D-037 | Metric *capture* is permitted for adults; *interpretation* (categories, reference ranges) needs a citable standard + clinical signoff ⚖️ |
+| D-038 | Health visibility is per (subject, category, audience), default-closed; household role grants nothing; cross-member reads are audited |
+| D-039 | Supersedes D-005 — meal logging is in scope; outcome capture retained |
+| D-040 | **DEFERRED** — composite wellness score not built: no citable standard (D-009), and a family score ranks members by construction |
 
 To add a new decision: append it to `docs/decisions/decision-log.md` (never edit history — supersede with a new entry), then add its one-liner here.

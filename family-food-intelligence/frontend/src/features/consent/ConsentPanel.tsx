@@ -100,15 +100,36 @@ function isStaleHouseholdError(error: unknown): boolean {
   return error instanceof ApiError && error.code === 'NOT_HOUSEHOLD_MEMBER';
 }
 
+/**
+ * Says why there is nothing to choose yet.
+ *
+ * This used to render the *household* pitch — "a household lets you see how one
+ * product fits different people" — under a heading promising privacy controls.
+ * A reader sent here by a product page's "turn it on in Settings" found a
+ * household advertisement and no way to follow the instruction, and could
+ * reasonably conclude consent was broken. Name the actual dependency instead:
+ * consent is recorded per person, so it needs people first.
+ */
 function NoHousehold() {
   const signedIn = useIsSignedIn();
+
+  if (!signedIn) {
+    return (
+      <div className="consent-panel__empty">
+        <p className="consent-panel__empty-text">{t('household.signInRequired')}</p>
+        <Link to="/family" className="btn btn--secondary btn--sm">
+          {t('nav.family')}
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="consent-panel__empty">
-      <p className="consent-panel__empty-text">
-        {signedIn ? t('household.createExplainer') : t('household.signInRequired')}
-      </p>
+      <p className="consent-panel__empty-title">{t('consent.needsHouseholdTitle')}</p>
+      <p className="consent-panel__empty-text">{t('consent.needsHouseholdBody')}</p>
       <Link to="/family" className="btn btn--secondary btn--sm">
-        {t('nav.family')}
+        {t('household.create')}
       </Link>
     </div>
   );
@@ -255,7 +276,7 @@ function formatDate(iso: string): string {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : t('error.internal', { correlationId: '—' });
+  return error instanceof ApiError ? error.message : t('error.internal');
 }
 
 function activeGrantFor(grants: ConsentRecord[], purposeCode: string): ConsentRecord | undefined {

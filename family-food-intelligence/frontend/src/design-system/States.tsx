@@ -47,7 +47,7 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   const apiError = error instanceof ApiError ? error : null;
-  const message = apiError ? apiError.message : t('error.internal', { correlationId: '—' });
+  const message = apiError ? apiError.message : t('error.internal');
   const canRetry = onRetry && (apiError?.isRetryable ?? true);
 
   return (
@@ -55,7 +55,9 @@ export function ErrorState({
       <p className="state__title">{t('error.title')}</p>
       <p className="state__message">{message}</p>
       {apiError?.correlationId && (
-        <p className="state__reference">{apiError.correlationId}</p>
+        <p className="state__reference">
+          {t('error.reference', { correlationId: apiError.correlationId })}
+        </p>
       )}
       {canRetry && (
         <Button variant="secondary" onClick={onRetry}>

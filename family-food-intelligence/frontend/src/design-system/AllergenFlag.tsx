@@ -20,12 +20,30 @@ interface AllergenFlagProps {
   mayContain?: boolean;
 }
 
+/** Lower-cases a leading capital unless the word is an acronym or a proper noun
+ *  that keeps its capital wherever it appears. */
+function sentenceCase(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return trimmed;
+
+  const [first] = trimmed.split(/[\s-]/);
+  // All-caps tokens (SO2, INS) and multi-capital words are left alone.
+  if (first && first.length > 1 && first === first.toUpperCase()) return trimmed;
+
+  return trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
+}
+
 export function AllergenFlag({ allergens, mayContain = false }: AllergenFlagProps) {
   if (allergens.length === 0) {
     return null;
   }
 
-  const names = allergens.join(', ');
+  // These names come from the catalogue in title case ("Gluten-containing
+  // cereals"), and are interpolated into the middle of a sentence, which
+  // rendered as "Contains Gluten-containing cereals". Lower-casing only a
+  // leading capital keeps acronyms and proper nouns intact ("Brazil nuts",
+  // "SO2") while letting the sentence read as one.
+  const names = allergens.map(sentenceCase).join(', ');
 
   return (
     <div className="allergen-flag" role="status">

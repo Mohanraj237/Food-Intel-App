@@ -1,0 +1,116 @@
+/* Legal documents.
+   A reading measure, not the app's card grid: these are the two screens in the
+   product someone actually reads top to bottom, so the type gets room and the
+   line length is capped where prose stays comfortable. */
+
+.legal {
+  display: block;
+  max-width: 68ch;
+  margin-inline: auto;
+  padding: var(--space-4) var(--page-gutter) var(--space-8);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed, 1.65);
+}
+
+.legal__crumbs {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.legal__crumbs a { color: var(--text-secondary); }
+
+.legal__title {
+  margin: 0 0 var(--space-2);
+  color: var(--text);
+}
+
+.legal__lede {
+  margin: 0 0 var(--space-6);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+}
+
+.legal__section {
+  margin-bottom: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.legal__h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+  color: var(--text);
+}
+
+.legal__section p { margin: 0 0 var(--space-3); }
+
+.legal__list {
+  margin: 0 0 var(--space-4);
+  padding-inline-start: var(--space-5);
+}
+
+.legal__list li { margin-bottom: var(--space-2); }
+
+/* The purposes list is generated from the same consent policies Settings uses,
+   so the notice can never drift from what the software actually registers. */
+.legal__purposes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+}
+
+.legal__purpose {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  /* Consent records deep-link to `#personal_fit` and friends; without this the
+     target sits under the sticky header. */
+  scroll-margin-top: var(--space-8);
+}
+
+.legal__purpose dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.legal__purpose dd { margin: var(--space-2) 0 0; }
+
+.legal__tag {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+}
+
+.legal__muted {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.legal__notice {
+  padding: var(--space-3);
+  border-left: 3px solid var(--brand);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+/* Says plainly that this text has not been through legal review yet, rather
+   than letting a draft pass as a published notice. */
+.legal__review {
+  margin-top: var(--space-6);
+  padding: var(--space-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}

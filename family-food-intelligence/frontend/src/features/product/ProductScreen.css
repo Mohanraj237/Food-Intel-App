@@ -48,6 +48,14 @@
   place-items: center;
 }
 
+/* A placeholder does not deserve a photograph's footprint. When there is no
+   real image, the box shrinks so the brand and product name — the things a
+   shopper actually came to read — sit higher on a phone screen. A real photo
+   keeps the full size, because there the image *is* the content. */
+.pdp__art--placeholder {
+  max-width: 200px;
+}
+
 /* `contain`, not `cover` — matches ProductCard: a real photo is rarely
    square, and cropping it would cut the pack off rather than show it
    honestly. */
@@ -65,7 +73,33 @@
   opacity: 0.75;
 }
 
+/* Breadcrumbs. A product page is usually entered directly — from a scan, a
+   shared link or search — so it needs its own way back to the catalogue. */
+.pdp__crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--page-gutter) 0;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.pdp__crumbs a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+
+.pdp__crumbs a:hover { color: var(--brand); text-decoration: underline; }
+
 .pdp__identity { min-width: 0; }
+
+/* A name we had to construct because the stored one was only a barcode. */
+.pdp__name--placeholder {
+  color: var(--text-secondary);
+  font-style: italic;
+}
 
 .pdp__brand {
   font-size: var(--text-xs);
@@ -256,6 +290,7 @@
   .pdp__hero { border-bottom: 0; }
 
   .pdp__art { max-width: 320px; }
+  .pdp__art--placeholder { max-width: 220px; }
   .pdp__glyph { font-size: 3.5rem; }
   .pdp__name { font-size: var(--text-display); }
   .pdp__section { max-width: 780px; }

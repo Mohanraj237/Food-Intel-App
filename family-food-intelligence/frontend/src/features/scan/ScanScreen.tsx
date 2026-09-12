@@ -19,7 +19,9 @@ export function ScanScreen() {
   const timerRef = useRef<number | null>(null);
   const [barcode, setBarcode] = useState('');
   const [cameraState, setCameraState] = useState<'idle' | 'active' | 'unavailable'>('idle');
-  const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'not-found' | 'error'>('idle');
+  const [lookupState, setLookupState] = useState<
+    'idle' | 'loading' | 'invalid' | 'not-found' | 'error'
+  >('idle');
   // Manual entry starts collapsed behind a text link — scanning is the primary,
   // high-intent action, and a permanently-visible form beside it competed for
   // the same weight (the "desktop form" feeling the redesign brief called out).
@@ -51,9 +53,19 @@ export function ScanScreen() {
   }, []);
 
   async function lookUp(value: string) {
-    const cleaned = value.replace(/\s/g, '');
+    const cleaned = value.replace(/[\s-]/g, '');
     if (!cleaned) return;
     setBarcode(cleaned);
+
+    // A GTIN is 8 to 14 digits. Without this check "abcdefghij" reached the API
+    // and came back as "we do not have this barcode yet" — reporting a typo as
+    // a gap in the catalogue, and sending the user off to contribute a product
+    // that was never mistyped in the first place.
+    if (!/^\d{8,14}$/.test(cleaned)) {
+      setLookupState('invalid');
+      return;
+    }
+
     setLookupState('loading');
     try {
       const product = await getProductByBarcode(cleaned);
@@ -139,15 +151,22 @@ export function ScanScreen() {
 
           {cameraState === 'unavailable' && <p className="scanpage__notice">{t('scan.notSupported')}</p>}
 
-          {lookupState === 'not-found' && (
-            <div className="scanpage__notice">
-              <p>{t('scan.notFound')}</p>
-              <button type="button" className="btn btn--primary scanpage__contribute-cta" onClick={() => setContributing(true)}>
-                {t('contribute.heading')}
-              </button>
-            </div>
-          )}
-          {lookupState === 'error' && <p className="scanpage__notice">{t('error.service_unavailable')}</p>}
+          {/* One live region covering every lookup outcome, so the result of
+              pressing "Look up" is announced rather than silently swapped in. */}
+          <div role="status" aria-live="polite" className="scanpage__lookup-status">
+            {lookupState === 'invalid' && (
+              <p className="scanpage__notice">{t('scan.barcodeInvalid')}</p>
+            )}
+            {lookupState === 'not-found' && (
+              <div className="scanpage__notice">
+                <p>{t('scan.notFound')}</p>
+                <button type="button" className="btn btn--primary scanpage__contribute-cta" onClick={() => setContributing(true)}>
+                  {t('contribute.heading')}
+                </button>
+              </div>
+            )}
+            {lookupState === 'error' && <p className="scanpage__notice">{t('error.service_unavailable')}</p>}
+          </div>
 
           <div className="scanpage__secondary">
             {manualOpen ? (

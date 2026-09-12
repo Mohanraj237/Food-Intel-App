@@ -471,3 +471,121 @@ domain source → reviewed specification → migration → automated tests → a
 **Alternatives rejected.** (a) Implement the implementation-plan's full proposed order including a nutrient/component-difference dimension now — rejected: no reviewed source exists for "which direction is better" per nutrient/category, and guessing one from general nutrition knowledge is the exact failure mode D-024 already refused. (b) Rank by raw `ProductHealthScore` (0–100) once it exists — deferred for the same reason; today it is always `NOT_YET_SCORED` (D-024), so it would add nothing. (c) Show every same-category product regardless of differentiation, relying on the UI to convey "no real difference" — rejected as noisier and less honest than simply not listing it.
 
 **Reversal condition.** The moment a reviewed `rule_set` activates (D-025), dimension 2 (`BETTER_VERDICT`/`WORSE_VERDICT`) starts producing real results with no code change. A future task may add a nutrient/component-difference dimension once it can cite the same kind of reviewed evidence D-025 requires for scoring rules — that is a new decision, not an automatic extension of this one.
+
+---
+
+## D-034 — Product scope expands to an individual + family wellness platform
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Product (requested), Orchestrator (recorded)
+
+**Context.** Every decision from D-001 to D-033 was taken for a deliberately narrow product: a packaged-food decision tool. Several of them (notably D-005 and D-017) are phrased as prohibitions, and were correct for that scope. The product direction has now intentionally changed: the target is a consumer health and wellness platform with two modes — an individual managing their own health, and a household understanding and supporting its members — with the packaged-food decision capability retained as a differentiating part of the whole rather than the whole.
+
+**Decision.** The scope change is accepted. The product now covers personal and household tracking of nutrition, activity, sleep, hydration, body metrics, goals and habits; health records, medications and appointments; and an insights layer over all of it. The existing catalogue, scoring, consent and household modules are extended, not replaced.
+
+**What this decision explicitly does _not_ do.** It does not relax a single safety boundary. The following remain in force and are restated here so that a future reader cannot mistake a scope expansion for a safety relaxation:
+
+- No diagnosis, treatment, prescription or medical triage (unchanged).
+- No weight, body-fat or body-composition target for a minor — a child-safety commitment independent of law (unchanged; see D-036).
+- No advertising, sponsored ranking, paid placement in health recommendations, or sale of consumption data (D-012, unchanged and still ArchUnit-enforced).
+- No engagement mechanics or notifications directed at a child (CH-004/CH-005, unchanged; see D-036).
+- AI never originates a number, threshold, verdict or authorization decision (D-011, unchanged).
+- No health threshold or interpretation without a citable public standard (D-009/D-024/D-025, unchanged and now extended to body and clinical metrics — see D-037).
+
+**Consequences.** `docs/product/product-policy.md` and `docs/engineering/implementation-plan.md` are superseded in scope by `docs/architecture/wellness-platform-architecture.md`. The "Do not build until validated" list in `docs/product/post-mvp-backlog.md` is superseded for nutrition logging, activity, sleep and hydration by this entry; its "Permanently excluded" section is **not** superseded and remains a boundary.
+
+---
+
+## D-035 — Individual Mode is a household of one, not a second person model
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Context.** Individual Mode needs a person to track their own health without thinking about a household. The tempting implementation is a second, parallel "personal profile" attached directly to `user_account`, separate from `household_member`/`person_profile`.
+
+**Decision.** Rejected. The health subject remains `household_member`, and Individual Mode is a household of one, created transparently on first use. Every tracking table therefore references exactly one subject type for the life of the product.
+
+**Rationale.** Two person models would mean every downstream feature — observations, goals, habits, records, insights, permissions — either picks one or supports both. Supporting both doubles the permission surface on the most sensitive data in the product; picking one guarantees a migration later. The household-of-one framing is also already the product's own language ("A household of one works exactly the same way"), and it makes "I started alone, then added my family" a data-free transition rather than a migration.
+
+**Consequences.** `household` gains an `is_individual` marker so the UI can suppress household framing for a solo user without a second data path. A solo user who later invites someone loses nothing. The cost accepted: a `household` row exists for every user, including those who never use Family Mode.
+
+---
+
+## D-036 — Age band is the safety gate for every metric, enforced in the domain
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Context.** D-017 removed weight and body-composition goals for *everyone*, because in the narrow product there was no adult use case that justified the child-safety risk. The new scope has one: an adult managing their own weight is a core, legitimate, expected capability. The child-safety concern is unchanged.
+
+**Decision.** D-017's blanket prohibition is **superseded for adults only**. Weight and body measurements become recordable, and weight management becomes an expressible goal, **for adult subjects only**. For a subject whose current `person_profile.age_band` is a child band (`C1_3` … `C13_17`):
+
+- No weight, BMI, body-fat, body-composition or waist metric may be recorded, and no such goal may be created. The attempt is rejected in the domain with `METRIC_NOT_PERMITTED_FOR_AGE`, not merely hidden in the UI.
+- Growth tracking (height/weight-for-age percentiles) is **not** a workaround and is out of scope until a paediatric standard and clinical review exist (see D-037's entry condition).
+- No streak, badge, leaderboard, challenge ranking or push notification may target a child subject.
+
+Every metric code carries an explicit `permittedFor` age-class set. A new metric cannot be added without stating it, because the enum constructor requires it.
+
+**Rationale.** The boundary that matters is the *subject's* age, not the *actor's*. A guardian logging their own weight is fine; the same guardian logging a child's weight is the thing we refuse. Encoding this on the metric definition rather than in a service branch means the check cannot be forgotten by the next feature that writes an observation.
+
+**Consequences.** `AC-3.7` is superseded in part: weight, body-composition and calorie-target capability now exists for adults. The clause forbidding these for a minor, and forbidding streak/badge/leaderboard/notification-to-child capability, is retained verbatim and is now enforced by `MetricCode.permittedFor` plus an ArchUnit-style test asserting no child band appears in a body-composition metric's permitted set.
+
+---
+
+## D-037 — Metrics are recorded freely; interpreting them requires a citable standard
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Context.** The new scope invites blood pressure, blood glucose, SpO2 and heart rate. Each is a number a person can read off a home device, and each is one step away from "is this normal?" — which is diagnosis.
+
+**Decision.** Capture and interpretation are separated, and they have different bars.
+
+- **Capture** of a clinical metric is permitted for an adult subject: it is the person's own reading, and refusing to store it just sends them to a worse tool.
+- **Interpretation** — any category ("elevated", "high"), any colour coding implying a category, any comparison to a reference range, any trend statement that implies clinical meaning — requires an active, citable, reviewed standard in the same way a scoring rule does (D-009/D-024/D-025). Until one exists the product shows the recorded value, its own history, and nothing else.
+- No metric, in any combination, produces a suggestion to start, stop or change a medication. This is absolute.
+
+**Rationale.** This is D-024 applied to a new data class: the product already ships an empty scoring ruleset and says `INSUFFICIENT_DATA` honestly rather than inventing thresholds. Clinical metrics deserve the same treatment, more strongly. Storing a number is a record; naming it "high" is a clinical claim.
+
+**Entry condition for interpretation.** A reviewed evidence pack under `docs/data/` per D-025, plus clinical sign-off ⚖️, per metric family. Not per metric — a BP standard covers systolic and diastolic together.
+
+**Consequences.** `health_observation` stores values and units with no derived category column. A `BMI` value is computed and stored as an observation because it is arithmetic on the subject's own data; a BMI *category* is not produced.
+
+---
+
+## D-038 — Health data visibility is per member, per category, and default-closed
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Context.** D-002 establishes that adults are their own data principals. That settles consent. It does not settle what a household owner can *see*, which the new scope raises for the first time at scale: a household with body metrics, clinical readings, medications and lab reports in it.
+
+**Decision.** Visibility is an explicit grant per (subject, category, audience), and the default is that no one but the subject can see anything. Concretely:
+
+- An adult subject's observations, records and medications are visible to that adult alone until they share a category.
+- A guardian has access to a child subject's permitted categories by virtue of the guardian link, because someone must — but that access is recorded, and the categories a child can have at all are limited by D-036.
+- Household role grants nothing on its own. `OWNER` is not a health-data role.
+- Every read of another person's clinical, body, medication or record data writes an `audit_event`. Aggregates that could identify a single member's value (a household average over two people, one of whom is the reader) are computed only from categories the reader may already see.
+
+**Rationale.** The failure mode to design against is not a stranger, it is a family member — the person most likely to have both motive and access. Default-closed with explicit sharing is the only model where "my family can support me" does not silently mean "my family can read my glucose readings".
+
+**Consequences.** A `metric_visibility` grant table exists from Phase 1, before any tracker writes data, so no feature ever ships with an implicit all-household default that later has to be taken away from users.
+
+---
+
+## D-039 — Meal logging is in scope; D-005 is superseded
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Decision.** D-005 ("no meal logging in MVP; outcome capture instead") is superseded. Nutrition logging — meals, portions, and a family meal logged once and apportioned per member — is core to the new scope. Outcome capture (bought this / an alternative / neither) is retained: it answers a different question (did our result change a decision?) and is the product's own feedback signal.
+
+**Consequences.** D-027's note that outcome capture makes no network call and must not claim persistence stands until the Phase 2 nutrition work gives it somewhere to persist to.
+
+---
+
+## D-040 — A composite wellness score is deferred, not designed
+
+**Date:** 2026-09-12 · **Status:** DEFERRED · **Owner:** Orchestrator
+
+**Context.** The brief proposes a "health/wellness score where scientifically justified", and a family wellness score.
+
+**Decision.** Not built in this phase, and not designed speculatively. A single number over sleep, steps, hydration and nutrition has no citable standard, and under D-009 that is disqualifying. Worse, a household-level score ranks family members against each other by construction, which is the comparison D-036 forbids for children and which the brief itself warns against.
+
+**What ships instead.** Per-dimension progress against goals the user set themselves, and readiness/coverage indicators that say what the product does and does not know. If a composite score is wanted later it needs an evidence pack per D-025 and an explicit decision reversing this entry.
+
+---

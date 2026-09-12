@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
 import { ApiError } from '@/lib/api';
 import { useAccountId, useIsSignedIn } from '@/lib/useSession';
+import { useDocumentTitleKey } from '@/lib/useDocumentTitle';
 import { MY_HOUSEHOLDS_QUERY_KEY, useMyHousehold } from '@/lib/useMyHousehold';
 import {
   acceptInvitation,
@@ -23,6 +24,7 @@ import { Card } from '@/design-system/Card';
 import { EmptyState, ErrorState, Skeleton } from '@/design-system/States';
 import { HouseholdMemberCard } from '@/design-system/HouseholdMemberCard';
 import { ConfirmSheet } from '@/design-system/BottomSheet';
+import { HouseholdOverview } from './HouseholdOverview';
 import { ProfilePanel } from './ProfilePanel';
 import './FamilyScreen.css';
 
@@ -38,6 +40,7 @@ import './FamilyScreen.css';
  * explanation, rather than a dead error screen.
  */
 export function FamilyScreen() {
+  useDocumentTitleKey('household.heading');
   const signedIn = useIsSignedIn();
   const accountId = useAccountId();
   const queryClient = useQueryClient();
@@ -96,6 +99,7 @@ export function FamilyScreen() {
   return (
     <HouseholdView
       householdId={myHousehold.householdId}
+      householdName={myHousehold.data?.[0]?.householdName ?? null}
       accountId={accountId}
       onStale={handleStale}
     />
@@ -275,10 +279,12 @@ function JoinHouseholdForm({ onJoined }: { onJoined: () => void }) {
 
 function HouseholdView({
   householdId,
+  householdName,
   accountId,
   onStale,
 }: {
   householdId: string;
+  householdName: string | null;
   accountId: string | null;
   onStale: () => void;
 }) {
@@ -310,6 +316,14 @@ function HouseholdView({
   return (
     <div className="page">
       <h1>{t('household.heading')}</h1>
+      {/* The household's own name. It is required when creating one, and until
+          now appeared on no screen at all — a field people were made to fill in
+          and never saw again. */}
+      {householdName && <p className="household__name">{householdName}</p>}
+
+      {/* Answers "is this household in a state where the product works?" before
+          the roster answers "who is in it". See HouseholdOverview.tsx. */}
+      <HouseholdOverview householdId={householdId} />
 
       {membersQuery.isPending && <Skeleton lines={3} label={t('loading.default')} />}
 
@@ -489,7 +503,7 @@ function MembersList({
                       loading={isRemoving}
                       onClick={() => setConfirmAction({ type: 'remove', member })}
                     >
-                      {t('action.remove')}
+                      {t('household.removeChildAction')}
                     </Button>
                   )}
                   {member.memberType === 'CHILD' && (
@@ -499,7 +513,7 @@ function MembersList({
                       loading={eraseMutation.isPending && eraseMutation.variables?.id === member.id}
                       onClick={() => setConfirmAction({ type: 'erase', member })}
                     >
-                      {t('privacy.deleteChildData')}
+                      {t('household.eraseChildAction')}
                     </Button>
                   )}
                 </>

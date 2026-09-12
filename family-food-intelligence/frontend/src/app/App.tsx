@@ -5,6 +5,7 @@ import { ApiError, currentAccountId, storedRefreshToken, subscribeToSession } fr
 import { restoreSession } from '@/lib/auth';
 import { AppShell } from './AppShell';
 import { HomeScreen } from '@/features/home/HomeScreen';
+import { TodayScreen } from '@/features/today/TodayScreen';
 import { SearchScreen } from '@/features/search/SearchScreen';
 import { ProductScreen } from '@/features/product/ProductScreen';
 import { CompareScreen } from '@/features/compare/CompareScreen';
@@ -14,6 +15,8 @@ import { SettingsScreen } from '@/features/settings/SettingsScreen';
 import { ActivityScreen } from '@/features/activity/ActivityScreen';
 import { OpsQueueScreen } from '@/features/ops/OpsQueueScreen';
 import { OpsReviewScreen } from '@/features/ops/OpsReviewScreen';
+import { RequireOperator } from '@/features/ops/RequireOperator';
+import { PrivacyScreen, TermsScreen } from '@/features/legal/LegalScreen';
 import { NotFoundScreen } from '@/features/shell/NotFoundScreen';
 
 const queryClient = new QueryClient({
@@ -77,6 +80,7 @@ export function App() {
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomeScreen />} />
+            <Route path="/today" element={<TodayScreen />} />
             <Route path="/search" element={<SearchScreen />} />
             <Route path="/product/:id" element={<ProductScreen />} />
             <Route path="/compare" element={<CompareScreen />} />
@@ -84,8 +88,27 @@ export function App() {
             <Route path="/family" element={<FamilyScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
             <Route path="/activity" element={<ActivityScreen />} />
-            <Route path="/ops" element={<OpsQueueScreen />} />
-            <Route path="/ops/:id" element={<OpsReviewScreen />} />
+            {/* Consent records reference `/legal/privacy#<purpose>`; before these
+                routes existed that link 404'd, so people were agreeing to a
+                document they could not open. */}
+            <Route path="/legal/privacy" element={<PrivacyScreen />} />
+            <Route path="/legal/terms" element={<TermsScreen />} />
+            <Route
+              path="/ops"
+              element={
+                <RequireOperator>
+                  <OpsQueueScreen />
+                </RequireOperator>
+              }
+            />
+            <Route
+              path="/ops/:id"
+              element={
+                <RequireOperator>
+                  <OpsReviewScreen />
+                </RequireOperator>
+              }
+            />
             <Route path="/404" element={<NotFoundScreen />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
           </Route>

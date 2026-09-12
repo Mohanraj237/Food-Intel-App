@@ -5,8 +5,16 @@
    chips floating loose above the results, and the trailing fade hints that the
    row scrolls sideways before a shopper has to discover it by dragging. */
 
+/* `.chip-row` bleeds edge-to-edge with negative inline margins, which cancel
+   the page gutter on screens that have one (Home, Product). `.searchpage` has
+   only block padding, so here those negative margins had nothing to cancel and
+   pushed the row one gutter wider than the viewport on each side — the whole
+   page then scrolled sideways at every width below 1024px. Zeroing the bleed
+   keeps the row's own gutter padding, so the chips still line up with the
+   results underneath. */
 .searchpage__chiprow {
   position: relative;
+  margin-inline: 0;
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border);
 }
@@ -45,9 +53,14 @@
   min-width: 0;
 }
 
+/* Wraps rather than overflowing. With four orderings the row no longer fits a
+   360-390px viewport on one line, and `flex-shrink: 0` on a non-wrapping row
+   pushed the whole page sideways. Wrapping keeps every option visible and
+   reachable; a scrolling strip here would hide orderings behind a drag. */
 .searchpage__sort {
   display: flex;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-width: 0;
   gap: var(--space-2);
   padding-bottom: var(--space-3);
 }
@@ -105,3 +118,23 @@
 }
 
 .notfound__actions .btn { text-decoration: none; }
+
+/* ---- load more ----
+   A button rather than scroll-triggered loading: operable by keyboard and
+   screen reader, it does not fight the back button, and it leaves the end of
+   the page reachable. */
+
+.searchpage__more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: var(--space-6) var(--space-2);
+}
+
+.searchpage__more-end {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: 0;
+}

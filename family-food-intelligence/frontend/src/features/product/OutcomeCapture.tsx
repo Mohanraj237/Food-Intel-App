@@ -54,9 +54,16 @@ export function OutcomeCapture({ productId }: { productId: string }) {
         {OPTIONS.map((option) => (
           <label
             key={option.value}
-            className={
-              selected === option.value ? 'outcome__option outcome__option--selected' : 'outcome__option'
-            }
+            className={[
+              'outcome__option',
+              selected === option.value ? 'outcome__option--selected' : '',
+              // Signed out these radios are disabled, but nothing said so: full
+              // contrast, full opacity and a pointer cursor invited a click that
+              // silently did nothing.
+              signedIn ? '' : 'outcome__option--disabled',
+            ]
+              .filter(Boolean)
+              .join(' ')}
           >
             <input
               type="radio"

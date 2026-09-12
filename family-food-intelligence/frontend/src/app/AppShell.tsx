@@ -24,8 +24,24 @@ import './AppShell.css';
  * when they make the window narrow.
  */
 
-const NAV = [
+/**
+ * Five destinations, not six.
+ *
+ * The first slot swaps rather than grows: signed out it is the marketing home, signed in it
+ * is Today — a person who has an account wants their own day, not the landing page, and a
+ * sixth bottom-nav item on a phone makes every target smaller. The wordmark still goes to
+ * Home for anyone who wants it.
+ */
+const NAV_SIGNED_OUT = [
   { to: '/', key: 'nav.home', glyph: '⌂', end: true },
+  { to: '/search', key: 'nav.search', glyph: '⌕', end: false },
+  { to: '/scan', key: 'nav.scan', glyph: '▣', end: false },
+  { to: '/family', key: 'nav.family', glyph: '☖', end: false },
+  { to: '/settings', key: 'nav.settings', glyph: '⚙', end: false },
+] as const;
+
+const NAV_SIGNED_IN = [
+  { to: '/today', key: 'nav.today', glyph: '◔', end: false },
   { to: '/search', key: 'nav.search', glyph: '⌕', end: false },
   { to: '/scan', key: 'nav.scan', glyph: '▣', end: false },
   { to: '/family', key: 'nav.family', glyph: '☖', end: false },
@@ -38,6 +54,7 @@ export function AppShell() {
   const [query, setQuery] = useState('');
   const mainRef = useRef<HTMLElement>(null);
   const signedIn = useIsSignedIn();
+  const NAV = signedIn ? NAV_SIGNED_IN : NAV_SIGNED_OUT;
 
   // The search box is part of the shell, so it must reflect the URL when the
   // user lands on /search from a link or the back button — otherwise the field
@@ -49,10 +66,27 @@ export function AppShell() {
     }
   }, [location.pathname, location.search]);
 
-  // Move focus to the main region on navigation. Without this a screen-reader
-  // or keyboard user stays parked in the nav and has to traverse the whole shell
-  // again after every route change.
+  // Move focus to the main region on navigation *after* the first paint, never
+  // on the initial load.
+  //
+  // Focusing <main> on a route change is right: it stops a screen-reader or
+  // keyboard user being parked in the nav after every navigation. Doing it on
+  // first load is the opposite — focus starts inside the content, so the very
+  // first Tab lands past the skip link, the wordmark, the global search box and
+  // the whole top navigation, and the only way back to them is Shift+Tab. The
+  // skip link is also pointless when focus is already in main. `hasNavigated`
+  // keeps the good half of the behaviour and drops the harmful half.
+  // Tracks the route this effect last ran for. A boolean "have I run before"
+  // flag is not enough: StrictMode invokes effects twice on mount in
+  // development, so the second pass would see the flag already set and focus
+  // main anyway — reintroducing the bug only in dev, where it is most likely to
+  // be noticed and mistaken for something else. Comparing the pathname is
+  // idempotent and behaves identically in both modes.
+  const focusedPath = useRef<string | null>(null);
   useEffect(() => {
+    const previous = focusedPath.current;
+    focusedPath.current = location.pathname;
+    if (previous === null || previous === location.pathname) return;
     mainRef.current?.focus({ preventScroll: true });
   }, [location.pathname]);
 
@@ -73,8 +107,15 @@ export function AppShell() {
             <span className="wordmark__mark" aria-hidden="true">◆</span>
             <span className="wordmark__text">{t('app.name')}</span>
           </Link>
-          <Link to="/settings" className="shell__avatar" aria-label={t('nav.settings')}>
-            <span aria-hidden="true">{signedIn ? '☺' : '☰'}</span>
+          {/* A settings cog, not a hamburger: this opens Settings directly and
+              never a menu, and the account state is carried in the label rather
+              than in a glyph a screen-reader user cannot see. */}
+          <Link
+            to="/settings"
+            className="shell__avatar"
+            aria-label={signedIn ? t('nav.settingsAccount') : t('nav.settingsSignIn')}
+          >
+            <span aria-hidden="true">⚙</span>
           </Link>
         </div>
         <SearchBar
@@ -102,7 +143,7 @@ export function AppShell() {
             />
           </div>
 
-          <nav className="toplinks" aria-label={t('app.name')}>
+          <nav className="toplinks" aria-label={t('nav.primaryLabel')}>
             {NAV.filter((n) => n.to !== '/search' && n.to !== '/').map(({ to, key }) => (
               <NavLink
                 key={to}
@@ -123,7 +164,7 @@ export function AppShell() {
       </main>
 
       {/* ---- mobile bottom navigation ---- */}
-      <nav className="bottom-nav" aria-label={t('app.name')}>
+      <nav className="bottom-nav" aria-label={t('nav.primaryLabel')}>
         {NAV.map(({ to, key, glyph, end }) => (
           <NavLink
             key={to}

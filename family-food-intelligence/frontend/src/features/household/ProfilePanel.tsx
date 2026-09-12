@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
 import { ApiError } from '@/lib/api';
 import type { HouseholdMember } from '@/lib/household';
+import type { ConsentPolicy } from '@/lib/consent';
 import {
   ADULT_AGE_BANDS,
   ALLERGEN_CODES,
@@ -18,21 +19,31 @@ import {
   type GoalCode,
   type Sex,
 } from '@/lib/profile';
+import { listGrants, listPolicies } from '@/lib/consent';
 import { Button } from '@/design-system/Button';
 import { ErrorState, Skeleton } from '@/design-system/States';
+import { memberInitial } from '@/design-system/HouseholdMemberCard';
+import { Link } from 'react-router-dom';
 import './FamilyScreen.css';
+
+/**
+ * Which purposes a guardian must grant before a child's profile may be stored.
+ *
+ * Derived from the policy list rather than hardcoded, using the same rule
+ * `ConsentPanel` uses to decide which purposes to offer for a child: a purpose
+ * that is not essential and requires verifiable consent is, by definition, the
+ * child one. Today that resolves to exactly `CHILD_FOOD_SUITABILITY`; naming
+ * that code here instead would have silently gated on a purpose that never
+ * applies to a child — which is precisely the bug this replaced.
+ */
+function childPurposeCodes(policies: ConsentPolicy[]): string[] {
+  return policies.filter((p) => !p.essential && p.requiresVerifiable).map((p) => p.purposeCode);
+}
 
 interface ProfilePanelProps {
   householdId: string;
   member: HouseholdMember;
   onBack: () => void;
-}
-
-/** Mirrors `memberInitial` in `FamilyScreen.tsx` — kept local rather than
- * imported to avoid a circular import between the two files. */
-function memberInitial(label: string): string {
-  const trimmed = label.trim();
-  return trimmed.length > 0 ? trimmed.charAt(0).toUpperCase() : '?';
 }
 
 /**
@@ -44,6 +55,50 @@ function memberInitial(label: string): string {
 export function ProfilePanel({ householdId, member, onBack }: ProfilePanelProps) {
   const queryClient = useQueryClient();
   const queryKey = ['profile', householdId, member.id] as const;
+  const isChild = member.memberType === 'CHILD';
+
+  /**
+   * Consent before collection, for a child.
+   *
+   * "Add a child" promises: "We store an age band, allergens and dietary
+   * preferences — nothing more — and only after you complete consent." The form
+   * did not keep that promise: it saved a child's age band and allergens
+   * immediately, and the product page then told the guardian "until then we
+   * process nothing for them" — which was no longer true, because we had
+   * already stored it.
+   *
+   * Consent already gated *computing a result*; this makes it gate *collecting
+   * the data*, which is what the words say. An adult editing their own profile
+   * is unaffected — they are the subject and the grantor.
+   */
+  const childConsent = useQuery({
+    queryKey: ['consent', 'grants', member.id],
+    queryFn: () => listGrants(member.id),
+    enabled: isChild,
+    retry: false,
+  });
+
+  const consentPolicies = useQuery({
+    queryKey: ['consent', 'policies'],
+    queryFn: listPolicies,
+    enabled: isChild,
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const requiredPurposes = childPurposeCodes(consentPolicies.data ?? []);
+  const activeGrants = new Set(
+    (childConsent.data ?? []).filter((r) => r.status === 'ACTIVE').map((r) => r.purposeCode),
+  );
+
+  // Until both queries have answered we neither block nor allow on a guess:
+  // `consentReady` keeps the form in its loading state rather than flashing a
+  // gate at a guardian who has already given consent.
+  const consentReady = !isChild || (childConsent.isSuccess && consentPolicies.isSuccess);
+  const hasGuardianConsent =
+    !isChild ||
+    (consentReady &&
+      requiredPurposes.length > 0 &&
+      requiredPurposes.every((code) => activeGrants.has(code)));
 
   const profileQuery = useQuery({
     queryKey,
@@ -123,6 +178,10 @@ export function ProfilePanel({ householdId, member, onBack }: ProfilePanelProps)
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    if (!hasGuardianConsent) {
+      setValidationError(t('profile.childConsentRequired'));
+      return;
+    }
     if (ageBand === '') {
       setValidationError(t('profile.ageBandRequired'));
       return;
@@ -153,7 +212,9 @@ export function ProfilePanel({ householdId, member, onBack }: ProfilePanelProps)
           {memberInitial(member.displayLabel)}
         </span>
         <h1>
-          {t('profile.heading')} · {member.displayLabel}
+          {isChild
+            ? t('household.profileOf', { name: member.displayLabel })
+            : `${t('profile.heading')} · ${member.displayLabel}`}
         </h1>
       </div>
 
@@ -161,6 +222,18 @@ export function ProfilePanel({ householdId, member, onBack }: ProfilePanelProps)
 
       {profileQuery.isError && !isNotFound && (
         <ErrorState error={profileQuery.error} onRetry={() => void profileQuery.refetch()} />
+      )}
+
+      {isChild && consentReady && !hasGuardianConsent && (
+        <div className="profile__consent-gate" role="note">
+          <p className="profile__consent-title">{t('profile.childConsentTitle')}</p>
+          <p className="profile__consent-body">
+            {t('profile.childConsentBody', { name: member.displayLabel })}
+          </p>
+          <Link to="/settings" className="btn btn--primary btn--sm">
+            {t('profile.childConsentAction')}
+          </Link>
+        </div>
       )}
 
       {initialized && (
@@ -268,7 +341,12 @@ export function ProfilePanel({ householdId, member, onBack }: ProfilePanelProps)
             </p>
           )}
 
-          <Button type="submit" fullWidth loading={saveMutation.isPending}>
+          <Button
+            type="submit"
+            fullWidth
+            loading={saveMutation.isPending}
+            disabled={!hasGuardianConsent}
+          >
             {t('action.save')}
           </Button>
         </form>

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
 import { ApiError, storedRefreshToken } from '@/lib/api';
@@ -7,12 +8,13 @@ import { exportMyData, requestAccountDeletion } from '@/lib/account';
 import { getOpsAccess } from '@/lib/ops';
 import { useIsSignedIn } from '@/lib/useSession';
 import { getStoredTheme, setTheme, type ThemeChoice } from '@/lib/theme';
+import { useDocumentTitleKey } from '@/lib/useDocumentTitle';
 import { ConsentPanel } from '@/features/consent/ConsentPanel';
 import { Button } from '@/design-system/Button';
 import { Card } from '@/design-system/Card';
 import { RowGroup, Row } from '@/design-system/RowGroup';
 import { Switch } from '@/design-system/Switch';
-import { BottomSheet } from '@/design-system/BottomSheet';
+import { BottomSheet, ConfirmSheet } from '@/design-system/BottomSheet';
 import './SettingsScreen.css';
 
 /**
@@ -25,6 +27,7 @@ import './SettingsScreen.css';
  */
 export function SettingsScreen() {
   const signedIn = useIsSignedIn();
+  useDocumentTitleKey('nav.settings');
 
   return (
     <div className="page">
@@ -44,7 +47,25 @@ export function SettingsScreen() {
           <OpsAccessPanel />
         </>
       )}
+
+      <PoliciesPanel />
     </div>
+  );
+}
+
+/**
+ * The privacy notice and terms, reachable whether or not you are signed in.
+ *
+ * Both documents used to 404, including from the `documentUri` recorded on every
+ * consent grant. Someone deciding whether to create an account has the most
+ * reason to read them, so this sits outside the signed-in branch.
+ */
+function PoliciesPanel() {
+  return (
+    <RowGroup title={t('settings.legalHeading')}>
+      <Row label={t('legal.privacyTitle')} to="/legal/privacy" />
+      <Row label={t('legal.termsTitle')} to="/legal/terms" />
+    </RowGroup>
   );
 }
 
@@ -97,6 +118,8 @@ function OpsAccessPanel() {
 }
 
 function AccountPanel() {
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+
   const signOut = useMutation({
     mutationFn: async () => {
       const token = storedRefreshToken();
@@ -111,17 +134,35 @@ function AccountPanel() {
   });
 
   return (
-    <RowGroup title={t('auth.accountHeading')}>
-      <Row label={t('nav.family')} to="/family" />
-      <Row label={t('settings.activityLink' as Parameters<typeof t>[0])} to="/activity" />
-      <Row
-        label={t('action.signOut')}
-        onClick={() => {
-          if (!signOut.isPending) signOut.mutate();
+    <>
+      <RowGroup title={t('auth.accountHeading')}>
+        <Row label={t('nav.family')} to="/family" />
+        <Row label={t('settings.activityLink' as Parameters<typeof t>[0])} to="/activity" />
+        {/* Confirmed, not immediate. Sign-out was a single tap on a row styled
+            exactly like the navigation rows above it, so a mis-tap ended the
+            session with no way back except signing in again. */}
+        <Row
+          label={t('action.signOut')}
+          onClick={() => {
+            if (!signOut.isPending) setConfirmingSignOut(true);
+          }}
+          trailing={signOut.isPending ? <span>{t('loading.default')}</span> : undefined}
+        />
+      </RowGroup>
+
+      <ConfirmSheet
+        open={confirmingSignOut}
+        onClose={() => setConfirmingSignOut(false)}
+        onConfirm={() => {
+          setConfirmingSignOut(false);
+          signOut.mutate();
         }}
-        trailing={signOut.isPending ? <span>{t('loading.default')}</span> : undefined}
+        title={t('settings.signOutConfirmTitle')}
+        body={t('settings.signOutConfirmBody')}
+        confirmLabel={t('action.signOut')}
+        loading={signOut.isPending}
       />
-    </RowGroup>
+    </>
   );
 }
 
@@ -233,6 +274,25 @@ function AuthPanel() {
           <Button type="submit" fullWidth loading={mutation.isPending}>
             {mode === 'signin' ? t('action.signIn') : t('action.signUp')}
           </Button>
+
+          {/* There is no reset flow yet. Saying so plainly beats an absent link,
+              which leaves a locked-out user with nothing at all. */}
+          {mode === 'signin' && (
+            <details className="settings__forgot">
+              <summary>{t('settings.forgotPassword')}</summary>
+              <p className="field__hint">{t('settings.forgotPasswordHelp')}</p>
+            </details>
+          )}
+
+          {/* Shown at the moment of the decision, not buried in Settings. */}
+          {mode === 'signup' && (
+            <p className="settings__legal-consent">
+              {t('auth.legalAgreement')}{' '}
+              <Link to="/legal/privacy">{t('legal.privacyTitle')}</Link>
+              {' · '}
+              <Link to="/legal/terms">{t('legal.termsTitle')}</Link>
+            </p>
+          )}
         </form>
       </div>
     </Card>

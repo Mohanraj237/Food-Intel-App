@@ -67,3 +67,20 @@
 .nutri__pending {
   color: var(--text-secondary);
 }
+
+/* The space between a number and its unit lives in the markup, not in generated
+   content, so it survives copy-paste and is announced by a screen reader.
+   `nowrap` on the pair keeps "384 kcal" from breaking across two lines in a
+   narrow column, which is the reason a non-breaking space is often reached for. */
+.nutri__value {
+  white-space: nowrap;
+}
+
+/* A figure we are withholding because it cannot be true (see lib/nutrition.ts).
+   Treated like a missing value, not like an error: the row is still useful. */
+.nutri__implausible {
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--verdict-limit-fg);
+  cursor: help;
+}

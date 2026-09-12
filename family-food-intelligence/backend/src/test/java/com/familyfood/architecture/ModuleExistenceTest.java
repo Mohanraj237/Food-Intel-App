@@ -39,7 +39,12 @@ class ModuleExistenceTest {
             "com.familyfood.capture",    // Phase 3 (manual-entry contribution intake; OCR intake not yet built)
             "com.familyfood.datarights", // Phase 2 gate (data export, account/child erasure — NFR-09/CH-008/FR-010)
             "com.familyfood.recommendation", // Feature-completion sprint (D-013 alternatives, D-033)
-            "com.familyfood.activity"       // Feature-completion sprint (FR-012 outcome capture)
+            "com.familyfood.activity",      // Feature-completion sprint (FR-012 outcome capture)
+            "com.familyfood.wellness",      // Wellness Phase 1 (D-034): observations, age gate, visibility
+            "com.familyfood.nutrition",     // Wellness Phase 2 (D-039): meals, portions, apportioning
+            "com.familyfood.goals",         // Wellness Phase 2: goals over the MetricCode taxonomy
+            "com.familyfood.habits",        // Wellness Phase 2: habits and completions
+            "com.familyfood.insights"       // Wellness Phase 2: deterministic derived statements
     );
 
     /**

@@ -1,4 +1,5 @@
 import { request } from './api';
+import { formatAmount, formatMeasure, isPlausible } from './nutrition';
 
 /**
  * The catalogue contract.
@@ -124,15 +125,43 @@ export function getCategories(): Promise<Category[]> {
 /**
  * Picks the one number worth putting on a card.
  *
- * Order matters and is not arbitrary: added sugar and sodium are the two drivers
- * behind most `LIMIT` results for the metabolic-health cohort this product is
- * built for, so they lead. Energy is the fallback only because it is the fact
- * most reliably present, not because it is the most useful.
+ * **Per category, not per product.** Choosing "whichever nutrient this row
+ * happens to have" makes a grid of comparable items non-comparable: one noodle
+ * pack showing sodium beside another showing protein cannot be ranked by eye,
+ * which is the entire job of a results grid. So the axis is fixed by category —
+ * sodium for the savoury categories, added sugar for the sweet and drink ones —
+ * and every card in that category reports the same measure.
  *
- * Prefers the per-serving figure, which is the quantity a person actually eats,
- * and says which basis it used rather than leaving it ambiguous.
+ * The per-category choice is the nutrient that most often decides the result
+ * for that kind of food, so the card shows the number a shopper would have
+ * opened the product to find.
+ *
+ * Falls back to a general order only when the category's own nutrient is
+ * genuinely absent, and returns `null` rather than reaching for an unrelated
+ * figure when nothing useful is declared — an absence is said plainly by the
+ * card, not filled with noise.
  */
-const HEADLINE_PRIORITY = [
+const SODIUM_FIRST = ['SODIUM_MG', 'SAT_FAT_G', 'ADDED_SUGAR_G'] as const;
+const SUGAR_FIRST = ['ADDED_SUGAR_G', 'TOTAL_SUGAR_G', 'SODIUM_MG'] as const;
+
+const CATEGORY_HEADLINE: Record<string, readonly string[]> = {
+  INSTANT_NOODLES: SODIUM_FIRST,
+  NAMKEEN: SODIUM_FIRST,
+  CHIPS: SODIUM_FIRST,
+  SAUCES_SPREADS: SODIUM_FIRST,
+  STAPLES: SODIUM_FIRST,
+  EDIBLE_OIL: ['SAT_FAT_G', 'ENERGY_KCAL'],
+  BISCUITS: SUGAR_FIRST,
+  CHOCOLATE: SUGAR_FIRST,
+  BEVERAGES: SUGAR_FIRST,
+  MALT_DRINK: SUGAR_FIRST,
+  BREAKFAST_CEREAL: SUGAR_FIRST,
+  DAIRY: SUGAR_FIRST,
+  PROTEIN_FOODS: ['PROTEIN_G', 'ADDED_SUGAR_G', 'SODIUM_MG'],
+};
+
+/** Used when a product has no category, or its category declares nothing. */
+const GENERAL_PRIORITY = [
   'ADDED_SUGAR_G',
   'SODIUM_MG',
   'SAT_FAT_G',
@@ -142,39 +171,46 @@ const HEADLINE_PRIORITY = [
   'ENERGY_KCAL',
 ] as const;
 
+function headlinePriority(categoryCode: string | null): readonly string[] {
+  const preferred = categoryCode ? CATEGORY_HEADLINE[categoryCode] : undefined;
+  if (!preferred) return GENERAL_PRIORITY;
+  // The category's own nutrients first, then the general order for anything
+  // still undeclared, so a card is never blank when a usable figure exists.
+  return [...preferred, ...GENERAL_PRIORITY.filter((c) => !preferred.includes(c))];
+}
+
 export function headlineFact(
   product: ProductSummary,
 ): { label: string; value: string } | null {
-  for (const code of HEADLINE_PRIORITY) {
+  const per100Unit = product.packSize?.unit === 'ml' ? 'ml' : 'g';
+
+  for (const code of headlinePriority(product.categoryCode)) {
     const fact = product.keyFacts.find((f) => f.nutrientCode === code);
     if (!fact) continue;
 
-    const perServing = fact.amountPerServing;
-    const per100 = fact.amountPer100;
+    // A figure that cannot be true is treated exactly like a missing one.
+    const perServing = isPlausible(fact.amountPerServing, fact.unit)
+      ? fact.amountPerServing
+      : null;
+    const per100 = isPlausible(fact.amountPer100, fact.unit) ? fact.amountPer100 : null;
 
     if (perServing != null) {
       return {
-        value: `${formatAmount(perServing)}${fact.unit}`,
+        value: formatMeasure(perServing, fact.unit),
         label: `${fact.displayName.toLowerCase()} per serving`,
       };
     }
     if (per100 != null) {
       return {
-        value: `${formatAmount(per100)}${fact.unit}`,
-        label: `${fact.displayName.toLowerCase()} per 100${
-          product.packSize?.unit === 'ml' ? 'ml' : 'g'
-        }`,
+        value: formatMeasure(per100, fact.unit),
+        label: `${fact.displayName.toLowerCase()} per 100 ${per100Unit}`,
       };
     }
   }
   return null;
 }
 
-export function formatAmount(value: number): string {
-  if (value >= 100) return String(Math.round(value));
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(1);
-}
+export { formatAmount };
 
 /** True when the label declares an allergen at all — the card shows a marker. */
 export function hasDeclaredAllergen(product: ProductDetail): boolean {
