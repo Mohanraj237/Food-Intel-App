@@ -1,0 +1,89 @@
+.glance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.glance__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.glance__title {
+  font-size: var(--text-h2);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
+}
+
+.glance__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--brand-hover);
+  text-decoration: none;
+  min-height: var(--tap-min);
+}
+
+:root[data-theme='dark'] .glance__link { color: var(--brand); }
+
+.glance__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.glance__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+.glance__item--empty { background: var(--surface); box-shadow: none; border-color: transparent; }
+
+.glance__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--brand-subtle);
+  color: var(--brand-hover);
+  flex-shrink: 0;
+}
+
+:root[data-theme='dark'] .glance__icon { color: var(--brand); }
+.glance__item--empty .glance__icon { background: var(--surface-sunken); color: var(--text-tertiary); }
+
+.glance__text { display: flex; flex-direction: column; min-width: 0; }
+
+.glance__label { font-size: var(--text-xs); font-weight: 700; color: var(--text-tertiary); }
+
+.glance__value {
+  font-size: var(--text-body);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.glance__item--empty .glance__value { color: var(--text-tertiary); font-weight: 600; font-size: var(--text-sm); }
+
+@media (min-width: 640px) {
+  .glance__list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

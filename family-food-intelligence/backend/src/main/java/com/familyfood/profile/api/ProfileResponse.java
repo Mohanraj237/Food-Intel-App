@@ -1,6 +1,7 @@
 package com.familyfood.profile.api;
 
 import com.familyfood.profile.application.ProfileView;
+import com.familyfood.profile.domain.ActivityLevel;
 import com.familyfood.profile.domain.AgeBand;
 import com.familyfood.profile.domain.AllergenCode;
 import com.familyfood.profile.domain.DietaryPreference;
@@ -21,7 +22,8 @@ public record ProfileResponse(
         Set<GoalCode> goals,
         Set<AllergenCode> allergens,
         Set<String> conditions,
-        Instant createdAt) {
+        Instant createdAt,
+        ActivityLevel activityLevel) {
 
     public static ProfileResponse from(ProfileView view) {
         return new ProfileResponse(
@@ -34,6 +36,7 @@ public record ProfileResponse(
                 view.goals(),
                 view.allergens(),
                 view.conditions(),
-                view.createdAt());
+                view.createdAt(),
+                view.activityLevel());
     }
 }

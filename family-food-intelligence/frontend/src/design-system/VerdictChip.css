@@ -1,22 +1,19 @@
-/* Verdict chip.
-   The largest, highest element on a product screen (D-003) — the numeric score
-   never outranks it. Colour is one of three channels: label text, glyph and
-   border style all carry the same information. */
+/* Verdict chip. Colour is one of three channels: label text, glyph and border style. */
 
 .verdict-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1.5px solid transparent;
+  font-weight: 700;
   line-height: var(--leading-snug);
   min-height: var(--tap-min);
 }
 
 .verdict-chip__glyph {
-  font-size: 1.1em;
+  font-size: 1em;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -28,34 +25,32 @@
 
 .verdict-chip__member {
   font-size: var(--text-xs);
-  font-weight: 500;
+  font-weight: 600;
   opacity: 0.85;
 }
 
-.verdict-chip--sm { font-size: var(--text-sm); min-height: 32px; }
+.verdict-chip--sm { font-size: var(--text-sm); min-height: 32px; padding-block: var(--space-1); }
 .verdict-chip--md { font-size: var(--text-body); }
 .verdict-chip--lg { font-size: var(--text-h2); padding: var(--space-3) var(--space-4); }
 
 .verdict-chip--everyday {
   color: var(--verdict-everyday-fg);
   background: var(--verdict-everyday-bg);
-  border-color: var(--verdict-everyday-fg);
+  border-color: color-mix(in srgb, var(--verdict-everyday-fg) 35%, transparent);
 }
 
 .verdict-chip--occasional {
   color: var(--verdict-occasional-fg);
   background: var(--verdict-occasional-bg);
-  border-color: var(--verdict-occasional-fg);
+  border-color: color-mix(in srgb, var(--verdict-occasional-fg) 35%, transparent);
 }
 
 .verdict-chip--limit {
   color: var(--verdict-limit-fg);
   background: var(--verdict-limit-bg);
-  border-color: var(--verdict-limit-fg);
+  border-color: color-mix(in srgb, var(--verdict-limit-fg) 35%, transparent);
 }
 
-/* Dashed border: a second non-colour cue that this is a preference conflict
-   rather than a nutrition reading. */
 .verdict-chip--doesnt-fit {
   color: var(--verdict-doesnt-fit-fg);
   background: var(--verdict-doesnt-fit-bg);
@@ -63,7 +58,6 @@
   border-style: dashed;
 }
 
-/* Dotted border: signals absence of data rather than a result. */
 .verdict-chip--insufficient {
   color: var(--verdict-insufficient-fg);
   background: var(--verdict-insufficient-bg);

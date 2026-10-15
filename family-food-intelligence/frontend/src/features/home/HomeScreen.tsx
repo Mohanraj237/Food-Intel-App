@@ -1,33 +1,35 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
 import { useIsSignedIn } from '@/lib/useSession';
+import { useMeQuery } from '@/lib/me';
 import { getCategories, headlineFact, searchProducts, type ProductSummary } from '@/lib/catalog';
 import { getRecentActivity } from '@/lib/activity';
-import {
-  CategoryRail,
-  CategoryRailSkeleton,
-  ProductRail,
-  SectionHeader,
-} from '@/design-system/Rails';
+import { useSaved } from '@/lib/saved';
+import { CategoryGrid, CategoryGridSkeleton, ProductRail, SectionHeader } from '@/design-system/Rails';
 import type { ProductCardData } from '@/design-system/ProductCard';
 import { ErrorState } from '@/design-system/States';
+import { SearchBar } from '@/design-system/SearchBar';
+import { Icon } from '@/design-system/Icon';
+import { FoodReadinessCard } from './FoodReadinessCard';
+import { TodayGlance } from './TodayGlance';
 import './HomeScreen.css';
 
 /**
- * Home.
+ * Home — the landing screen for everyone.
  *
- * The screen answers one question — *what are you looking at?* — and then gets
- * out of the way. Search lives in the shell header, so this surface is for
- * browsing: quick actions, categories, and curated rails.
- *
- * What it deliberately is not: a dashboard. No score summary, no streak, no
- * weekly total. Those would turn a decision tool into a tracker, which is the
- * category with the worst retention in the market and the thing this product is
- * explicitly not (Strategy §"What this is not", D-005).
+ * Answers the product's one question first ("is this a good choice for the people I shop
+ * for?") with search and scan in reach of a thumb, then gives a signed-in household its own
+ * context (how the household is set up, how today is going), then opens the shelf: categories,
+ * saved products, curated rails and what was looked at recently.
  */
 export function HomeScreen() {
   const signedIn = useIsSignedIn();
+  const navigate = useNavigate();
+  const me = useMeQuery({ enabled: signedIn });
+  const [query, setQuery] = useState('');
+  const saved = useSaved();
 
   const categories = useQuery({
     queryKey: ['categories'],
@@ -35,154 +37,182 @@ export function HomeScreen() {
     staleTime: 30 * 60 * 1000,
   });
 
-  // Curated rails. Each is a real catalogue query, not a hand-picked list —
-  // so a rail is empty when the catalogue genuinely has nothing to show, and
-  // says so, rather than being padded.
-  const popular = useQuery({
-    queryKey: ['rail', 'popular'],
-    queryFn: () => searchProducts({ size: 10 }),
-  });
-
+  const popular = useQuery({ queryKey: ['rail', 'popular'], queryFn: () => searchProducts({ size: 10 }) });
   const biscuits = useQuery({
     queryKey: ['rail', 'BISCUITS'],
     queryFn: () => searchProducts({ category: 'BISCUITS', size: 10 }),
   });
-
   const beverages = useQuery({
     queryKey: ['rail', 'BEVERAGES'],
     queryFn: () => searchProducts({ category: 'BEVERAGES', size: 10 }),
   });
 
-  // Real, never faked (FR-012): only rendered once the activity backend actually
-  // has rows for this account. A signed-out visitor or one with no history yet
-  // sees no section at all — not an empty placeholder pretending to be a feature.
-  const recent = useQuery({
-    queryKey: ['activity', 'recent'],
-    queryFn: getRecentActivity,
-    enabled: signedIn,
-  });
-  const recentProducts = (recent.data ?? [])
-    .map((entry) => entry.product)
-    .filter((p): p is ProductSummary => p !== null);
+  const recent = useQuery({ queryKey: ['activity', 'recent'], queryFn: getRecentActivity, enabled: signedIn });
+  const recentProducts = dedupe(
+    (recent.data ?? []).map((entry) => entry.product).filter((p): p is ProductSummary => p !== null),
+  );
 
   const catalogueUnavailable = popular.isError;
+  const firstName = me.data?.member?.displayLabel ?? null;
+  const householdName = me.data?.household && !me.data.household.individual ? me.data.household.name : null;
+
+  function submitSearch(trimmed: string) {
+    navigate(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : '/search');
+  }
 
   return (
     <div className="home">
-      {/* The value statement — restrained, not a marketing banner. Answers
-          "what is this app" for a first-time visitor in one line, then gets
-          out of the way; everything below is browsing, not more pitching. */}
-      <section className="home__hero">
-        {signedIn && <p className="home__hero-eyebrow">{t(timeGreetingKey())}</p>}
-        <h1 className="home__hero-title">{t('home.heroTitle')}</h1>
-        <p className="home__hero-sub">{t('home.heroSub')}</p>
+      {/* ---- hero: the promise, and the two ways in ---- */}
+      <section className="home__hero" aria-labelledby="home-title">
+        <div className="home__hero-inner">
+          <p className="home__greeting">
+            {signedIn && firstName ? t(timeGreetingKey(), { name: firstName }) : t('home.welcome')}
+          </p>
+          <h1 id="home-title" className="home__title">
+            {householdName ? t('home.heroTitleFamily', { household: householdName }) : t('home.heroTitle')}
+          </h1>
+          <p className="home__sub">{t('home.heroSub')}</p>
+
+          <div className="home__search">
+            <SearchBar id="home-search" variant="hero" value={query} onChange={setQuery} onSubmit={submitSearch} />
+          </div>
+
+          <div className="home__actions">
+            <Link to="/scan" className="qaction qaction--scan">
+              <span className="qaction__glyph">
+                <Icon name="scan" size={24} />
+              </span>
+              <span className="qaction__text">
+                <span className="qaction__title">{t('scan.heading')}</span>
+                <span className="qaction__sub">{t('home.scanSub')}</span>
+              </span>
+              <Icon name="chevron-right" size={18} className="qaction__chev" />
+            </Link>
+            <Link to="/scan?mode=label" className="qaction qaction--label">
+              <span className="qaction__glyph">
+                <Icon name="camera" size={24} />
+              </span>
+              <span className="qaction__text">
+                <span className="qaction__title">{t('capture.heading')}</span>
+                <span className="qaction__sub">{t('home.labelSub')}</span>
+              </span>
+              <Icon name="chevron-right" size={18} className="qaction__chev" />
+            </Link>
+          </div>
+        </div>
       </section>
 
-      {/* Utility zone: the two actions search cannot serve, plus the one
-          boundary-stated consent prompt. Grouped and spaced tighter than the
-          browsing surface below so they read as one entry strip rather than
-          competing for the same visual weight as the rails. */}
-      <div className="home__top">
-        <section className="home__actions" aria-label={t('search.placeholder')}>
-          <Link to="/scan" className="qaction qaction--scan">
-            <span className="qaction__glyph" aria-hidden="true">▣</span>
-            <span className="qaction__text">
-              <span className="qaction__title">{t('scan.heading')}</span>
-              <span className="qaction__sub">{t('scan.hint')}</span>
-            </span>
-          </Link>
-          <Link to="/scan?mode=label" className="qaction qaction--label">
-            <span className="qaction__glyph" aria-hidden="true">◎</span>
-            <span className="qaction__text">
-              <span className="qaction__title">{t('capture.heading')}</span>
-              <span className="qaction__sub">{t('capture.hint')}</span>
-            </span>
-          </Link>
-        </section>
+      <div className="home__body">
+        {/* ---- your context: today, and how the household is set up ---- */}
+        {signedIn && <TodayGlance />}
+        {signedIn && <FoodReadinessCard />}
 
         {!signedIn && (
           <section className="home__signin">
-            <div className="home__signin-text">
-              <p className="home__signin-title">{t('fit.signInPrompt')}</p>
-              <p className="home__signin-sub">{t('fit.signInReason')}</p>
+            <div className="home__signin-icon">
+              <Icon name="family" size={26} />
             </div>
-            <Link to="/settings" className="btn btn--primary btn--sm home__signin-btn">
+            <div className="home__signin-text">
+              <p className="home__signin-title">{t('home.signInTitle')}</p>
+              <p className="home__signin-sub">{t('home.signInSub')}</p>
+            </div>
+            <Link to="/you" className="btn btn--primary btn--sm home__signin-btn">
               {t('action.signIn')}
             </Link>
           </section>
         )}
-      </div>
 
-      {/* Browsing surface: categories, curated rails, then recent activity
-          last — a returning household's history is a bonus, not something
-          that should interrupt discovery for everyone else. Evenly spaced as
-          one continuous shelf rather than a stack of independent widgets. */}
-      <div className="home__browse">
-        <section aria-labelledby="cat-heading">
-          <SectionHeader title={t('home.browseCategories')} />
+        {/* ---- the shelf ---- */}
+        <section aria-labelledby="cat-heading" className="home__section">
+          <SectionHeader title={t('home.browseCategories')} actionLabel={t('home.seeAll')} actionTo="/search" />
           <div id="cat-heading" className="sr-only">{t('home.browseCategories')}</div>
-          {categories.isPending && <CategoryRailSkeleton />}
+          {categories.isPending && <CategoryGridSkeleton />}
           {categories.isSuccess && (
-            <CategoryRail
-              categories={categories.data.map((c) => ({ code: c.code, name: c.name }))}
-            />
+            <CategoryGrid categories={categories.data.map((c) => ({ code: c.code, name: c.name }))} />
           )}
-          {categories.isError && (
-            <ErrorState error={categories.error} onRetry={() => void categories.refetch()} />
-          )}
+          {categories.isError && <ErrorState error={categories.error} onRetry={() => void categories.refetch()} />}
         </section>
 
+        {saved.length > 0 && (
+          <section className="home__section">
+            <SectionHeader
+              title={t('saved.heading')}
+              subtitle={t('saved.count', { count: saved.length })}
+              actionLabel={t('home.seeAll')}
+              actionTo="/saved"
+            />
+            <ProductRail
+              products={saved.slice(0, 10).map((p) => ({
+                id: p.id,
+                brandName: p.brandName,
+                name: p.name,
+                packSize: p.packSize,
+                categoryCode: p.categoryCode,
+                categoryName: p.categoryName,
+                imageUrl: p.imageUrl,
+              }))}
+            />
+          </section>
+        )}
+
         {catalogueUnavailable ? (
-          <section>
+          <section className="home__section">
             <ErrorState error={popular.error} onRetry={() => void popular.refetch()} />
           </section>
         ) : (
           <>
-            <Rail
-              title={t('home.railPopular')}
-              subtitle={t('home.railPopularSub')}
-              query={popular}
-              seeAllTo="/search"
-            />
-            <Rail
-              title={t('home.railBiscuits')}
-              query={biscuits}
-              seeAllTo="/search?category=BISCUITS"
-            />
-            <Rail
-              title={t('home.railBeverages')}
-              query={beverages}
-              seeAllTo="/search?category=BEVERAGES"
-            />
+            <Rail title={t('home.railPopular')} subtitle={t('home.railPopularSub')} query={popular} seeAllTo="/search" />
+            <Rail title={t('home.railBiscuits')} query={biscuits} seeAllTo="/search?category=BISCUITS" />
+            <Rail title={t('home.railBeverages')} query={beverages} seeAllTo="/search?category=BEVERAGES" />
           </>
         )}
 
         {signedIn && recentProducts.length > 0 && (
-          <section className="home__rail">
-            <SectionHeader title={t('home.railRecent')} />
+          <section className="home__section">
+            <SectionHeader title={t('home.railRecent')} actionLabel={t('home.seeAll')} actionTo="/history" />
             <ProductRail loading={false} products={recentProducts.map(toCardData)} />
           </section>
         )}
-      </div>
 
-      <p className="home__disclaimer">{t('medical.notice')}</p>
+        <div className="home__trust">
+          <div className="home__trust-item">
+            <Icon name="shield" size={20} />
+            <span>{t('home.trustSource')}</span>
+          </div>
+          <div className="home__trust-item">
+            <Icon name="lock" size={20} />
+            <span>{t('home.trustPrivate')}</span>
+          </div>
+          <div className="home__trust-item">
+            <Icon name="leaf" size={20} />
+            <span>{t('home.trustNoAds')}</span>
+          </div>
+        </div>
+
+        <p className="home__disclaimer">{t('medical.notice')}</p>
+      </div>
     </div>
   );
 }
 
-/** A time-of-day greeting — a function of the visitor's own clock, not of any
- *  stored data about them. Shown only when signed in, and only as a small
- *  eyebrow above the hero title, never as a headline of its own — this is not
- *  personalisation (D-020/D-024), just a plain courtesy. */
-function timeGreetingKey(): 'home.greetingMorning' | 'home.greetingAfternoon' | 'home.greetingEvening' {
+function timeGreetingKey(): 'home.greetingMorningName' | 'home.greetingAfternoonName' | 'home.greetingEveningName' {
   const hour = new Date().getHours();
-  if (hour < 12) return 'home.greetingMorning';
-  if (hour < 17) return 'home.greetingAfternoon';
-  return 'home.greetingEvening';
+  if (hour < 12) return 'home.greetingMorningName';
+  if (hour < 17) return 'home.greetingAfternoonName';
+  return 'home.greetingEveningName';
 }
 
-/** One curated rail. Renders nothing at all when the catalogue has no match —
- *  an empty rail with a heading is worse than no rail. */
+/** The same product viewed three times is one row on a "recently viewed" rail. */
+function dedupe(products: ProductSummary[]): ProductSummary[] {
+  const seen = new Set<string>();
+  return products.filter((p) => {
+    if (seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+}
+
+/** One curated rail. Renders nothing at all when the catalogue has no match. */
 function Rail({
   title,
   subtitle,
@@ -191,9 +221,6 @@ function Rail({
 }: {
   title: string;
   subtitle?: string;
-  // `data: T | undefined` rather than an optional property: with
-  // exactOptionalPropertyTypes a `?` means "may be absent", which is not the same
-  // as TanStack's "present and undefined until it resolves".
   query: { isPending: boolean; isSuccess: boolean; data: { items: ProductSummary[] } | undefined };
   seeAllTo: string;
 }) {
@@ -202,17 +229,14 @@ function Rail({
   }
 
   return (
-    <section className="home__rail">
+    <section className="home__section">
       <SectionHeader
         title={title}
         {...(subtitle ? { subtitle } : {})}
         actionLabel={t('home.seeAll')}
         actionTo={seeAllTo}
       />
-      <ProductRail
-        loading={query.isPending}
-        products={(query.data?.items ?? []).map(toCardData)}
-      />
+      <ProductRail loading={query.isPending} products={(query.data?.items ?? []).map(toCardData)} />
     </section>
   );
 }

@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
 import { VerdictChip, type Verdict } from './VerdictChip';
 import { ProductImage } from './ProductImage';
+import { Icon } from './Icon';
 import { t } from '@/lib/i18n';
 import { formatAmount } from '@/lib/nutrition';
 import { displayProductName, normaliseBrand } from '@/lib/productName';
+import { toggleSaved, useIsSaved, type SavedProduct } from '@/lib/saved';
+import { MAX_COMPARE, toggleTray, useIsInTray } from '@/lib/compareTray';
+import { useToast } from './Toast';
 import './ProductCard.css';
 
 export interface ProductCardData {
@@ -20,54 +24,49 @@ export interface ProductCardData {
   /** The one number worth reading on a card. */
   headlineFact?: { label: string; value: string } | null;
   allergenFlagged?: boolean;
+  /** The product-level star rating, when scored — shown small and after the verdict line (D-003). */
+  ratingStars?: number | null;
 }
 
 interface ProductCardProps {
   product: ProductCardData;
   /** `rail` is a fixed-width card inside a horizontal carousel. */
   layout?: 'grid' | 'rail';
+  /** Hides the save control (e.g. inside a picker). */
+  saveable?: boolean;
+  /** Shows the add-to-compare control (D-066). On by default wherever saving is. */
+  comparable?: boolean;
 }
 
 /**
- * The card is the unit of browsing, so its anatomy is the most important layout
- * decision in the product.
+ * The card is the unit of browsing. Media first, then brand, name, size, then the decisive
+ * line — the verdict, or the single nutrient that most often decides it. Where a grocery app
+ * puts price and "ADD", this puts the fact that matters and a Save.
  *
- * It follows the shape a quick-commerce shopper already knows — media, brand,
- * name, size, then the decisive line — because that muscle memory is the whole
- * reason to reference those apps. What differs is the last line: where a grocery
- * app puts price and an ADD button, this puts the verdict and the single nutrient
- * that drove it. That substitution is the product.
- *
- * The verdict is absent for anonymous visitors by design (D-020) — a personal
- * result requires a profile, and a profile requires consent. The card then shows
- * the product-level fact instead, which is still useful and still honest.
+ * The whole card is one link (a stretched pseudo-element on `.pcard__link`), and the Save
+ * control is a sibling button rather than a button nested inside the link — valid HTML and
+ * reliably tappable.
  */
-export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
-  const {
-    id, brandName, name, packSize, categoryCode, imageUrl,
-    verdict, headlineFact, allergenFlagged, dataQuality,
-  } = product;
+export function ProductCard({ product, layout = 'grid', saveable = true, comparable = saveable }: ProductCardProps) {
+  const { id, brandName, name, packSize, categoryCode, imageUrl, verdict, headlineFact, allergenFlagged, dataQuality } =
+    product;
 
-  const size =
-    packSize?.value != null && packSize.unit
-      ? `${formatAmount(packSize.value)} ${packSize.unit}`
-      : null;
-
+  const size = packSize?.value != null && packSize.unit ? `${formatAmount(packSize.value)} ${packSize.unit}` : null;
   const needsVerification = dataQuality === 'CONFLICTING' || dataQuality === 'NEEDS_REVIEW';
-
-  // A row whose stored name is only its barcode gets a description built from
-  // what is actually known, and is marked so it reads as a gap rather than a
-  // confident label. See lib/productName.ts.
   const brand = normaliseBrand(brandName);
   const displayName = displayProductName({ name, brandName, packSize, categoryName: product.categoryName ?? null });
 
   return (
-    <Link
-      to={`/product/${id}`}
-      className={`pcard pcard--${layout}`}
-      aria-label={`${brand} ${displayName.text}${size ? `, ${size}` : ''}`}
-    >
-      <div className="pcard__media">
+    <article className={`pcard pcard--${layout}`}>
+      <Link
+        to={`/product/${id}`}
+        className="pcard__link"
+        aria-label={`${brand} ${displayName.text}${size ? `, ${size}` : ''}${allergenFlagged ? `. ${t('card.allergenFlag')}` : ''}`}
+      >
+        <span className="sr-only">{displayName.text}</span>
+      </Link>
+
+      <div className="pcard__media" aria-hidden="true">
         <ProductImage
           imageUrl={imageUrl}
           categoryCode={categoryCode}
@@ -75,23 +74,22 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
           alt=""
           classNames={{ img: 'pcard__img', art: 'pcard__art', glyph: 'pcard__glyph' }}
         />
-
         {allergenFlagged && (
-          <span className="pcard__allergen" title={t('allergen.heading', { allergen: '' })}>
-            <span aria-hidden="true">▲</span>
-            <span className="sr-only">{t('allergen.heading', { allergen: '' })}</span>
+          <span className="pcard__allergen">
+            <Icon name="alert" size={12} />
           </span>
         )}
       </div>
 
-      <div className="pcard__body">
+      {saveable && <SaveButton product={product} />}
+      {comparable && <CompareToggle product={product} />}
+
+      <div className="pcard__body" aria-hidden="true">
         <p className="pcard__brand">{brand}</p>
         <p className={displayName.isPlaceholder ? 'pcard__name pcard__name--placeholder' : 'pcard__name'}>
           {displayName.text}
         </p>
-        {displayName.isPlaceholder && (
-          <p className="pcard__size">{t('product.nameMissing')}</p>
-        )}
+        {displayName.isPlaceholder && <p className="pcard__size">{t('product.nameMissing')}</p>}
         {size && <p className="pcard__size">{size}</p>}
 
         <div className="pcard__decision">
@@ -102,17 +100,79 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
               <strong>{headlineFact.value}</strong> {headlineFact.label}
             </span>
           ) : (
-            <span className="pcard__fact pcard__fact--muted">
-              {t('product.notDeclared')}
-            </span>
+            <span className="pcard__fact pcard__fact--muted">{t('product.notDeclared')}</span>
           )}
         </div>
 
-        {needsVerification && (
-          <p className="pcard__flag">{t('product.dataNeedsVerification')}</p>
+        {product.ratingStars != null && (
+          <p className="pcard__rating">{t('card.rating', { stars: formatAmount(product.ratingStars) })}</p>
         )}
+
+        {needsVerification && <p className="pcard__flag">{t('product.dataNeedsVerificationShort')}</p>}
       </div>
-    </Link>
+    </article>
+  );
+}
+
+function SaveButton({ product }: { product: ProductCardData }) {
+  const saved = useIsSaved(product.id);
+  const toast = useToast();
+
+  function toggle() {
+    const entry: SavedProduct = {
+      id: product.id,
+      brandName: product.brandName,
+      name: product.name,
+      packSize: product.packSize ?? null,
+      categoryCode: product.categoryCode ?? null,
+      categoryName: product.categoryName ?? null,
+      imageUrl: product.imageUrl ?? null,
+      savedAt: new Date().toISOString(),
+    };
+    const nowSaved = toggleSaved(entry);
+    toast.show(nowSaved ? t('saved.added') : t('saved.removed'), nowSaved ? 'heart-filled' : 'check');
+  }
+
+  return (
+    <button
+      type="button"
+      className={saved ? 'pcard__save pcard__save--on' : 'pcard__save'}
+      aria-pressed={saved}
+      aria-label={saved ? t('saved.removeAction') : t('saved.addAction')}
+      onClick={toggle}
+    >
+      <Icon name={saved ? 'heart-filled' : 'heart'} size={18} />
+    </button>
+  );
+}
+
+/** A sibling button (never inside the card's link), like Save. */
+function CompareToggle({ product }: { product: ProductCardData }) {
+  const inTray = useIsInTray(product.id);
+  const toast = useToast();
+
+  function toggle() {
+    const result = toggleTray({
+      id: product.id,
+      brandName: product.brandName,
+      name: product.name,
+      imageUrl: product.imageUrl ?? null,
+      categoryCode: product.categoryCode ?? null,
+    });
+    if (result === 'full') toast.show(t('compare.trayFull', { max: MAX_COMPARE }), 'info');
+    else toast.show(result === 'added' ? t('compare.addedToTray') : t('compare.removedFromTray'), 'compare');
+  }
+
+  return (
+    <button
+      type="button"
+      className={inTray ? 'pcard__compare pcard__compare--on' : 'pcard__compare'}
+      aria-pressed={inTray}
+      aria-label={inTray ? t('compare.removeFromTray') : t('compare.addToTray')}
+      onClick={toggle}
+    >
+      <Icon name={inTray ? 'check' : 'compare'} size={16} />
+    </button>
   );
 }
 

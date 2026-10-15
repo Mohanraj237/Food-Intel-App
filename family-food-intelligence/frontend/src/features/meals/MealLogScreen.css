@@ -1,0 +1,407 @@
+/* Meal logging and meal detail.
+   The log form is three steps asked in order (what, who, when) — plan §18 Journey 2.3 — one
+   fieldset visible at a time, each a plain question rather than a card. Food rows and people
+   rows are the only boxed things, because each is one editable unit the user returns to.
+   This is a single-task form (plan §5.3): it deliberately stays narrow even on desktop, via
+   --layout-form-max rather than a raw max-width. */
+
+.mealpage__lede {
+  margin: 0;
+  color: var(--text-secondary);
+  max-width: 60ch;
+}
+
+.mealpage__crumbs { font-size: var(--text-sm); }
+
+.mealpage__meta {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.mealpage__success {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--success-bg);
+  color: var(--success-fg);
+  font-weight: 600;
+}
+
+.mealpage__confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-md);
+  background: var(--brand-subtle);
+}
+
+.mealpage__confirm p {
+  margin: 0;
+}
+
+.mealpage__section {
+  padding-top: var(--space-5);
+  margin-bottom: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.mealpage__h2 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-h2);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* ------------------------------------------------------------------ form */
+
+.mealform {
+  /* Width is capped by the page root's `.layout-form` utility (plan §5.2/§5.4), not here. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.mealform__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-5) 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.mealform__legend {
+  float: left; /* keeps the legend inside the padded box instead of on the rule */
+  width: 100%;
+  margin: 0 0 var(--space-1);
+  padding: 0;
+  font-size: var(--text-h2);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
+}
+
+.mealform__legend + * {
+  clear: both;
+}
+
+.mealform__hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  max-width: 60ch;
+}
+
+.mealform__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+}
+
+.mealform__items,
+.mealform__people {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mealform__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ------------------------------------------------------------- food rows */
+
+.mealitem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.mealitem__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.mealitem__title {
+  font-weight: 700;
+  margin-right: auto;
+}
+
+.mealitem__mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.mealitem__remove,
+.mealitem__change {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.mealitem__remove {
+  color: var(--danger-fg);
+}
+
+.mealitem__picked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.mealitem__picked .mealform__hint {
+  flex-basis: 100%;
+}
+
+.mealitem__search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mealitem__results {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.mealitem__result {
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mealitem__results li:last-child .mealitem__result {
+  border-bottom: 0;
+}
+
+@media (hover: hover) {
+  .mealitem__result:hover { background: var(--brand-subtle); }
+}
+
+.mealitem__qty {
+  max-width: 12rem;
+}
+
+.mealitem__nutrition summary {
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  color: var(--brand);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mealitem__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+/* ----------------------------------------------------------- people rows */
+
+.portion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* Selected carries a border AND a ground change, not colour alone. */
+.portion--selected {
+  border-color: var(--brand);
+  background: var(--brand-subtle);
+}
+
+.portion__who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+  margin-right: auto;
+}
+
+.portion__who input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--brand);
+}
+
+.portion__name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.portion__amount {
+  min-width: 10rem;
+}
+
+.portion__note {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* ------------------------------------------------------------- detail */
+
+.shares {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.share__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.share__name {
+  font-weight: 700;
+}
+
+.share__fraction {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Status is carried by a leading glyph as well as colour. */
+.share__status {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.share__status--in {
+  color: var(--success-fg);
+}
+
+.share__status--in::before {
+  content: '\2713\00a0';
+}
+
+.share__status--waiting {
+  color: var(--text-secondary);
+}
+
+.share__status--waiting::before {
+  content: '\2026\00a0';
+}
+
+.nutriline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.nutriline__item {
+  display: flex;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.nutriline__item dt {
+  color: var(--text-secondary);
+}
+
+.nutriline__item dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.nutriline--none {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+.mealitems {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.mealitems__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.mealitems__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mealitems__qty {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}

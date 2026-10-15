@@ -27,6 +27,9 @@ public interface HealthObservationRepository extends JpaRepository<HealthObserva
 
     void deleteByHouseholdMemberId(UUID householdMemberId);
 
+    /** Everything one member has, newest first — their data export (AC-9.2). */
+    List<HealthObservation> findByHouseholdMemberIdOrderByEffectiveAtDesc(UUID householdMemberId);
+
     /** Retract exactly the rows one producer derived for one subject. */
     void deleteByHouseholdMemberIdAndSourceRef(UUID householdMemberId, UUID sourceRef);
 

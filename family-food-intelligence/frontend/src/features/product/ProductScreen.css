@@ -5,76 +5,36 @@
   border-bottom: 1px solid var(--border);
 }
 
+.pdp__section--last,
 .pdp__section:last-child { border-bottom: 0; }
 
-.pdp__h2 {
-  font-size: var(--text-h2);
-  font-weight: 700;
+.pdp__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
   margin-bottom: var(--space-3);
 }
 
-/* ---- hero ---- */
+.pdp__section-head .pdp__h2 { margin-bottom: 0; }
 
-/* Image first (design brief principle 1): a full-width photo at the top of
-   the screen, identity stacked below it — not a thumbnail squeezed beside
-   text. The same column layout also serves the desktop sidebar case
-   (1024px+ below), where the column itself is simply narrower. */
-.pdp__hero {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--page-gutter);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+.pdp__h2 {
+  font-size: var(--text-h2);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
+  margin-bottom: var(--space-3);
 }
 
-.pdp__hero--loading { min-height: 320px; }
-
-.pdp__art {
-  width: 100%;
-  max-width: 360px;
-  aspect-ratio: 1 / 1;
-  height: auto;
-  border-radius: var(--radius-md);
-  flex-shrink: 0;
-  overflow: hidden;
-  margin-inline: auto;
+.pdp__basis {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }
 
-/* The gradient+glyph fallback only — a real photo must not be desaturated. */
-/* Flat, muted tint (CategoryArt.tsx's categoryTint) — see ProductCard.css. */
-.pdp__art--fallback {
-  display: grid;
-  place-items: center;
-}
+/* ---- crumbs ---- */
 
-/* A placeholder does not deserve a photograph's footprint. When there is no
-   real image, the box shrinks so the brand and product name — the things a
-   shopper actually came to read — sit higher on a phone screen. A real photo
-   keeps the full size, because there the image *is* the content. */
-.pdp__art--placeholder {
-  max-width: 200px;
-}
-
-/* `contain`, not `cover` — matches ProductCard: a real photo is rarely
-   square, and cropping it would cut the pack off rather than show it
-   honestly. */
-.pdp__art--photo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: var(--card-media-bg);
-  padding: var(--space-3);
-  box-sizing: border-box;
-}
-
-.pdp__glyph {
-  font-size: 3rem;
-  opacity: 0.75;
-}
-
-/* Breadcrumbs. A product page is usually entered directly — from a scan, a
-   shared link or search — so it needs its own way back to the catalogue. */
 .pdp__crumbs {
   display: flex;
   flex-wrap: wrap;
@@ -85,36 +45,82 @@
   color: var(--text-tertiary);
 }
 
-.pdp__crumbs a {
+.pdp__crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--text-secondary);
   text-decoration: none;
-  border-radius: var(--radius-sm);
+  font-weight: 600;
+  min-height: var(--tap-min);
 }
 
-.pdp__crumbs a:hover { color: var(--brand); text-decoration: underline; }
+.pdp__crumb:hover { color: var(--brand); }
+.pdp__crumb-sep { color: var(--border-interactive); }
+
+/* ---- hero ---- */
+
+.pdp__hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--page-gutter) var(--space-4);
+}
+
+.pdp__hero--loading { min-height: 360px; }
+
+.pdp__media {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--card-media-bg);
+}
+
+.pdp__art {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.pdp__art--fallback { display: grid; place-items: center; }
+.pdp__art--placeholder { max-width: 180px; }
+
+.pdp__art--photo {
+  object-fit: contain;
+  background: transparent;
+  mix-blend-mode: multiply;
+}
+
+:root[data-theme='dark'] .pdp__art--photo { mix-blend-mode: normal; }
+
+.pdp__glyph { font-size: 3.5rem; opacity: 0.8; }
 
 .pdp__identity { min-width: 0; }
-
-/* A name we had to construct because the stored one was only a barcode. */
-.pdp__name--placeholder {
-  color: var(--text-secondary);
-  font-style: italic;
-}
 
 .pdp__brand {
   font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--brand-hover);
 }
 
+:root[data-theme='dark'] .pdp__brand { color: var(--brand); }
+
 .pdp__name {
-  font-size: var(--text-h1);
-  font-weight: 700;
+  font-size: var(--text-display);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
   line-height: var(--leading-tight);
   margin-top: var(--space-1);
 }
+
+.pdp__name--placeholder { color: var(--text-secondary); font-style: italic; }
 
 .pdp__meta {
   font-size: var(--text-sm);
@@ -122,69 +128,107 @@
   margin-top: var(--space-2);
 }
 
+.pdp__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pdp__save--on { border-color: var(--brand); color: var(--brand-hover); background: var(--brand-subtle); }
+:root[data-theme='dark'] .pdp__save--on { color: var(--brand); }
+
 /* ---- sign-in boundary ---- */
 
 .pdp__signin {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  background: var(--brand-subtle);
-  border: 1px solid var(--brand);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
 }
 
+.pdp__signin-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: var(--brand-subtle);
+  color: var(--brand-hover);
+  flex-shrink: 0;
+}
+
+.pdp__signin > div { flex: 1; min-width: 200px; }
 .pdp__signin-title { font-weight: 700; }
-.pdp__signin-sub { font-size: var(--text-sm); color: var(--text-secondary); }
-.pdp__signin .btn { text-decoration: none; margin-top: var(--space-1); }
+.pdp__signin-sub { font-size: var(--text-sm); color: var(--text-secondary); margin-top: 2px; }
 
 .pdp__pending { color: var(--text-secondary); }
 
-/* ---- fit section (signed-in, has household) ---- */
+/* ---- fit rows ---- */
 
-.pdp__fit-list {
+.fit {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
   list-style: none;
   padding: 0;
   margin: 0;
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
-.pdp__fit-row {
+.fit__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.fit__row:last-child { border-bottom: 0; }
+
+.fit__body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
 }
 
-.pdp__fit-allergen {
+.fit__name { font-weight: 700; }
+
+.fit__allergen {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--allergen-fg);
 }
 
-.pdp__fit-note {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
+.fit__note { font-size: var(--text-sm); color: var(--text-secondary); }
 
-.pdp__fit-why {
-  margin-top: var(--space-1);
-}
-
-.pdp__fit-why summary {
+.fit__why summary {
   cursor: pointer;
   font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--brand);
+  font-weight: 700;
+  color: var(--brand-hover);
   min-height: var(--tap-min);
   display: inline-flex;
   align-items: center;
 }
 
-.pdp__fit-why > :not(summary) {
-  margin-top: var(--space-2);
-}
+:root[data-theme='dark'] .fit__why summary { color: var(--brand); }
+
+.fit__why > :not(summary) { margin-top: var(--space-2); }
 
 .pdp__nomembers {
   display: flex;
@@ -193,62 +237,121 @@
   gap: var(--space-2);
 }
 
-/* ---- provenance ----
-   Given its own block rather than a footnote. "Where did this number come from
-   and when was it checked" is a trust question, and burying it under the panel
-   answers it only for people who already trust us. */
+/* ---- key facts ---- */
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.facts__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+.facts__item--empty { background: var(--surface); border-color: transparent; box-shadow: none; }
+
+.facts__label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.facts__value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.facts__unit {
+  margin-left: 2px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0;
+}
+
+.facts__missing {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ---- provenance ---- */
 
 .provenance {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  border: 1px solid var(--border);
 }
 
-.provenance__badge {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
+.provenance__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
 }
-
-.provenance__badge--good  { color: var(--verdict-everyday-fg);  background: var(--verdict-everyday-bg); }
-.provenance__badge--warn  { color: var(--verdict-limit-fg);     background: var(--verdict-limit-bg); }
-.provenance__badge--stale { color: var(--verdict-occasional-fg);background: var(--verdict-occasional-bg); }
-.provenance__badge--neutral { color: var(--verdict-insufficient-fg); background: var(--verdict-insufficient-bg); }
 
 .provenance__line { font-size: var(--text-sm); color: var(--text-secondary); }
+.provenance__conflict { font-size: var(--text-sm); color: var(--verdict-limit-fg); font-weight: 600; }
+.provenance__note { font-size: var(--text-xs); color: var(--text-tertiary); }
 
-.provenance__conflict {
-  font-size: var(--text-sm);
-  color: var(--verdict-limit-fg);
-  font-weight: 600;
-}
+/* ---- collapsible full label ---- */
 
-
-/* .nutri* rules now live in design-system/NutritionSummary.css — this screen
-   just renders the shared component. */
-
-.pdp__ingredients { line-height: var(--leading-normal); color: var(--text-secondary); }
-
-.pdp__report {
-  display: inline-block;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--brand);
-  min-height: var(--tap-min);
-  display: inline-flex;
+.pdp__details-summary {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  cursor: pointer;
+  list-style: none;
+  min-height: var(--tap-min);
 }
+
+.pdp__details-summary::-webkit-details-marker { display: none; }
+.pdp__details-summary .pdp__h2 { margin-bottom: 0; }
+.pdp__details-chev { color: var(--text-tertiary); transition: transform var(--dur-fast) var(--ease); }
+.pdp__details[open] .pdp__details-chev { transform: rotate(180deg); }
+.pdp__details-body { padding-top: var(--space-2); }
+
+.pdp__ingredients { line-height: var(--leading-relaxed); color: var(--text-secondary); }
+
+.pdp__diet { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-3); }
+.pdp__diet-note { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+.pdp__additives { margin-top: var(--space-3); }
+.pdp__additives-heading { font-size: var(--text-sm); font-weight: 700; color: var(--text); margin-bottom: var(--space-1); }
+.pdp__additives-list {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.pdp__rating { margin-bottom: var(--space-3); color: var(--text-secondary); }
 
 .pdp__disclaimer {
-  margin-top: var(--space-3);
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   line-height: var(--leading-normal);
@@ -256,42 +359,27 @@
 
 .pdp__notfound-help { margin-block: var(--space-3); color: var(--text-secondary); }
 
-/* ---- desktop: two columns ----
-   Below 1024px, `.pdp__layout`/`.pdp__col-left`/`.pdp__col-right` are plain
-   unstyled wrappers — the block below is the only place they do anything, so
-   the mobile stack (hero, then every section, in one column) is unchanged.
-
-   At 1024px+, the identity (image + brand/name/pack size, item 1 in the fixed
-   order) moves into a left column and stays in view; everything from the
-   allergen flag downward (items 2-7) becomes the right column and scrolls.
-   The left column is `position: sticky` — it is short and static (a photo and
-   three lines of text), so pinning it costs nothing, and it saves re-scrolling
-   back up to "what am I even looking at" while reading a long nutrition panel
-   or alternatives list on the right. */
+/* ---- desktop: two columns ---- */
 
 @media (min-width: 1024px) {
+  .pdp { padding-top: var(--space-4); }
+
   .pdp__layout {
     display: grid;
-    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
     align-items: start;
     gap: var(--space-6);
   }
 
   .pdp__col-left {
     position: sticky;
-    top: calc(var(--topbar-h) + var(--space-5));
+    top: calc(var(--topbar-h) + var(--space-4));
   }
 
   .pdp__col-right { min-width: 0; }
 
-  /* The hero sits in the sticky sidebar instead of spanning the full width —
-     same column layout as mobile, just narrower and without the divider that
-     separates it from the content below on a single-column phone view. */
   .pdp__hero { border-bottom: 0; }
-
   .pdp__art { max-width: 320px; }
-  .pdp__art--placeholder { max-width: 220px; }
-  .pdp__glyph { font-size: 3.5rem; }
-  .pdp__name { font-size: var(--text-display); }
-  .pdp__section { max-width: 780px; }
+  .pdp__glyph { font-size: 4rem; }
+  .pdp__section { max-width: 760px; }
 }

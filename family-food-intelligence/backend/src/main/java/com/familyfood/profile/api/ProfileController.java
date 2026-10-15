@@ -73,6 +73,7 @@ public class ProfileController {
                 request.ageBand(),
                 request.sex(),
                 request.dietaryPreference(),
+                request.activityLevel(),
                 request.goals(),
                 request.allergens(),
                 request.conditions());

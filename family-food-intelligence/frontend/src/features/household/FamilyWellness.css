@@ -1,0 +1,199 @@
+/* Family hub — a warm feed of how everyone is doing. Summary spans the page; people on the
+   left and the day's updates in a side column on desktop; one column on a phone. */
+.fwell {
+  max-width: var(--layout-dashboard-max);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  transition: opacity var(--dur-base) var(--ease);
+}
+
+.fwell--updating { opacity: 0.6; }
+
+.fwell__skeleton-summary {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+/* "Waiting for you" — informational, brand-subtle, never a warning colour. */
+.fwell__waiting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--attention-bg);
+  border-left: 4px solid var(--attention-rule);
+  font-size: var(--text-sm);
+}
+
+.fwell__waiting-title { font-weight: 700; }
+.fwell__waiting-body { color: var(--text-secondary); }
+
+.fwell__waiting-link {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-min);
+  color: var(--brand-hover);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+:root[data-theme='dark'] .fwell__waiting-link { color: var(--brand); }
+
+.fwell__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'aside'
+    'main';
+  gap: var(--space-4);
+}
+
+.fwell__main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.fwell__aside { grid-area: aside; min-width: 0; }
+
+.fwell__section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+}
+
+.fwell__section-title {
+  margin: 0;
+  font-size: var(--text-h2);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
+}
+
+.fwell__legend {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  max-width: 52ch;
+}
+
+.fwell__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.fwell__grid > li { min-width: 0; }
+
+@media (min-width: 720px) {
+  .fwell__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .fwell__layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-areas: 'main aside';
+    align-items: start;
+  }
+
+  .fwell__aside {
+    position: sticky;
+    top: calc(var(--topbar-h) + var(--space-4));
+    align-self: start;
+  }
+}
+
+/* People who share nothing with you — one quiet list. */
+.fwell__others {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.fwell__others-title {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.fwell__others-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+}
+
+.fwell__other {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.fwell__other-name { font-weight: 700; }
+.fwell__other-note { color: var(--text-tertiary); font-size: var(--text-xs); }
+
+.fwell__manage {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.fwell__manage:hover { color: var(--brand); border-color: var(--brand); }
+
+/* "It's just you for now" — the one card a household of one ever sees here. */
+.fwell__solo {
+  max-width: var(--layout-form-max);
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(120% 100% at 100% 0%, var(--brand-soft) 0%, transparent 60%),
+    var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.fwell__solo-title {
+  font-weight: 800;
+  font-size: var(--text-h2);
+  letter-spacing: var(--tracking-tight);
+  margin: 0 0 var(--space-2);
+}
+
+.fwell__solo-body { color: var(--text-secondary); margin: 0 0 var(--space-4); }
+
+.fwell__solo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

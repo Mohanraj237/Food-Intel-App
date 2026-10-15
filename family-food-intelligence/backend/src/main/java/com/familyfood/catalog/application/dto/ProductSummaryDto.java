@@ -14,6 +14,11 @@ import java.util.UUID;
  * {@code brandName} is {@code ""} rather than {@code null} when the product has no brand:
  * the frontend type declares it non-nullable, and an unbranded product is not a data
  * error worth surfacing as a missing field.
+ *
+ * <p>Search v2 fields (D-061): {@code dietFlag}/{@code dietFlagEstimated} and
+ * {@code novaGroup} from the current version, {@code allergenCodes} the codes the label
+ * declares as CONTAINS or MAY_CONTAIN (for a card's allergen marker against the viewer's own
+ * profile — never a free-from claim), and {@code assessment}, filled only by search.
  */
 public record ProductSummaryDto(UUID id,
                                 String brandName,
@@ -25,5 +30,16 @@ public record ProductSummaryDto(UUID id,
                                 String dataQuality,
                                 BigDecimal servingSizeG,
                                 String servingDeclaredText,
-                                List<KeyFactDto> keyFacts) {
+                                List<KeyFactDto> keyFacts,
+                                String dietFlag,
+                                boolean dietFlagEstimated,
+                                Integer novaGroup,
+                                List<String> allergenCodes,
+                                AssessmentBadgeDto assessment) {
+
+    public ProductSummaryDto withAssessment(AssessmentBadgeDto badge) {
+        return new ProductSummaryDto(id, brandName, name, packSize, categoryCode, categoryName, imageUrl,
+                dataQuality, servingSizeG, servingDeclaredText, keyFacts, dietFlag, dietFlagEstimated,
+                novaGroup, allergenCodes, badge);
+    }
 }

@@ -38,7 +38,7 @@ Written as testable Given/When/Then. Each maps to an automated test. The MVP is 
 | AC-3.4 | **Given** a child profile, **then** only age band is stored — no date of birth, no name beyond a display label (CH-006) | MUST |
 | AC-3.5 | **Given** a non-guardian adult member, **when** they request the child profile, **then** access is denied and the attempt is audited (CH-009) | MUST |
 | AC-3.6 | **When** a guardian withdraws consent, **then** processing stops immediately and the guardian can delete the child's data; a `CHILD_DATA_DELETED` audit event is written (CH-008) | MUST |
-| AC-3.7 | **Then** no weight, body-composition, calorie-target, streak, badge, leaderboard or notification-to-child capability exists anywhere in the codebase (CH-004/005, D-017) | MUST |
+| AC-3.7 | **Then** no weight, body-composition, calorie-target, streak, badge, leaderboard or notification-to-child capability exists anywhere in the codebase (CH-004/005, D-017). *Read since 2026-09-12 (D-036, D-042, D-047, D-051): absolute for a **child subject**, and enforced in the domain (metric age gate, child goal rule). Adults may record weight and body metrics. Adult calorie caps wait for a reviewed floor (D-047). Adult engagement mechanics are opt-in and cooperative (D-051).* | MUST |
 | AC-3.8 | **Then** no child data is transmitted to any external model provider (CH-010) | MUST |
 
 ## AC-4 Product discovery

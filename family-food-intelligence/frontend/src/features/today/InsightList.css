@@ -1,7 +1,10 @@
-/* Insights read as sentences, so they are typeset as sentences — not as tiles with a big
-   number, which would imply a precision the evidence often does not support. */
+/* The cards themselves are `RecommendationCard` (design-system) — this file only lays out the
+   short list of them. Rebuilt off the previous bordered/coloured `.insight`/`.insight--*` rules
+   (plan §18 4.1): a finding no longer gets a different border colour than a coverage statement,
+   because `RecommendationCard`'s own coverage-aware empty state now carries that distinction in
+   words, not a border. */
 
-.insight-list {
+.insight-feed {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -9,72 +12,6 @@
   padding: 0;
   list-style: none;
 }
-
-.insight {
-  padding: var(--space-4);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border-interactive);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-
-/* A finding earns the accent. Coverage statements stay neutral — they are true and useful,
-   but they are not a result, and colouring them the same would overstate them. */
-.insight--sufficient { border-left-color: var(--brand); }
-.insight--partial,
-.insight--no_data { border-left-color: var(--border); }
-
-.insight__headline {
-  margin: 0;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.insight__detail {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
-.insight__note {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-}
-
-.insight__evidence {
-  margin-top: var(--space-3);
-  font-size: var(--text-sm);
-}
-
-.insight__evidence summary {
-  cursor: pointer;
-  color: var(--text-secondary);
-  min-height: var(--tap-min);
-  display: flex;
-  align-items: center;
-}
-
-.insight__evidence-list {
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.insight__evidence-list li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: baseline;
-  color: var(--text-secondary);
-}
-
-.insight__evidence-label { flex: 1 1 auto; }
-.insight__evidence-value { font-weight: 700; color: var(--text); white-space: nowrap; }
-.insight__evidence-days  { font-size: var(--text-xs); color: var(--text-tertiary); }
 
 .insight__unavailable {
   margin: 0;

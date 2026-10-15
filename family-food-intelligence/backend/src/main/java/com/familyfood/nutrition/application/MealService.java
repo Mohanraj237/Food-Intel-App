@@ -1,5 +1,10 @@
 package com.familyfood.nutrition.application;
 
+import com.familyfood.access.application.AccessDecision;
+import com.familyfood.access.application.HealthAccessPolicy;
+import com.familyfood.access.domain.AccessScope;
+import com.familyfood.audit.AuditAction;
+import com.familyfood.audit.AuditService;
 import com.familyfood.catalog.application.ProductQueryService;
 import com.familyfood.catalog.application.dto.NutrientRowDto;
 import com.familyfood.catalog.application.dto.ProductDetailDto;
@@ -15,6 +20,7 @@ import com.familyfood.nutrition.infra.MealRepository;
 import com.familyfood.platform.error.AppException;
 import com.familyfood.platform.error.ErrorCode;
 import com.familyfood.wellness.application.WellnessAccess;
+import com.familyfood.wellness.domain.MetricCategory;
 import com.familyfood.wellness.domain.MetricCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,14 +33,16 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Meal logging with family apportioning (D-039).
+ * Meal logging with family apportioning (D-039, D-041).
  *
  * <h2>Log it once, apportion it</h2>
  * A meal is one composition event with N items and M member portions, not M food diaries. A
@@ -46,20 +54,26 @@ import java.util.stream.Collectors;
  * <h2>What this module refuses to do</h2>
  * It stores and it sums. There is no target, no score, no "too much sodium" and no comparison
  * against a goal — naming a number is a clinical claim and needs a citable reviewed standard
- * (D-037). The arithmetic here is addition and multiplication; every judgement is deliberately
- * left without a field to live in.
+ * (D-037). The arithmetic here is addition and multiplication.
  *
- * <h2>Scope of a read</h2>
- * A meal is household data by construction: one dinner, four portions, one row. Any live member
- * of the household may therefore read the household's meal log. The per-member
- * <em>observations</em> it derives are a different thing with a stricter rule — those are read
- * back through {@link WellnessAccess}, where default-closed visibility (D-038) applies.
+ * <h2>Who a meal writes for (D-041, D-044, D-048)</h2>
+ * A meal and its portions are household facts; the nutrition derived from a portion is that
+ * member's health record. So a meal derives immediately only for members the logger may
+ * already write NUTRITION for — themselves, children they guard, and anyone who made them a
+ * NUTRITION caregiver (D-045) — and only while that member's tracking consent is active. Every
+ * other share is stored and waits: another adult {@linkplain #confirmPortion confirms} their own.
  *
- * <p>Writes are gated by {@link WellnessAccess#replaceDerived}, which applies the D-036 age gate
- * and the D-002 "no adult proxies for another adult" relationship itself. Neither is repeated
- * here: a second copy would be a second thing to keep in step, and letting that exception
- * propagate unchanged is the intended behaviour — a meal apportioned to someone the caller may
- * not record for is refused outright, not silently logged without them.
+ * <h2>Who a meal is shown to (D-044) — fixed in W1</h2>
+ * Before W1 any household member could list every meal in the household, including another
+ * adult's solo lunch and the nutrition of every share (D-042, defect 1). Now:
+ * <ul>
+ *   <li>A meal is visible to the member who logged it, to everyone who was served in it, and to
+ *       anyone who may see the NUTRITION of at least one person served. A meal the caller had no
+ *       part in, about people who share nothing with them, is not returned — or, by id, is
+ *       reported as not found, because its existence is itself private.</li>
+ *   <li>Within a visible meal, the dish and who was served are shown; each share's nutrition is
+ *       shown only if the caller may see that member's NUTRITION, and is otherwise withheld.</li>
+ * </ul>
  */
 @Service
 public class MealService {
@@ -71,6 +85,8 @@ public class MealService {
     private static final int OBSERVATION_SCALE = 3;
 
     private static final int MAX_TEXT_LENGTH = 120;
+    private static final String RESOURCE_TYPE_MEAL = "MEAL";
+    private static final String CHILD_MEMBER_TYPE = "CHILD";
     private static final BigDecimal MAX_PORTION_FRACTION = new BigDecimal("10");
 
     /**
@@ -96,6 +112,8 @@ public class MealService {
     private final ProductQueryService catalog;
     private final HouseholdAccess households;
     private final WellnessAccess wellness;
+    private final HealthAccessPolicy access;
+    private final AuditService audit;
     private final Clock clock;
 
     public MealService(MealRepository meals,
@@ -104,6 +122,8 @@ public class MealService {
                        ProductQueryService catalog,
                        HouseholdAccess households,
                        WellnessAccess wellness,
+                       HealthAccessPolicy access,
+                       AuditService audit,
                        Clock clock) {
         this.meals = meals;
         this.mealItems = mealItems;
@@ -111,12 +131,14 @@ public class MealService {
         this.catalog = catalog;
         this.households = households;
         this.wellness = wellness;
+        this.access = access;
+        this.audit = audit;
         this.clock = clock;
     }
 
     /* ------------------------------------------------------------------------- writing */
 
-    /** Logs one meal with its items and portions, and derives every member's nutrition. */
+    /** Logs one meal with its items and portions, and derives every share it may. */
     @Transactional
     public MealView createMeal(UUID callerAccountId, CreateMealCommand command) {
         List<MemberInfo> liveMembers = requireCallerIsLiveMember(callerAccountId, command.householdId());
@@ -132,7 +154,10 @@ public class MealService {
         List<MealItem> items = saveItems(meal.getId(), command.items(), now);
         List<MealPortion> portions = savePortions(meal.getId(), command.portions(), now);
 
-        return apportionAndView(callerAccountId, meal, items, portions);
+        audit.success(AuditAction.MEAL_LOGGED, RESOURCE_TYPE_MEAL, meal.getId(),
+                callerAccountId, meal.getHouseholdId());
+        auditChildPortions(callerAccountId, meal, portions, liveMembers);
+        return apportionAndView(callerAccountId, meal, items, portions, now);
     }
 
     /**
@@ -147,6 +172,7 @@ public class MealService {
     public MealView updateMeal(UUID callerAccountId, UUID mealId, UpdateMealCommand command) {
         Meal meal = requireMeal(mealId);
         List<MemberInfo> liveMembers = requireCallerIsLiveMember(callerAccountId, meal.getHouseholdId());
+        requireLoggedByCaller(callerAccountId, meal);
         requireItemsAndPortions(command.items(), command.portions());
         requirePortionsAreLiveMembers(command.portions(), liveMembers);
         requireShortText(command.name());
@@ -164,8 +190,14 @@ public class MealService {
         List<MealItem> items = saveItems(mealId, command.items(), now);
         List<MealPortion> portions = savePortions(mealId, command.portions(), now);
 
+        // Every share derived from the old meal is withdrawn, confirmed ones included: a
+        // derived share only ever meant "my portion of this meal", and this meal is no longer
+        // the one that was confirmed (D-041). Other adults' fresh portions start unconfirmed.
         wellness.retractDerived(callerAccountId, mealId);
-        return apportionAndView(callerAccountId, meal, items, portions);
+        audit.success(AuditAction.MEAL_UPDATED, RESOURCE_TYPE_MEAL, mealId,
+                callerAccountId, meal.getHouseholdId());
+        auditChildPortions(callerAccountId, meal, portions, liveMembers);
+        return apportionAndView(callerAccountId, meal, items, portions, now);
     }
 
     /**
@@ -179,41 +211,92 @@ public class MealService {
     public void deleteMeal(UUID callerAccountId, UUID mealId) {
         Meal meal = requireMeal(mealId);
         requireCallerIsLiveMember(callerAccountId, meal.getHouseholdId());
+        requireLoggedByCaller(callerAccountId, meal);
 
         wellness.retractDerived(callerAccountId, mealId);
         mealItems.deleteByMealId(mealId);
         mealPortions.deleteByMealId(mealId);
         meals.delete(meal);
+        audit.success(AuditAction.MEAL_DELETED, RESOURCE_TYPE_MEAL, mealId,
+                callerAccountId, meal.getHouseholdId());
+    }
+
+    /**
+     * An adult adds their own share of a household meal to their own log (D-041).
+     *
+     * <p>The only way a portion someone else apportioned to an adult enters that adult's
+     * record. The caller is the subject, so this is a self-write: it passes the access policy as
+     * SELF and still needs their own tracking consent (D-048), which {@code replaceDerived}
+     * checks.
+     */
+    @Transactional
+    public MealView confirmPortion(UUID callerAccountId, UUID mealId) {
+        Meal meal = requireMeal(mealId);
+        List<MemberInfo> liveMembers = requireCallerIsLiveMember(callerAccountId, meal.getHouseholdId());
+
+        MemberInfo self = liveMembers.stream()
+                .filter(m -> callerAccountId.equals(m.userAccountId()))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_HOUSEHOLD_MEMBER));
+
+        List<MealPortion> portions = mealPortions.findByMealId(mealId);
+        MealPortion mine = portions.stream()
+                .filter(p -> p.getHouseholdMemberId().equals(self.id()))
+                .findFirst()
+                // Confirming a meal you were not served is not a correction, it is a new
+                // claim — and that belongs in logging a meal, not here.
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        List<MealItem> items = mealItems.findByMealId(mealId);
+        NutritionAmounts share = totalOf(items).scaledTo(mine.getPortionFraction(), OBSERVATION_SCALE);
+        wellness.replaceDerived(callerAccountId, self.id(), mealId, metricValues(share), meal.getConsumedAt());
+        mine.markDerived(clock.instant());
+        mealPortions.save(mine);
+
+        audit.successForSubject(AuditAction.MEAL_PORTION_CONFIRMED, RESOURCE_TYPE_MEAL, mealId,
+                callerAccountId, meal.getHouseholdId(), self.id(), Map.of("scope", AccessScope.NUTRITION.name()));
+
+        return new Reader(callerAccountId).viewOf(meal, items, portions);
     }
 
     /* ------------------------------------------------------------------------- reading */
 
+    /** One meal, if the caller may see it; otherwise not found — its existence is private. */
     @Transactional(readOnly = true)
     public MealView getMeal(UUID callerAccountId, UUID mealId) {
         Meal meal = requireMeal(mealId);
         requireCallerIsLiveMember(callerAccountId, meal.getHouseholdId());
-        return viewOf(meal, mealItems.findByMealId(mealId), mealPortions.findByMealId(mealId));
+
+        Reader reader = new Reader(callerAccountId);
+        List<MealPortion> portions = mealPortions.findByMealId(mealId);
+        if (!reader.maySee(meal, portions)) {
+            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND);
+        }
+        MealView view = reader.viewOf(meal, mealItems.findByMealId(mealId), portions);
+        reader.auditDisclosures();
+        return view;
     }
 
-    /** A household's meal log for a window, newest first. */
+    /** The household's meals the caller may see, in a window, newest first. */
     @Transactional(readOnly = true)
     public List<MealView> listMeals(UUID callerAccountId, UUID householdId, Instant from, Instant to) {
         requireCallerIsLiveMember(callerAccountId, householdId);
-        return viewsOf(meals.findByHouseholdIdAndConsumedAtBetweenOrderByConsumedAtDesc(householdId, from, to));
+        Reader reader = new Reader(callerAccountId);
+        List<MealView> views = reader.viewsOf(
+                meals.findByHouseholdIdAndConsumedAtBetweenOrderByConsumedAtDesc(householdId, from, to));
+        reader.auditDisclosures();
+        return views;
     }
 
     /**
-     * The meals one member had a share of, in a window.
-     *
-     * <p>Resolved through that member's portions rather than by filtering the household listing,
-     * so a meal nobody served them is not listed as theirs.
+     * The meals one member had a share of, in a window — which is that member's nutrition
+     * history, so it needs VIEW on their NUTRITION (self, guardian, or a grant). Resolved through
+     * the member's portions rather than by filtering the household listing, so a meal nobody
+     * served them is not listed as theirs.
      */
     @Transactional(readOnly = true)
     public List<MealView> listMealsForMember(UUID callerAccountId, UUID memberId, Instant from, Instant to) {
-        MemberInfo subject = households.findMember(memberId)
-                .filter(MemberInfo::active)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
-        requireCallerIsLiveMember(callerAccountId, subject.householdId());
+        access.requireView(callerAccountId, memberId, AccessScope.NUTRITION, RESOURCE_TYPE_MEAL);
 
         List<UUID> mealIds = mealPortions.findByHouseholdMemberId(memberId).stream()
                 .map(MealPortion::getMealId)
@@ -222,13 +305,82 @@ public class MealService {
         if (mealIds.isEmpty()) {
             return List.of();
         }
-        return viewsOf(meals.findByIdInAndConsumedAtBetweenOrderByConsumedAtDesc(mealIds, from, to));
+        Reader reader = new Reader(callerAccountId);
+        List<MealView> views = reader.viewsOf(
+                meals.findByIdInAndConsumedAtBetweenOrderByConsumedAtDesc(mealIds, from, to));
+        reader.auditDisclosures();
+        return views;
+    }
+
+    /**
+     * How many of a member's shares are waiting for them to add to their own log — the Today
+     * screen's "2 meals to confirm". Self only: nobody else needs to know what someone has not
+     * yet confirmed.
+     */
+    @Transactional(readOnly = true)
+    public int countAwaitingConfirmation(UUID callerAccountId, UUID memberId, Instant since) {
+        AccessDecision decision = access.decide(callerAccountId, memberId);
+        if (!decision.isSelf()) {
+            return 0;
+        }
+        List<MealPortion> waiting = mealPortions.findByHouseholdMemberIdAndDerivedAtIsNull(memberId);
+        if (waiting.isEmpty()) {
+            return 0;
+        }
+        Set<UUID> mealIds = waiting.stream().map(MealPortion::getMealId).collect(Collectors.toSet());
+        return meals.findByIdInAndConsumedAtBetweenOrderByConsumedAtDesc(List.copyOf(mealIds), since, clock.instant())
+                .size();
+    }
+
+    /* ------------------------------------------------------------------- data rights */
+
+    /**
+     * Account or child erasure (D-028): the member's shares go, and with them the member from
+     * every meal. A meal left with nobody's share in it records nothing for anyone and goes too;
+     * a meal other people also ate stays — it is their record as much as it was this member's.
+     * Derived observations are erased with the member's other observations by wellness.
+     */
+    @Transactional
+    public void eraseForMember(UUID memberId) {
+        List<MealPortion> mine = mealPortions.findByHouseholdMemberId(memberId);
+        Set<UUID> touchedMeals = mine.stream().map(MealPortion::getMealId).collect(Collectors.toSet());
+        mealPortions.deleteAll(mine);
+        mealPortions.flush();
+        for (UUID mealId : touchedMeals) {
+            if (mealPortions.findByMealId(mealId).isEmpty()) {
+                mealItems.deleteByMealId(mealId);
+                meals.findById(mealId).ifPresent(meals::delete);
+            }
+        }
+    }
+
+    /**
+     * The member's own meal history for their export: each meal they had a share of, with what
+     * was in it and their own share — never anyone else's share.
+     */
+    @Transactional(readOnly = true)
+    public List<MealView> exportForMember(UUID memberId) {
+        List<MealPortion> mine = mealPortions.findByHouseholdMemberId(memberId);
+        if (mine.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, MealPortion> byMeal = mine.stream()
+                .collect(Collectors.toMap(MealPortion::getMealId, p -> p, (a, b) -> a, LinkedHashMap::new));
+        List<Meal> found = meals.findAllById(byMeal.keySet());
+        Map<UUID, List<MealItem>> itemsByMeal = mealItems.findByMealIdIn(byMeal.keySet()).stream()
+                .collect(Collectors.groupingBy(MealItem::getMealId));
+        return found.stream()
+                .sorted(Comparator.comparing(Meal::getConsumedAt).reversed())
+                .map(meal -> assemble(meal, itemsByMeal.getOrDefault(meal.getId(), List.of()),
+                        List.of(byMeal.get(meal.getId())), member -> true))
+                .toList();
     }
 
     /* ------------------------------------------------------------------- apportioning */
 
     /**
-     * Writes each member's share into wellness, then returns the meal as the API shows it.
+     * Writes each share the logger may derive into wellness, then returns the meal as the API
+     * shows it to them.
      *
      * <p>Portions are processed in member-id order. The repository promises no ordering, and a
      * stable one means two identical calls write in the same sequence and return the same list,
@@ -237,14 +389,48 @@ public class MealService {
     private MealView apportionAndView(UUID callerAccountId,
                                       Meal meal,
                                       List<MealItem> items,
-                                      List<MealPortion> portions) {
+                                      List<MealPortion> portions,
+                                      Instant now) {
         NutritionAmounts total = totalOf(items);
         for (MealPortion portion : byMemberId(portions)) {
+            // Only shares the logger may write NUTRITION for, into a record whose tracking
+            // consent is active. Everything else is stored and waits (D-041, D-048). The age
+            // gate still runs inside replaceDerived for everyone who is written for.
+            if (!wellness.mayDeriveFor(callerAccountId, portion.getHouseholdMemberId(), MetricCategory.NUTRITION)) {
+                continue;
+            }
             NutritionAmounts share = total.scaledTo(portion.getPortionFraction(), OBSERVATION_SCALE);
             wellness.replaceDerived(callerAccountId, portion.getHouseholdMemberId(), meal.getId(),
                     metricValues(share), meal.getConsumedAt());
+            portion.markDerived(now);
+            mealPortions.save(portion);
         }
-        return viewOf(meal, items, portions);
+        return new Reader(callerAccountId).viewOf(meal, items, portions);
+    }
+
+    /** Only the member who logged a meal may change or remove it (D-041). */
+    private static void requireLoggedByCaller(UUID callerAccountId, Meal meal) {
+        if (!callerAccountId.equals(meal.getCreatedByUserId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    /**
+     * A meal apportioned to a child writes child data, and every write of child data is
+     * audited in the strict category as well as the ordinary one.
+     */
+    private void auditChildPortions(UUID callerAccountId, Meal meal,
+                                    List<MealPortion> portions, List<MemberInfo> liveMembers) {
+        for (MealPortion portion : portions) {
+            boolean isChild = liveMembers.stream()
+                    .anyMatch(m -> m.id().equals(portion.getHouseholdMemberId())
+                            && CHILD_MEMBER_TYPE.equals(m.memberType()));
+            if (isChild) {
+                audit.successForSubject(AuditAction.CHILD_DATA_ACCESSED, RESOURCE_TYPE_MEAL, meal.getId(),
+                        callerAccountId, meal.getHouseholdId(), portion.getHouseholdMemberId(),
+                        Map.of("scope", AccessScope.NUTRITION.name()));
+            }
+        }
     }
 
     /**
@@ -420,9 +606,7 @@ public class MealService {
      * Every portion must name a live member of this meal's household.
      *
      * <p>A boundary check, not an authorization check: whether the caller may record nutrition
-     * <em>for</em> that member is decided by {@link WellnessAccess}, which knows the age gate and
-     * the guardian relationship. Both run — a portion for someone outside the household is
-     * refused here, and a portion for another adult is refused there.
+     * <em>for</em> that member is decided by the access policy through {@link WellnessAccess}.
      */
     private static void requirePortionsAreLiveMembers(List<MealPortionCommand> portions,
                                                       List<MemberInfo> liveMembers) {
@@ -472,33 +656,111 @@ public class MealService {
 
     /* ----------------------------------------------------------------------- assembly */
 
-    private List<MealView> viewsOf(List<Meal> window) {
-        if (window.isEmpty()) {
-            return List.of();
+    /**
+     * One caller's view of meals for the length of one request: which members' nutrition they
+     * may see, asked once per member and remembered, and which of those were other people —
+     * so each disclosure is audited once, not once per meal (D-044).
+     */
+    private final class Reader {
+
+        private final UUID callerAccountId;
+        private final Map<UUID, Optional<AccessDecision>> decisions = new HashMap<>();
+        private final Map<UUID, AccessDecision> disclosed = new LinkedHashMap<>();
+
+        Reader(UUID callerAccountId) {
+            this.callerAccountId = callerAccountId;
         }
-        List<UUID> mealIds = window.stream().map(Meal::getId).toList();
 
-        // Batched: a week of meals costs two extra queries rather than two per meal.
-        Map<UUID, List<MealItem>> itemsByMeal = mealItems.findByMealIdIn(mealIds).stream()
-                .collect(Collectors.groupingBy(MealItem::getMealId));
-        Map<UUID, List<MealPortion>> portionsByMeal = mealPortions.findByMealIdIn(mealIds).stream()
-                .collect(Collectors.groupingBy(MealPortion::getMealId));
+        /** Whether the caller may see this member's NUTRITION. A departed member: no. */
+        boolean mayViewNutritionOf(UUID memberId) {
+            return decision(memberId).map(d -> d.canView(AccessScope.NUTRITION)).orElse(false);
+        }
 
-        return window.stream()
-                .map(meal -> viewOf(meal,
-                        itemsByMeal.getOrDefault(meal.getId(), List.of()),
-                        portionsByMeal.getOrDefault(meal.getId(), List.of())))
-                .toList();
+        boolean isCaller(UUID memberId) {
+            return decision(memberId).map(AccessDecision::isSelf).orElse(false);
+        }
+
+        /** Logged it, ate it, or may see the nutrition of someone who did. */
+        boolean maySee(Meal meal, List<MealPortion> portions) {
+            if (callerAccountId.equals(meal.getCreatedByUserId())) {
+                return true;
+            }
+            for (MealPortion portion : portions) {
+                if (isCaller(portion.getHouseholdMemberId()) || mayViewNutritionOf(portion.getHouseholdMemberId())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        List<MealView> viewsOf(List<Meal> window) {
+            if (window.isEmpty()) {
+                return List.of();
+            }
+            List<UUID> mealIds = window.stream().map(Meal::getId).toList();
+
+            // Batched: a week of meals costs two extra queries rather than two per meal.
+            Map<UUID, List<MealItem>> itemsByMeal = mealItems.findByMealIdIn(mealIds).stream()
+                    .collect(Collectors.groupingBy(MealItem::getMealId));
+            Map<UUID, List<MealPortion>> portionsByMeal = mealPortions.findByMealIdIn(mealIds).stream()
+                    .collect(Collectors.groupingBy(MealPortion::getMealId));
+
+            List<MealView> views = new ArrayList<>();
+            for (Meal meal : window) {
+                List<MealPortion> portions = portionsByMeal.getOrDefault(meal.getId(), List.of());
+                if (maySee(meal, portions)) {
+                    views.add(viewOf(meal, itemsByMeal.getOrDefault(meal.getId(), List.of()), portions));
+                }
+            }
+            return views;
+        }
+
+        MealView viewOf(Meal meal, List<MealItem> items, List<MealPortion> portions) {
+            return assemble(meal, items, portions, memberId -> {
+                boolean visible = mayViewNutritionOf(memberId);
+                if (visible) {
+                    decision(memberId).filter(AccessDecision::isCrossMember)
+                            .ifPresent(d -> disclosed.putIfAbsent(memberId, d));
+                }
+                return visible;
+            });
+        }
+
+        /** One access event per person whose nutrition this request showed to someone else. */
+        void auditDisclosures() {
+            disclosed.values().forEach(d ->
+                    access.auditRead(callerAccountId, d, List.of(AccessScope.NUTRITION), RESOURCE_TYPE_MEAL));
+        }
+
+        /**
+         * A member who has left the household has no decision — their share is shown without
+         * numbers. Checked up front rather than by catching the policy's not-found: an exception
+         * leaving a transactional method marks the whole request's transaction rollback-only,
+         * even when it is caught here.
+         */
+        private Optional<AccessDecision> decision(UUID memberId) {
+            return decisions.computeIfAbsent(memberId, id -> households.findMember(id)
+                    .filter(MemberInfo::active)
+                    .map(member -> access.decide(callerAccountId, id)));
+        }
     }
 
-    private static MealView viewOf(Meal meal, List<MealItem> items, List<MealPortion> portions) {
+    private static MealView assemble(Meal meal,
+                                     List<MealItem> items,
+                                     List<MealPortion> portions,
+                                     java.util.function.Predicate<UUID> nutritionVisibleFor) {
         NutritionAmounts total = totalOf(items);
         List<MealPortionView> portionViews = byMemberId(portions).stream()
-                .map(portion -> new MealPortionView(
-                        portion.getId(),
-                        portion.getHouseholdMemberId(),
-                        portion.getPortionFraction(),
-                        total.scaledTo(portion.getPortionFraction(), OBSERVATION_SCALE)))
+                .map(portion -> {
+                    boolean visible = nutritionVisibleFor.test(portion.getHouseholdMemberId());
+                    return new MealPortionView(
+                            portion.getId(),
+                            portion.getHouseholdMemberId(),
+                            portion.getPortionFraction(),
+                            visible ? total.scaledTo(portion.getPortionFraction(), OBSERVATION_SCALE) : null,
+                            portion.isInMemberLog(),
+                            !visible);
+                })
                 .toList();
 
         return new MealView(
@@ -509,7 +771,8 @@ public class MealService {
                 meal.getConsumedAt(),
                 total,
                 items.stream().map(MealItemView::from).toList(),
-                portionViews);
+                portionViews,
+                meal.getCreatedByUserId());
     }
 
     private static List<MealPortion> byMemberId(List<MealPortion> portions) {

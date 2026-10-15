@@ -1,5 +1,16 @@
+/* This file's classes now belong to `HouseholdSettingsScreen.tsx` (the household-setup UI
+   extracted out of `FamilyScreen.tsx`, plan/workstreams doc §3 & §0.5) and `ProfilePanel.tsx`
+   (C1-owned, imports this file directly for `.family__avatar`/`.family__form`/`.profile__*`
+   below). `FamilyScreen.tsx` itself is the redesigned Family hub now and defines no classes of
+   its own here — its layout comes from `FamilyWellness.css`. Nothing below is removed on that
+   account: removing a class `ProfilePanel.tsx` still imports would silently unstyle a file this
+   workstream does not own. */
+
 .family__h2 {
   font-size: var(--text-h2);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
+  margin-bottom: var(--space-3);
 }
 
 .family__form {
@@ -11,8 +22,10 @@
 .family__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* Member rows now render via the shared `HouseholdMemberCard` component
@@ -103,10 +116,29 @@
   gap: var(--space-3);
 }
 
+.profile__identity h1 {
+  font-size: var(--text-display);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
+}
+
+.profile__consent-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--brand-subtle);
+}
+
+.profile__consent-title { font-weight: 700; }
+.profile__consent-body { font-size: var(--text-sm); color: var(--text-secondary); }
+
 /* The household's own name, under the page title. Collected at creation and,
    until now, shown nowhere. */
 .household__name {
   margin: calc(-1 * var(--space-2)) 0 var(--space-4);
-  font-size: var(--text-md);
+  font-size: var(--text-body);
   color: var(--text-secondary);
 }

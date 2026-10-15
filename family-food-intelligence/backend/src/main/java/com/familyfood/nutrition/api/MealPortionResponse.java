@@ -10,18 +10,27 @@ import java.util.UUID;
  *
  * <p>{@code nutrition} is the meal total times {@code portionFraction} — the same arithmetic
  * that produced this member's observations, returned so a client does not reimplement it and
- * arrive at a different number.
+ * arrive at a different number. It is absent, and {@code nutritionWithheld} is true, when the
+ * reader may not see this member's NUTRITION data (D-044).
+ *
+ * <p>{@code inMemberLog} is false while another adult has yet to confirm their share (D-041).
+ * It states only <em>that</em> they confirmed, never what their values are, so it is safe to
+ * show to everyone at the table.
  */
 public record MealPortionResponse(UUID id,
                                   UUID householdMemberId,
                                   BigDecimal portionFraction,
-                                  NutritionResponse nutrition) {
+                                  NutritionResponse nutrition,
+                                  boolean inMemberLog,
+                                  boolean nutritionWithheld) {
 
     static MealPortionResponse from(MealPortionView view) {
         return new MealPortionResponse(
                 view.id(),
                 view.householdMemberId(),
                 view.portionFraction(),
-                NutritionResponse.from(view.nutrition()));
+                view.nutrition() == null ? null : NutritionResponse.from(view.nutrition()),
+                view.inMemberLog(),
+                view.nutritionWithheld());
     }
 }

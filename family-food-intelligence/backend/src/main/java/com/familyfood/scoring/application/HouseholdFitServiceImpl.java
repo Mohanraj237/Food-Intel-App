@@ -50,6 +50,12 @@ public class HouseholdFitServiceImpl implements HouseholdFitService {
 
     @Override
     public HouseholdFitView evaluate(UUID callerAccountId, UUID householdId, ProductAssessmentInput input) {
+        return evaluateMany(callerAccountId, householdId, List.of(input)).get(0);
+    }
+
+    @Override
+    public List<HouseholdFitView> evaluateMany(UUID callerAccountId, UUID householdId,
+                                               List<ProductAssessmentInput> inputs) {
         List<MemberInfo> liveMembers = householdAccess.listActiveMembers(householdId);
 
         MemberInfo self = liveMembers.stream()
@@ -57,16 +63,26 @@ public class HouseholdFitServiceImpl implements HouseholdFitService {
                 .findFirst()
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_HOUSEHOLD_MEMBER));
 
-        List<PersonalFitView> memberViews = liveMembers.stream()
+        List<MemberInfo> visible = liveMembers.stream()
                 .filter(member -> isAuthorizedForCaller(callerAccountId, self, member))
                 // listActiveMembers makes no ordering guarantee; sorting by member id gives a
                 // stable, reproducible order so that two calls with identical inputs produce
                 // byte-for-byte identical HouseholdFitView content (aside from computedAt).
                 .sorted(Comparator.comparing(MemberInfo::id))
-                .map(member -> personalFitService.evaluate(callerAccountId, member.id(), input))
                 .toList();
 
-        return new HouseholdFitView(householdId, input.productVersionId(), memberViews, clock.instant());
+        // One pass per member over every product: authorization, consent and profile once each.
+        List<List<PersonalFitView>> byMember = visible.stream()
+                .map(member -> personalFitService.evaluateMany(callerAccountId, member.id(), inputs))
+                .toList();
+
+        java.util.ArrayList<HouseholdFitView> result = new java.util.ArrayList<>(inputs.size());
+        for (int i = 0; i < inputs.size(); i++) {
+            final int index = i;
+            List<PersonalFitView> memberViews = byMember.stream().map(views -> views.get(index)).toList();
+            result.add(new HouseholdFitView(householdId, inputs.get(i).productVersionId(), memberViews, clock.instant()));
+        }
+        return List.copyOf(result);
     }
 
     /**

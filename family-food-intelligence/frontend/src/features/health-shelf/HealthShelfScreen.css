@@ -1,0 +1,55 @@
+.health-shelf-gate__badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--pending-bg);
+  color: var(--pending-fg);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.health-shelf__mocked-banner {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--attention-bg);
+  border-left: 3px solid var(--attention-rule);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.health-shelf__grid > li {
+  list-style: none;
+}
+
+.health-shelf__add {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.health-shelf__add-note {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.health-shelf__preview-controls {
+  border-style: dashed;
+}
+
+.health-shelf__preview-title {
+  font-weight: 700;
+}
+
+.health-shelf__preview-note {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.health-shelf__preview-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}

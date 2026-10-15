@@ -1,57 +1,65 @@
+.alternatives {
+  margin-top: var(--space-5);
+}
+
 .alternatives__empty {
-  font-size: var(--text-sm);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
   color: var(--text-secondary);
-  font-style: italic;
+  font-size: var(--text-sm);
 }
 
 .alternatives__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-/* Base card look (background/border/radius/gap) comes from `Card`
-   (`surface="sunken" padding="sm"`); this widens the inline padding beyond
-   the default. */
 .alternatives__card {
-  padding-inline: var(--space-4);
+  border-radius: var(--radius-md);
 }
+
+.alternatives__group { margin-top: var(--space-3); }
+.alternatives__group-title {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.alternatives__rating { font-size: var(--text-xs); color: var(--text-tertiary); margin-top: 2px; }
 
 .alternatives__name {
   font-weight: 700;
-  font-size: var(--text-sm);
   color: var(--text);
   text-decoration: none;
 }
 
-.alternatives__name:hover,
-.alternatives__name:focus-visible {
-  text-decoration: underline;
-}
-
-.alternatives__row {
-  font-size: var(--text-xs);
-}
+.alternatives__name:hover { color: var(--brand); text-decoration: underline; }
 
 .alternatives__row ul {
-  margin: var(--space-1) 0 0;
-  padding-left: var(--space-4);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-sm);
 }
 
-.alternatives__label {
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-tertiary);
+.alternatives__row--better li {
+  color: var(--accent);
+  font-weight: 600;
 }
 
-.alternatives__row--better {
-  color: var(--text);
-}
+.alternatives__row--better li::before { content: '↑ '; }
 
-.alternatives__row--worse {
+.alternatives__row--worse li {
   color: var(--text-secondary);
 }
+
+.alternatives__row--worse li::before { content: '↓ '; }

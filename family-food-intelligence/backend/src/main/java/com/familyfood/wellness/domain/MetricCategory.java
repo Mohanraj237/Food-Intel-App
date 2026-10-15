@@ -1,5 +1,7 @@
 package com.familyfood.wellness.domain;
 
+import com.familyfood.access.domain.AccessScope;
+
 /**
  * The grouping a metric belongs to, and the unit of sharing.
  *
@@ -15,5 +17,23 @@ public enum MetricCategory {
     HYDRATION,
     NUTRITION,
     CLINICAL,
-    WELLBEING
+    WELLBEING;
+
+    /**
+     * The access scope that governs this category (D-044). Spelled identically on purpose; a
+     * test asserts every category has one, so the two enums cannot drift apart.
+     */
+    public AccessScope scope() {
+        return AccessScope.valueOf(name());
+    }
+
+    /** The category a scope names, if it names one — the reverse of {@link #scope()}. */
+    public static java.util.Optional<MetricCategory> of(AccessScope scope) {
+        for (MetricCategory category : values()) {
+            if (category.name().equals(scope.name())) {
+                return java.util.Optional.of(category);
+            }
+        }
+        return java.util.Optional.empty();
+    }
 }

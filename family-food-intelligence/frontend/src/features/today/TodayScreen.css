@@ -1,84 +1,159 @@
-/* Individual Mode.
-   Sections are separated by rules rather than boxed into cards: this is a page someone
-   reads top to bottom once a day, not a control panel they scan. Only the totals get a
-   surface, because they are the answer to the question in the heading. */
+.today {
+  max-width: var(--layout-dashboard-max);
+  margin-inline: auto;
+  gap: var(--space-5);
+}
 
-.today__lede {
-  margin: 0 0 var(--space-6);
-  color: var(--text-secondary);
-  max-width: 60ch;
+.today__offline-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--pending-bg);
+  color: var(--pending-fg);
+  font-size: var(--text-sm);
 }
 
 .today__section {
-  padding-top: var(--space-5);
-  margin-bottom: var(--space-6);
-  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.today__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .today__h2 {
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-lg);
+  font-size: var(--text-h2);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
 }
 
-.today__totals {
+.today__section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--brand-hover);
+  text-decoration: none;
+  min-height: var(--tap-min);
+  white-space: nowrap;
+}
+
+:root[data-theme='dark'] .today__section-action { color: var(--brand); }
+
+/* Tiles: 2 across on a phone, 4 on desktop. */
+.today__tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.today__total {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  min-width: 0;
+@media (min-width: 1024px) {
+  .today__tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-.today__total-label {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
-.today__total-value {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-}
-
-.today__total-unit {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-/* Distinct from a value on purpose. "Not logged" must never be mistaken for a measured
-   zero — they mean opposite things and only one of them is a fact about the person. */
-.today__total-none {
-  font-size: var(--text-sm);
-  font-style: italic;
-  color: var(--text-tertiary);
-}
-
-.today__meal-link {
-  margin: var(--space-4) 0 0;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+.today__card {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
 }
 
 .today__profile-note {
-  padding: var(--space-3);
-  border: 1px dashed var(--border);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
+  background: var(--surface);
   font-size: var(--text-sm);
   color: var(--text-secondary);
+}
+
+.today__honesty {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  max-width: 60ch;
+}
+
+.today__honesty .icon { flex-shrink: 0; margin-top: 2px; }
+
+/* ---- meals ---- */
+
+.today__meals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .today__meals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+.today__meal {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.today__meal-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.today__meal-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--brand-subtle);
+  color: var(--brand-hover);
+  flex-shrink: 0;
+}
+
+:root[data-theme='dark'] .today__meal-icon { color: var(--brand); }
+
+.today__meal-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.today__meal-name { font-weight: 700; }
+.today__meal-meta { color: var(--text-secondary); font-size: var(--text-sm); }
+.today__meal-chev { color: var(--text-tertiary); flex-shrink: 0; }
+
+.today__meal-pending {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--brand-subtle);
+  color: var(--brand-hover);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-decoration: none;
 }

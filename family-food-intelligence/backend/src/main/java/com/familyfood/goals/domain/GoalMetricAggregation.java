@@ -1,18 +1,15 @@
 package com.familyfood.goals.domain;
 
+import com.familyfood.wellness.domain.MetricAggregation;
 import com.familyfood.wellness.domain.MetricCode;
 
 /**
  * How a window of observations becomes the one number a target is compared against.
  *
- * <p>This type exists because the obvious answer is wrong for half the taxonomy, and wrong in
- * the worst possible way — silently. Water and steps accumulate: 300 ml plus 500 ml is 800 ml
- * towards a daily target. Weight does not: totalling two weigh-ins on one day reports 144 kg,
- * which is not a measurement of anything, yet renders exactly like a real number next to a
- * real target.
- *
- * <p>Stated per metric rather than left to whichever read a service happened to call, so that
- * adding a metric forces the question to be answered once, in the open.
+ * <p>The rule itself now lives on the metric ({@link MetricCode#aggregation()}), because the
+ * Today summary, the family overview and insights need exactly the same answer and three copies
+ * would drift. This type remains as the goal module's name for it, so that
+ * {@code GoalProgressView.aggregation} keeps its published values ({@code SUM}/{@code LATEST}).
  */
 public enum GoalMetricAggregation {
 
@@ -23,13 +20,6 @@ public enum GoalMetricAggregation {
     LATEST;
 
     public static GoalMetricAggregation forMetric(MetricCode metric) {
-        return switch (metric) {
-            // Clock-like scalars: the latest bedtime is a fact, a total of bedtimes is noise.
-            case BEDTIME_OFFSET_MIN, WAKE_OFFSET_MIN -> LATEST;
-            default -> switch (metric.category()) {
-                case NUTRITION, HYDRATION, ACTIVITY, SLEEP -> SUM;
-                case BODY, CLINICAL, WELLBEING -> LATEST;
-            };
-        };
+        return metric.aggregation() == MetricAggregation.SUM ? SUM : LATEST;
     }
 }

@@ -26,4 +26,7 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, UUID
      * (e.g. the Open Food Facts image backfill) is resumed or re-run.
      */
     Optional<ProductImage> findByProductIdAndContentHash(UUID productId, String contentHash);
+
+    /** Every image row for a product, in gallery order — originals and derivatives alike. */
+    List<ProductImage> findByProductIdOrderBySortOrderAscCreatedAtAsc(UUID productId);
 }

@@ -1,6 +1,7 @@
 package com.familyfood.catalog.application;
 
 import com.familyfood.catalog.domain.ImageSource;
+import com.familyfood.catalog.domain.ImageStatus;
 import com.familyfood.catalog.domain.Product;
 import com.familyfood.catalog.domain.ProductImage;
 import com.familyfood.catalog.infra.ProductImageRepository;
@@ -77,6 +78,7 @@ class ProductImageServiceTest {
         when(products.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
         when(images.findByProductIdAndContentHash(any(), anyString())).thenReturn(Optional.empty());
         when(images.findByProductIdAndPrimaryTrue(any())).thenReturn(Optional.empty());
+        when(images.findByProductIdOrderBySortOrderAscCreatedAtAsc(any())).thenReturn(List.of());
         when(images.save(any(ProductImage.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(storage.publicUrl(anyString(), anyString()))
                 .thenAnswer(inv -> "http://localhost:9000/" + inv.getArgument(0) + "/" + inv.getArgument(1));
@@ -128,12 +130,15 @@ class ProductImageServiceTest {
         ProductImage previous = ProductImage.create(PRODUCT_ID, "old/key.jpg",
                 ImageSource.OFF_IMPORT, "oldhash", "image/jpeg", 10, null, null, true);
         when(images.findByProductIdAndPrimaryTrue(PRODUCT_ID)).thenReturn(Optional.of(previous));
+        when(images.findByProductIdOrderBySortOrderAscCreatedAtAsc(PRODUCT_ID)).thenReturn(List.of(previous));
 
         service.attachImage(PRODUCT_ID, SMALL_JPEG_BYTES, "image/jpeg", ImageSource.OFF_IMPORT);
 
         assertThat(previous.isPrimary()).isFalse();
-        verify(images).save(previous);
-        verify(images, times(2)).save(any(ProductImage.class)); // demoted previous + new primary
+        // The same view (FRONT) is replaced: the old original is superseded, never deleted (V15).
+        assertThat(previous.getStatus()).isEqualTo(ImageStatus.SUPERSEDED);
+        verify(images, times(2)).save(previous);
+        verify(images, times(3)).save(any(ProductImage.class)); // demoted + superseded previous, new primary
     }
 
     @Test

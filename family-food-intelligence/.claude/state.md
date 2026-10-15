@@ -1,5 +1,70 @@
 # Project State
 
+**Latest (2026-09-14, Food Intel App build, Increment 0 — scoring evidence pack, D-058).**
+The evidence pack D-025 requires before any real scoring rule can be written is complete and
+awaiting the product owner's review: six sourced evidence files (`docs/data/scoring/evidence/`)
+— the full WHO SEARO Nutrient Profile Model 2017 threshold table (18 categories) and the full
+FSSAI draft Indian Nutrition Rating Schedule III (all six tables), both transcribed by rendering
+the source PDFs' own pages as images and reading them directly, since both tables garble badly
+under plain text extraction; the FSSAI source is flagged plainly as a **draft** regulation, not
+final. `scoring-methodology.md` (the engineering model) and `rules-v2.md` (~25 proposed
+`scoring_rule` rows plus INR score-component bands, every non-quoted judgment call marked
+`[interpretation]`, honest gaps left for `AVOID_TRANS_FAT` and `MALT_DRINK` rather than guessed)
+are written. `review.md` is the actual gate: an eleven-item checklist and an approval line
+nothing may proceed past until signed. Decision D-058 records accepting the draft standard.
+**Nothing is active** — no migration was written, no code changed. Full detail:
+`.claude/current-task.md` top entry.
+
+---
+
+**Previous entry (2026-09-14, Food Intel App build, Increment 0b — visible UI fixes, D-074).** Four
+layout defects reported directly against the running app are fixed: the shell's fixed 1240px
+cap (large dead margins on 1440–1920px monitors) is now fluid up to 1800px; the category rail
+required a horizontal scroll to see all 13 categories, now a wrapped `CategoryGrid`; product
+rails had no control besides a raw swipe, now `ProductCarousel` adds desktop arrow buttons; the
+search pill's focus halo is gated to `:has(:focus-visible)` so it never appears unprompted (a
+caveat found while verifying: Chromium's own heuristic still shows the halo on a tap for a text
+input, by design — documented in `docs/design/design-system.md` v2.1 rather than fought). `npm
+run typecheck`/`test` (82/82)/`build` green; visually confirmed with a real Playwright run
+against the dev server across four viewports and both themes. Full detail:
+`.claude/current-task.md` top entry.
+
+**Previous entry (2026-09-13/14, Food Intel App build, pre-flight).** A full product-owner-approved
+implementation plan for the "Food Intelligence platform" pivot exists at
+`C:\Users\mohan\.claude\plans\you-are-a-senior-jolly-lemur.md` (read it in full before continuing
+this work — it is written to be followable without re-deriving product decisions, including hard
+guardrails, per-increment designs, decision-log templates and environment commands). This entry
+records only the pre-flight work done so far: **the four prior sessions' uncommitted work below
+(D-054 family page, D-055 consumer redesign, D-056 Redis cache, D-057 virtual threads, V14 access
+module) is now committed** as one baseline commit; two pre-existing test-fixture bugs found while
+establishing that baseline were fixed (`AccountErasureIT` used an adult age band on a child
+profile; `ConsentServiceIT` hardcoded a stale consent-purpose count of 5, now 7 after V14) — both
+were test bugs, not product regressions; the locale bundle split from one 1317-key
+`locales/en-IN.json` into eight feature files under `locales/en-IN/` (D-070); and stray test
+artifacts (screenshot dumps, crash logs) were deleted with `.gitignore` fixed so they cannot
+return. `mvn test` 420/420, `mvn verify` 128/128, `npm run typecheck`/`test` (75/75)/`build` all
+green. Full detail: `.claude/current-task.md` top entry. No product feature from the plan has
+been built yet — next is Increment 0b (visible UI fixes).
+
+---
+
+**Previous entry (2026-09-13, consumer redesign session, D-055).** The frontend was redesigned end to end
+as a consumer food product on top of the existing data layer: a new identity ("Fresh Kitchen" —
+cream ground, terracotta brand, fresh-green accent, self-hosted Plus Jakarta Sans, an inline SVG
+icon set), a consumer information architecture (Home lands at `/`; Home · Today · Log · Family ·
+You), new `/saved` (device-local shortlist), `/history` and `/insights` routes, the developer-facing
+`/next` hub and `NotBuiltYet` placeholder removed, flag-gated previews given consumer copy, and every
+screen moved onto shared primitives (`PageHeader`, `Avatar`, `Badge`, `Toast`, `Icon`, `RowGroup`,
+restyled `ProductCard`/`Rails`/`ProgressTile`/`LogSheet`/sheets/states). Home, Search, Product,
+Today, Scan, You and History were rebuilt; Family, Member, Compare, Goals, Habits, Trackers, Meals,
+Sharing, Household, Profile, Onboarding, Consent and Legal were restyled. Two defects fixed on the
+way: session restore cleared the refresh token on a transport failure (now only on a server
+rejection), and the You page listed an always-on consent row for every other adult plus an error
+for a child the viewer does not guard. Backend untouched. `npm run typecheck`, `npm test` (75) and
+`npm run build` green; every major route rendered in Chromium at 390px/1440px, signed in and out,
+light and dark (`frontend/e2e/screenshots-redesign/`). Full detail: `.claude/current-task.md` top
+entry and `docs/design/design-system.md` v2.
+
 **Addendum (2026-09-07, same day, same author):** the human visual check the entry below
 says never happened, happened — the user opened the real rendered app and reported two
 concrete defects, both fixed and verified, not just visually but by rendering and reading the

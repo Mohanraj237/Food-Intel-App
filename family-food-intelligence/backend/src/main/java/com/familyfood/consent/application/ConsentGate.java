@@ -85,6 +85,23 @@ public class ConsentGate {
         throw new AppException(code);
     }
 
+    /**
+     * Whether processing for this purpose is currently permitted, without throwing and without
+     * auditing a denial.
+     *
+     * <p>For callers that must <em>choose</em> a path rather than refuse a request — a family
+     * meal deciding whether a member's share can be written to their log now or has to wait
+     * (D-041, D-048), or an overview deciding whether a member's data may be shown to someone
+     * else. Neither of those is a refused attempt, so neither belongs in the audit trail as
+     * one. Anything that is about to process data on the strength of the answer must still
+     * call {@link #require} at the point of processing.
+     */
+    public boolean isActive(UUID subjectMemberId, String purposeCode) {
+        return consentRecords.findActive(subjectMemberId, purposeCode)
+                .map(active -> active.permitsProcessing(clock.instant()))
+                .orElse(false);
+    }
+
     private ConsentStatus mostRecentStatus(UUID subjectMemberId, String purposeCode) {
         List<ConsentRecord> history = consentRecords.findHistory(subjectMemberId, purposeCode);
         return history.isEmpty() ? null : history.get(0).getStatus();

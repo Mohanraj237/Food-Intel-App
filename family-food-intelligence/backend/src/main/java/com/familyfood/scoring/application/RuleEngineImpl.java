@@ -23,6 +23,14 @@ import java.util.Map;
  * already present in {@code input} and a threshold already stored on the rule row — nothing
  * here can be influenced by a model, and nothing here invents a number.
  *
+ * <p>A rule's {@code definition.field} names either a nutrient fact ({@code ADDED_SUGAR_G},
+ * {@code SODIUM_MG}, …) or an engine-derived fact from {@code input.derivedFacts()}
+ * ({@code INR_STARS}, {@code NOVA_GROUP} — added by {@link AssessmentOrchestrator}, D-059).
+ * Nutrient facts win when both exist. A derived fact has no per-serving form: it is compared
+ * on {@code PER_100G} and reports {@code MISSING_NUTRIENT_DATA} on {@code PER_SERVING},
+ * exactly like an undeclared nutrient; when it fires, the reason code is
+ * {@code DERIVED_FACT_THRESHOLD} so the UI can phrase it as a rating rather than an amount.
+ *
  * <p>Today's real ACTIVE rule_set ("v1") has zero {@code scoring_rule} rows (D-024), so in
  * production {@link #evaluateGoal} always returns {@code INSUFFICIENT_DATA} with a single
  * {@code NO_ACTIVE_RULES} reason for every call — not a bug, the honest MVP default. The full
@@ -38,9 +46,6 @@ public class RuleEngineImpl implements RuleEngine {
             RuleVerdict.LIMIT, 2,
             RuleVerdict.DOESNT_FIT, 3);
 
-    private static final String REASON_NO_ACTIVE_RULES = "NO_ACTIVE_RULES";
-    private static final String REASON_MISSING_NUTRIENT_DATA = "MISSING_NUTRIENT_DATA";
-    private static final String REASON_NUTRIENT_EXCEEDS_THRESHOLD = "NUTRIENT_EXCEEDS_THRESHOLD";
     private static final String VERDICT_INSUFFICIENT_DATA = "INSUFFICIENT_DATA";
     private static final String VERDICT_EVERYDAY = "EVERYDAY";
 
@@ -67,21 +72,16 @@ public class RuleEngineImpl implements RuleEngine {
     @Override
     public RuleOutcome evaluateGoal(String ruleSetVersion, String goalCode,
                                     ProductAssessmentInput input, String ageBand) {
-        List<ScoringRule> candidates = ruleSets.findByVersion(ruleSetVersion)
-                .map(ruleSet -> inScope(scoringRules.findByRuleSetId(ruleSet.getId()),
-                        goalCode, input.categoryCode(), ageBand, clock.instant()))
-                .orElseGet(List::of);
+        List<ScoringRule> candidates = inScope(rulesOf(ruleSetVersion), goalCode, input.categoryCode(), ageBand,
+                clock.instant());
 
         if (candidates.isEmpty()) {
             return new RuleOutcome(VERDICT_INSUFFICIENT_DATA,
-                    List.of(new Reason(REASON_NO_ACTIVE_RULES, null, null, null, null, null)),
+                    List.of(new Reason(Reason.NO_ACTIVE_RULES, null, null, null, null, null)),
                     List.of());
         }
 
-        Map<String, NutrientFact> factsByCode = new LinkedHashMap<>();
-        for (NutrientFact fact : input.nutrients()) {
-            factsByCode.put(fact.nutrientCode(), fact);
-        }
+        Map<String, NutrientFact> factsByCode = factsOf(input);
 
         List<String> firedRuleIds = new ArrayList<>();
         Map<String, Reason> reasonsByKey = new LinkedHashMap<>();
@@ -91,13 +91,14 @@ public class RuleEngineImpl implements RuleEngine {
         for (ScoringRule rule : candidates) {
             String field = fieldOf(rule);
             NutrientFact fact = factsByCode.get(field);
+            boolean derived = fact != null && isDerived(input, field);
 
             for (Basis basisToCheck : basesOf(rule.getBasis())) {
                 BigDecimal value = fact == null ? null : valueOn(fact, basisToCheck);
                 if (value == null) {
                     reasonsByKey.putIfAbsent(
-                            REASON_MISSING_NUTRIENT_DATA + "|" + field + "|" + basisToCheck,
-                            new Reason(REASON_MISSING_NUTRIENT_DATA, field, basisToCheck.name(),
+                            Reason.MISSING_NUTRIENT_DATA + "|" + field + "|" + basisToCheck,
+                            new Reason(Reason.MISSING_NUTRIENT_DATA, field, basisToCheck.name(),
                                     null, null, rule.getStandardRef()));
                     continue; // missing data: this rule contributes nothing on this basis, not a crash
                 }
@@ -105,10 +106,10 @@ public class RuleEngineImpl implements RuleEngine {
                 BigDecimal threshold = thresholdOf(rule);
                 if (matchesOperator(value, opOf(rule), threshold)) {
                     firedRuleIds.add(rule.getId().toString());
+                    String code = derived ? Reason.DERIVED_FACT_THRESHOLD : Reason.NUTRIENT_EXCEEDS_THRESHOLD;
                     reasonsByKey.put(
-                            REASON_NUTRIENT_EXCEEDS_THRESHOLD + "|" + field + "|" + basisToCheck + "|" + rule.getCode(),
-                            new Reason(REASON_NUTRIENT_EXCEEDS_THRESHOLD, field, basisToCheck.name(),
-                                    value, threshold, rule.getStandardRef()));
+                            code + "|" + field + "|" + basisToCheck + "|" + rule.getCode(),
+                            new Reason(code, field, basisToCheck.name(), value, threshold, rule.getStandardRef()));
                     if (mostSevere == null
                             || SEVERITY_RANK.get(rule.getVerdict()) > SEVERITY_RANK.get(mostSevere.getVerdict())) {
                         mostSevere = rule;
@@ -129,6 +130,54 @@ public class RuleEngineImpl implements RuleEngine {
 
         String verdict = mostSevere != null ? mostSevere.getVerdict().name() : VERDICT_EVERYDAY;
         return new RuleOutcome(verdict, List.copyOf(reasonsByKey.values()), List.copyOf(firedRuleIds));
+    }
+
+    /**
+     * The rules of a rule set. An ACTIVE set's rows never change while the process runs —
+     * activation and retirement are migrations applied at startup, and nothing edits an ACTIVE
+     * set's rules at runtime — so its rules are held in a plain map after the first read (a
+     * batch of 50 products × several goals would otherwise re-read them hundreds of times).
+     * This is reference data about the rule set, not about a person, and deliberately not a
+     * Spring cache (D-056). DRAFT and RETIRED sets are always read fresh: tests and the
+     * scoring console edit DRAFT sets.
+     */
+    private List<ScoringRule> rulesOf(String ruleSetVersion) {
+        List<ScoringRule> held = activeRules.get(ruleSetVersion);
+        if (held != null) {
+            return held;
+        }
+        return ruleSets.findByVersion(ruleSetVersion)
+                .map(ruleSet -> {
+                    List<ScoringRule> rules = List.copyOf(scoringRules.findByRuleSetId(ruleSet.getId()));
+                    if (ruleSet.getStatus() == RuleSetStatus.ACTIVE) {
+                        activeRules.put(ruleSetVersion, rules);
+                    }
+                    return rules;
+                })
+                .orElseGet(List::of);
+    }
+
+    private final java.util.concurrent.ConcurrentHashMap<String, List<ScoringRule>> activeRules =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Nutrient facts first; then each derived fact as a per-100-only fact, unless a nutrient
+     * of the same code already exists (a nutrient is a declared label value, a derived fact is
+     * the engine's own computation — the label wins). Package-private for unit tests.
+     */
+    static Map<String, NutrientFact> factsOf(ProductAssessmentInput input) {
+        Map<String, NutrientFact> factsByCode = new LinkedHashMap<>();
+        for (NutrientFact fact : input.nutrients()) {
+            factsByCode.put(fact.nutrientCode(), fact);
+        }
+        input.derivedFacts().forEach((code, value) ->
+                factsByCode.putIfAbsent(code, new NutrientFact(code, null, value, null, false)));
+        return factsByCode;
+    }
+
+    private static boolean isDerived(ProductAssessmentInput input, String field) {
+        return input.derivedFacts().containsKey(field)
+                && input.nutrients().stream().noneMatch(n -> n.nutrientCode().equals(field));
     }
 
     private static List<ScoringRule> inScope(List<ScoringRule> rules, String goalCode, String categoryCode,

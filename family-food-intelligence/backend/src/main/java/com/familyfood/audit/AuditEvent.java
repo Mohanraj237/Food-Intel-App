@@ -51,6 +51,13 @@ public class AuditEvent {
     @Column(nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> metadata = Map.of();
 
+    /**
+     * Whose data this event touched, when that is someone other than the actor (V14). Backs
+     * the per-person access log (D-044): "who read or wrote my health data".
+     */
+    @Column(name = "subject_member_id")
+    private UUID subjectMemberId;
+
     protected AuditEvent() {
         // JPA
     }
@@ -59,7 +66,16 @@ public class AuditEvent {
                          String correlationId, AuditAction action, String resourceType,
                          UUID resourceId, UUID householdId, AuditOutcome outcome,
                          Map<String, Object> metadata) {
+        return of(occurredAt, actorUserId, actorRole, correlationId, action, resourceType,
+                resourceId, householdId, null, outcome, metadata);
+    }
+
+    static AuditEvent of(Instant occurredAt, UUID actorUserId, String actorRole,
+                         String correlationId, AuditAction action, String resourceType,
+                         UUID resourceId, UUID householdId, UUID subjectMemberId,
+                         AuditOutcome outcome, Map<String, Object> metadata) {
         AuditEvent event = new AuditEvent();
+        event.subjectMemberId = subjectMemberId;
         event.id = UUID.randomUUID();
         event.occurredAt = occurredAt;
         event.actorUserId = actorUserId;
@@ -96,6 +112,22 @@ public class AuditEvent {
 
     public Map<String, Object> getMetadata() {
         return metadata;
+    }
+
+    public UUID getActorUserId() {
+        return actorUserId;
+    }
+
+    public String getResourceType() {
+        return resourceType;
+    }
+
+    public UUID getHouseholdId() {
+        return householdId;
+    }
+
+    public UUID getSubjectMemberId() {
+        return subjectMemberId;
     }
 
     public enum AuditOutcome {

@@ -23,7 +23,7 @@
  * same wherever they appear — card, table, comparison row.
  */
 
-import { getLocale } from './i18n';
+import { getLocale, t } from './i18n';
 
 /** A nutrient amount as the API reports it. */
 export interface NutrientAmount {
@@ -121,4 +121,31 @@ export function formatAmount(value: number): string {
  */
 export function formatMeasure(value: number, unit: string): string {
   return `${formatAmount(value)} ${unit}`;
+}
+
+/**
+ * The same value + unit rendering, but in the units a person actually speaks.
+ *
+ * A wellness measure stores one canonical unit (minutes, millilitres) because arithmetic
+ * on mixed units is how totals go wrong — but "Sleep 400 min" is not how anyone describes
+ * a night's sleep, and "Water 2200 ml" is not how anyone describes a day's drinking. This
+ * converts only the two canonical units with a conventional spoken form, and hands
+ * everything else to {@link formatMeasure} unchanged: steps stay steps, kg stays kg, and a
+ * clinical reading is never reshaped (D-037 — a reading is shown exactly as recorded).
+ */
+export function formatMetricMeasure(value: number, unit: string): string {
+  if (unit === 'min' && value >= 60) {
+    const total = Math.round(value);
+    const hours = Math.floor(total / 60);
+    const minutes = total % 60;
+    return minutes === 0
+      ? t('unit.hours', { hours: String(hours) })
+      : t('unit.hoursMinutes', { hours: String(hours), minutes: String(minutes) });
+  }
+  if (unit === 'ml' && value >= 1000) {
+    // Up to two decimals, trailing zeros trimmed: 1500 -> "1.5 L", 2000 -> "2 L".
+    const litres = Number((value / 1000).toFixed(2));
+    return t('unit.litres', { value: formatAmount(litres) });
+  }
+  return formatMeasure(value, unit);
 }

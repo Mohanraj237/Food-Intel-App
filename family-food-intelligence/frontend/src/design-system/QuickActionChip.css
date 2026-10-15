@@ -1,0 +1,24 @@
+.quick-action-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.quick-action-chip {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.quick-action-chip--selected {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+}

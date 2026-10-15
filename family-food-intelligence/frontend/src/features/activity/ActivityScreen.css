@@ -1,83 +1,80 @@
-/* Grouped by day, not by event type — see the file-header comment in
-   ActivityScreen.tsx. Each group is a plain heading + list, no bordered
-   card wrapping either the group or the row: the product image and the
-   sentence beneath it are the row's own visual anchor. */
-
-.activity__group + .activity__group {
-  margin-top: var(--space-6);
-}
+.activity__group + .activity__group { margin-top: var(--space-2); }
 
 .activity__group-heading {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--text-tertiary);
   margin-bottom: var(--space-2);
+  padding-inline: var(--space-2);
 }
 
 .activity__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
   list-style: none;
+  padding: 0;
+  margin: 0;
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
-.activity__entry {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding-block: var(--space-2);
-  border-bottom: 1px solid var(--border);
-}
-
-.activity__list > .activity__entry:last-child {
-  border-bottom: none;
-}
+.activity__entry { border-bottom: 1px solid var(--border); }
+.activity__entry:last-child { border-bottom: none; }
 
 .activity__product {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   text-decoration: none;
   color: var(--text);
   min-width: 0;
-  flex: 1;
 }
+
+.activity__product:hover { background: var(--surface); }
 
 .activity__img,
 .activity__art {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   overflow: hidden;
+  background: var(--card-media-bg);
 }
 
-.activity__art {
-  display: grid;
-  place-items: center;
-}
+.activity__art { display: grid; place-items: center; }
 
-/* `contain`, not `cover` — matches ProductCard/ProductScreen/CompareScreen:
-   a real pack photo is rarely square and must never be cropped to fill the
-   tile. */
 .activity__img {
   object-fit: contain;
-  background: var(--card-media-bg);
+  padding: 4px;
   box-sizing: border-box;
+  mix-blend-mode: multiply;
 }
 
-.activity__glyph {
-  font-size: 1.125rem;
-  opacity: 0.75;
-}
+:root[data-theme='dark'] .activity__img { mix-blend-mode: normal; }
+
+.activity__glyph { font-size: 1.25rem; opacity: 0.8; }
 
 .activity__product-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
+  flex: 1;
+}
+
+.activity__brand {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }
 
 .activity__product-name {
@@ -86,13 +83,13 @@
   overflow-wrap: anywhere;
 }
 
-.activity__sentence {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
+.activity__sentence { font-size: var(--text-sm); color: var(--text-secondary); }
 
 .activity__time {
   flex-shrink: 0;
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
+
+.activity__chev { color: var(--text-tertiary); flex-shrink: 0; }

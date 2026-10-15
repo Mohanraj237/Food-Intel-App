@@ -1,0 +1,58 @@
+.day-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-full);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.day-nav__step {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.day-nav__step:hover:not(:disabled) { background: var(--surface); }
+
+.day-nav__step:disabled {
+  color: var(--text-tertiary);
+  opacity: 0.4;
+  cursor: default;
+}
+
+.day-nav__label {
+  min-width: 7.5rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.day-nav__today {
+  min-height: 32px;
+  margin-right: 2px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--brand-subtle);
+  color: var(--brand-hover);
+  font-weight: 700;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+:root[data-theme='dark'] .day-nav__today { color: var(--brand); }
+
+.day-nav__today:hover { background: var(--brand-soft); }

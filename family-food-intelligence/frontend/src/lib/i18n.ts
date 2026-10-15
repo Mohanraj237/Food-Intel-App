@@ -1,4 +1,4 @@
-import enIN from '@/locales/en-IN.json';
+import enIN from '@/locales/en-IN';
 
 /**
  * Minimal message resolution.

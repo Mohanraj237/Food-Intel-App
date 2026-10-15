@@ -6,35 +6,39 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  animation: sheet-fade var(--dur-base) var(--ease) both;
 }
 
 .sheet {
   position: relative;
   z-index: var(--z-sheet);
   width: 100%;
-  max-width: 480px;
-  max-height: 85vh;
+  max-width: 520px;
+  max-height: 88vh;
   overflow-y: auto;
   background: var(--surface-raised);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: var(--space-3) var(--space-5) var(--space-6);
   padding-bottom: max(var(--space-6), env(safe-area-inset-bottom, 0px));
   box-shadow: var(--shadow-lg);
+  animation: sheet-up var(--dur-slow) var(--ease-out) both;
 }
 
 .sheet__handle {
-  width: 36px;
-  height: 4px;
+  width: 40px;
+  height: 5px;
   border-radius: var(--radius-full);
   background: var(--border-interactive);
+  opacity: 0.5;
   margin: var(--space-1) auto var(--space-4);
 }
 
 .sheet__title {
-  font-size: var(--text-h2);
-  font-weight: 700;
+  font-size: var(--text-h1);
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
   color: var(--text);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .sheet__body {
@@ -50,17 +54,23 @@
   margin-top: var(--space-5);
 }
 
-/* On a wide sheet (desktop, since a bottom sheet still centers as a panel
-   rather than spanning the full window) the actions can sit side by side. */
+@keyframes sheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(24px); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+
 @media (min-width: 480px) {
   .sheet {
     margin-bottom: var(--space-6);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
   }
 
-  .sheet-backdrop {
-    align-items: center;
-  }
+  .sheet-backdrop { align-items: center; }
 
   .sheet__actions {
     flex-direction: row;

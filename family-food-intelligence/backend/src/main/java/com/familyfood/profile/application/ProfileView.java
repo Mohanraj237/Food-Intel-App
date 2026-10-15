@@ -1,5 +1,6 @@
 package com.familyfood.profile.application;
 
+import com.familyfood.profile.domain.ActivityLevel;
 import com.familyfood.profile.domain.AgeBand;
 import com.familyfood.profile.domain.AllergenCode;
 import com.familyfood.profile.domain.DietaryPreference;
@@ -27,7 +28,18 @@ public record ProfileView(
         Set<AllergenCode> allergens,
         Set<String> conditions,
         Instant createdAt,
-        UUID createdByUserId) {
+        UUID createdByUserId,
+        /** Self-reported (V14); {@code null} when not stated. */
+        ActivityLevel activityLevel) {
+
+    /** The pre-V14 shape, for callers that have no activity level to state. */
+    public ProfileView(UUID id, UUID householdMemberId, int version, AgeBand ageBand, Sex sex,
+                       DietaryPreference dietaryPreference, Set<GoalCode> goals,
+                       Set<AllergenCode> allergens, Set<String> conditions, Instant createdAt,
+                       UUID createdByUserId) {
+        this(id, householdMemberId, version, ageBand, sex, dietaryPreference, goals, allergens,
+                conditions, createdAt, createdByUserId, null);
+    }
 
     public static ProfileView from(PersonProfile profile) {
         return new ProfileView(
@@ -41,6 +53,7 @@ public record ProfileView(
                 profile.getAllergens(),
                 profile.getConditions(),
                 profile.getCreatedAt(),
-                profile.getCreatedByUserId());
+                profile.getCreatedByUserId(),
+                profile.getActivityLevel());
     }
 }

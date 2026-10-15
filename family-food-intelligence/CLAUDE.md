@@ -16,7 +16,7 @@ This file is deliberately short. It holds only rules that govern *how* Claude Co
 
 ## 1. Project identity (one line)
 
-A household food-decision tool for India: look up a packaged product, understand what's in it, see how it fits each household member, with a reason and a source for every result. Full product framing: `docs/product/product-policy.md`.
+An individual + family health and wellness platform for India, with personalised packaged-food decisions at its core. An individual understands and improves their own health; a family understands and supports its members, with privacy, permissions and age-appropriate experiences. Every result carries a reason and a source. Scope authority since the 2026-09-12 pivot: `docs/architecture/wellness-platform-architecture.md` (v2), plus decisions D-034 and D-042–D-053. The original food-decision framing is in `docs/product/product-policy.md` and remains binding for the food capability.
 
 ---
 
@@ -74,16 +74,24 @@ Every subagent must report: Objective, Changes, Files changed, Tests run, Test r
 
 ## 6. Phase-based development
 
+Two phase sequences exist, and their numbers do not refer to the same work.
+
+The original food-product sequence (detail: `docs/engineering/implementation-plan.md`; the food capability is built through its Phase 5 core UX, hardening is ongoing):
+
 ```text
-PHASE 0 — Discovery                    [DONE]
-PHASE 1 — Foundation                   [DONE]
-PHASE 2 — Household, consent, profiles [IN PROGRESS — see .claude/current-task.md]
-PHASE 3 — Product intelligence         [IN PROGRESS — see .claude/current-task.md]
-PHASE 4 — Scoring & personalization    [NOT STARTED]
-PHASE 5 — Core UX                      [NOT STARTED]
-PHASE 6 — Quality hardening            [NOT STARTED]
-PHASE 7 — Release candidate            [NOT STARTED]
+PHASE 0 Discovery · 1 Foundation · 2 Household/consent/profiles · 3 Product intelligence ·
+4 Scoring (engine built, rules await D-025) · 5 Core UX · 6 Hardening · 7 Release candidate
 ```
+
+The wellness platform sequence since the 2026-09-12 pivot (detail and exit gates:
+`docs/architecture/wellness-platform-architecture.md` §14; current status:
+`.claude/state.md`):
+
+```text
+W1 Foundation · W2 Tracking · W3 Insights · W4 Health management ⚖️ · W5 Intelligence · W6 Differentiation
+```
+
+Refer to wellness phases as W1–W6 in commits and notes to avoid the collision.
 
 Never attempt to implement the whole product in one uncontrolled pass. A phase is complete only after its quality gate passes (`docs/release/release-process.md`). Do not move to the next phase while critical blockers remain. Full phase detail and gates: `docs/engineering/implementation-plan.md`.
 
@@ -130,4 +138,4 @@ For high-impact issues involving child privacy, medical safety, destructive data
 
 ## 13. Final rule
 
-Never optimize for "how much code can we generate?" Optimize for "how reliably can we build a trustworthy product that helps a real family make a better food decision?" Trust → Decision → Action → Repeated Value.
+Never optimize for "how much code can we generate?" Optimize for "how reliably can we build a trustworthy product that helps a real person and their family understand how they're doing and make a better health or food decision?" Trust → Decision → Action → Repeated Value. Optimize for real user value, trustworthy insights, safety, privacy and maintainability, not for the number of screens.

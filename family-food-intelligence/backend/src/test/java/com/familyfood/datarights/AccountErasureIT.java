@@ -120,6 +120,22 @@ class AccountErasureIT extends IntegrationTestBase {
                 .andExpect(status().isOk());
     }
 
+    /**
+     * A child member's age band must satisfy {@code AgeBand.isChild()} or the profile
+     * write is rejected with {@code AGE_BAND_NOT_VALID_FOR_MEMBER} (422) —
+     * {@link #setProfile} above is adult-only for that reason. Mirrors the convention
+     * already used by {@code ChildErasureIT.setProfile}.
+     */
+    private void setChildProfile(Session caller, UUID householdId, UUID memberId) throws Exception {
+        mockMvc.perform(put("/api/v1/households/{h}/members/{m}/profile", householdId, memberId)
+                        .header("Authorization", caller.authHeader())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"ageBand":"C4_6","goals":[],"allergens":[],"conditions":[]}
+                                """))
+                .andExpect(status().isOk());
+    }
+
     private void grantConsent(Session caller, UUID memberId, String purposeCode) throws Exception {
         mockMvc.perform(post("/api/v1/consent/members/{m}/grants", memberId)
                         .header("Authorization", caller.authHeader())
@@ -259,7 +275,7 @@ class AccountErasureIT extends IntegrationTestBase {
                 .andReturn();
         UUID childAId = UUID.fromString(
                 objectMapper.readTree(childResult.getResponse().getContentAsString()).get("id").asText());
-        setProfile(a1, householdA, childAId);
+        setChildProfile(a1, householdA, childAId);
 
         // Household B: an unrelated adult and child.
         Session b1 = registerNewAccount();

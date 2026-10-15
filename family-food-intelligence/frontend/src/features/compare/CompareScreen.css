@@ -1,12 +1,9 @@
 .comparepage {
-  padding: var(--space-4);
+  padding: var(--space-4) var(--page-gutter) var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.comparepage__heading {
-  font-size: var(--text-h1);
+  margin-inline: auto;
 }
 
 .comparepage__cards {
@@ -18,51 +15,41 @@
 .comparepage__vs {
   align-self: center;
   font-size: var(--text-xs);
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
   color: var(--text-tertiary);
 }
 
-/* `.comparepage__slot` sits on top of the shared `Card` primitive (raised
-   surface, padding, radius, gap) — only the properties genuinely specific to
-   this screen live here: how the slot behaves inside the two-column row. */
-.comparepage__slot {
-  flex: 1;
-  min-width: 0;
-}
+.comparepage__slot { flex: 1; min-width: 0; }
 
 .comparepage__slot--empty {
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: var(--text-tertiary);
-  min-height: 132px;
+  color: var(--text-secondary);
+  min-height: 160px;
 }
 
-/* Dashed + transparent reads as an outline waiting to be filled, distinct
-   from the solid, filled card either side of it once a product is picked.
-   Doubled-up class selector so this reliably wins over `Card`'s own
-   `.card--raised` regardless of the two stylesheets' load order. */
 .comparepage__slot.comparepage__slot--empty {
   border-style: dashed;
   border-color: var(--border-interactive);
   background: transparent;
+  box-shadow: none;
 }
 
 .comparepage__slot-plus {
-  font-size: 1.75rem;
-  font-weight: 300;
-  line-height: 1;
-  color: var(--text-tertiary);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: var(--brand-subtle);
+  color: var(--brand-hover);
 }
 
-.comparepage__slot-label {
-  font-size: var(--text-sm);
-}
+.comparepage__slot-label { font-size: var(--text-sm); font-weight: 600; }
 
-/* Image-then-identity, centered — each column reads as one confident product
-   header rather than a left-aligned label, which matters most once two of
-   these sit side by side and must compare as equals. */
 .comparepage__card {
   display: flex;
   flex-direction: column;
@@ -79,31 +66,25 @@
   border-radius: var(--radius-md);
   flex-shrink: 0;
   overflow: hidden;
+  background: var(--card-media-bg);
 }
 
 @media (min-width: 480px) {
   .comparepage__art { width: 128px; height: 128px; }
 }
 
-.comparepage__art--fallback {
-  display: grid;
-  place-items: center;
-}
+.comparepage__art--fallback { display: grid; place-items: center; }
 
-/* `contain`, not `cover` — matches `ProductCard`/`ProductScreen`: a real pack
-   photo is rarely square and must never be cropped to fill the tile. */
 .comparepage__art--photo {
   object-fit: contain;
-  background: var(--card-media-bg);
   padding: var(--space-1);
   box-sizing: border-box;
+  mix-blend-mode: multiply;
 }
 
-.comparepage__glyph {
-  font-size: 2rem;
-  line-height: 1;
-  opacity: 0.75;
-}
+:root[data-theme='dark'] .comparepage__art--photo { mix-blend-mode: normal; }
+
+.comparepage__glyph { font-size: 2rem; line-height: 1; opacity: 0.8; }
 
 .comparepage__identity {
   display: flex;
@@ -116,7 +97,7 @@
   font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-caps);
   color: var(--text-tertiary);
 }
 
@@ -139,15 +120,12 @@
 }
 
 .comparepage__view {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--brand);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--brand-hover);
 }
 
-.comparepage__actions {
-  display: flex;
-  justify-content: center;
-}
+.comparepage__actions { display: flex; justify-content: center; }
 
 .comparepage__picker {
   display: flex;
@@ -157,10 +135,10 @@
 
 .comparepage__picker input {
   min-height: var(--tap-primary);
-  padding-inline: var(--space-3);
-  border: 1px solid var(--border-interactive);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
+  padding-inline: var(--space-4);
+  border: 1.5px solid var(--border-interactive);
+  border-radius: var(--radius-full);
+  background: var(--card-bg);
   width: 100%;
 }
 
@@ -177,98 +155,75 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2);
-  border: 1px solid var(--border);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-md);
+  background: var(--card-bg);
 }
 
 .comparepage__result-art {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   overflow: hidden;
-}
-
-.comparepage__result-art--fallback {
-  display: grid;
-  place-items: center;
-}
-
-.comparepage__result-art--photo {
-  object-fit: contain;
   background: var(--card-media-bg);
-  padding: 2px;
-  box-sizing: border-box;
 }
 
-.comparepage__result-glyph {
-  font-size: 1.15rem;
-  line-height: 1;
-}
+.comparepage__result-art--fallback { display: grid; place-items: center; }
+.comparepage__result-art--photo { object-fit: contain; padding: 2px; box-sizing: border-box; }
+.comparepage__result-glyph { font-size: 1.15rem; line-height: 1; }
 
-.comparepage__result-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.comparepage__result-brand {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-}
+.comparepage__result-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.comparepage__result-brand { font-size: var(--text-xs); color: var(--text-tertiary); }
 
 .comparepage__result-name {
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.comparepage__result-empty {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  padding: var(--space-3) 0;
-}
+.comparepage__result-size { font-size: var(--text-xs); color: var(--text-tertiary); }
+.comparepage__result-empty { color: var(--text-secondary); font-size: var(--text-sm); padding: var(--space-3) 0; }
 
 /* ---- comparison table ---- */
 
 .comparetable {
   width: 100%;
-  border-collapse: collapse;
-  min-width: 480px;
+  border-collapse: separate;
+  border-spacing: 0;
+  /* One label column plus up to five product columns; scrolls sideways on a phone. */
+  min-width: calc(8rem + var(--compare-cols, 2) * 9.5rem);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .comparetable th,
 .comparetable td {
   text-align: left;
   vertical-align: top;
-  padding: var(--space-3) var(--space-2);
+  padding: var(--space-3);
   border-bottom: 1px solid var(--border);
   font-size: var(--text-sm);
 }
 
-/* A vertical rule after the row-label column and after the first product's
-   column — the same three-column split the header row establishes — so the
-   two products read as clearly separated, aligned lanes all the way down. */
-.comparetable th:not(:last-child),
-.comparetable td:not(:last-child) {
-  border-right: 1px solid var(--border);
-}
+.comparetable tbody tr:last-child th,
+.comparetable tbody tr:last-child td { border-bottom: 0; }
 
-.comparetable tbody tr:nth-child(even) {
-  background: var(--surface);
-}
+.comparetable th:not(:last-child),
+.comparetable td:not(:last-child) { border-right: 1px solid var(--border); }
 
 .comparetable thead th {
   font-size: var(--text-xs);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: var(--tracking-caps);
   color: var(--text-tertiary);
   font-weight: 700;
-  border-bottom: 2px solid var(--border-interactive);
+  background: var(--surface);
 }
 
 .comparetable__col-brand {
@@ -276,14 +231,14 @@
   font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: var(--tracking-caps);
   color: var(--text-tertiary);
 }
 
 .comparetable__col-name {
   display: block;
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 800;
   text-transform: none;
   letter-spacing: normal;
   color: var(--text);
@@ -291,14 +246,14 @@
 
 .comparetable tbody th {
   font-weight: 600;
-  width: 38%;
+  width: 8rem;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  color: var(--text-secondary);
   background: var(--surface);
 }
 
-/* The clamp is on a span inside the cell, never on the cell itself. Setting
-   `display: -webkit-box` on a <td> removes it from table layout, which made the
-   second product's ingredients render underneath the first column instead of
-   beside it. */
 .comparetable__ingredients {
   display: -webkit-box;
   max-width: 260px;
@@ -309,63 +264,92 @@
   color: var(--text-secondary);
 }
 
-/* The more favourable of two values. Restrained on purpose: a weight change and
-   a quiet label, not a green "winner" badge — this states a fact about two
-   numbers, it does not recommend a purchase. */
-.comparetable__cell--better .nutri__value {
-  font-weight: 700;
-  color: var(--text);
-}
+.comparetable__cell--better { background: var(--accent-subtle); }
+.comparetable__cell--better .nutri__value { font-weight: 800; color: var(--text); }
 
 .comparetable__marker {
   display: block;
   margin-top: 2px;
   font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--brand);
+  font-weight: 700;
+  color: var(--accent);
 }
 
-/* Says plainly that a per-100 g comparison across two different kinds of food
-   only tells you so much. */
 .comparetable__mismatch {
   margin: 0 0 var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--verdict-limit-fg);
+  padding: var(--space-3) var(--space-4);
+  border-left: 4px solid var(--verdict-limit-fg);
   border-radius: var(--radius-sm);
+  background: var(--verdict-limit-bg);
+  font-size: var(--text-sm);
+  color: var(--verdict-limit-fg);
+}
+
+.comparetable__chips { display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* ---- column headers, best overall, picker prompt (D-066) ---- */
+
+.comparetable thead th { vertical-align: bottom; }
+.comparetable__col--best { box-shadow: inset 0 3px 0 var(--accent); }
+
+.comparetable__img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
   background: var(--surface-sunken);
+}
+
+.comparetable__img--art { display: grid; place-items: center; }
+.comparetable__glyph { font-size: 28px; }
+.comparetable__col-link { text-decoration: none; display: block; }
+
+.comparetable__remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.comparetable__est { color: var(--text-tertiary); font-size: var(--text-xs); }
+
+.comparetable__allergen {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--verdict-limit-fg);
+}
+
+.comparepage__best { margin-bottom: var(--space-4); }
+.comparepage__best-title { font-size: var(--text-h3, 1.125rem); font-weight: 800; color: var(--text); }
+.comparepage__best-reasons {
+  margin: var(--space-2) 0 0;
+  padding-inline-start: var(--space-4);
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
 
-.comparepage__result-size {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-}
-
-.comparetable__chips {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.comparetable__signin {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--brand);
-}
-
-.comparetable__note {
-  margin-top: var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-}
+.comparepage__need { color: var(--text-secondary); margin-bottom: var(--space-3); }
+.comparepage__picker { margin-bottom: var(--space-4); }
+.comparetable__signin { font-size: var(--text-sm); font-weight: 700; color: var(--brand-hover); }
+.comparetable__note { margin-top: var(--space-2); font-size: var(--text-xs); color: var(--text-tertiary); }
 
 @media (max-width: 480px) {
-  .comparepage__cards {
-    flex-direction: column;
-  }
-  .comparepage__vs {
-    display: none;
-  }
+  .comparepage__cards { flex-direction: column; }
+  .comparepage__vs { display: none; }
 }

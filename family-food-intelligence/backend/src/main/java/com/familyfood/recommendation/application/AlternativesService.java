@@ -3,13 +3,14 @@ package com.familyfood.recommendation.application;
 import java.util.UUID;
 
 /**
- * Alternative selection for a product, scoped to one household (D-013, FR-007, PX-2).
+ * Alternative selection for a product (D-013, D-060, FR-007, PX-2).
  *
- * <p>Deliberately mirrors {@code scoring.application.HouseholdFitService}'s own
- * authorization contract exactly, because alternatives are built from the same per-member
- * fit data: a caller must be a live member of {@code householdId}, and the result only ever
- * concerns members the caller is authorized to see (their own membership, plus any child
- * they guard — D-002).
+ * <p>{@link #findAlternatives} is scoped to one household and mirrors
+ * {@code scoring.application.HouseholdFitService}'s authorization contract exactly: a caller
+ * must be a live member of {@code householdId}, and member reasons only ever concern members
+ * the caller is authorized to see (their own membership, plus any child they guard — D-002).
+ * {@link #findProductAlternatives} is anonymous and product-level only: rating, nutrient
+ * bands and processing level, nothing about any person.
  */
 public interface AlternativesService {
 
@@ -19,4 +20,7 @@ public interface AlternativesService {
      *         {@code callerAccountId} is not a live member of {@code householdId}.
      */
     AlternativesResult findAlternatives(UUID callerAccountId, UUID householdId, UUID productId);
+
+    /** Product-level alternatives for anyone (D-020): no allergen or verdict reasons. */
+    AlternativesResult findProductAlternatives(UUID productId);
 }

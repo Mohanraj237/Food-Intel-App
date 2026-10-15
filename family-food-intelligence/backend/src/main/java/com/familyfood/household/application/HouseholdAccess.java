@@ -1,6 +1,7 @@
 package com.familyfood.household.application;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,4 +39,39 @@ public interface HouseholdAccess {
     List<GuardedChildInfo> listGuardedChildren(UUID guardianAccountId);
 
     record GuardedChildInfo(UUID id, UUID householdId, String displayLabel, Instant joinedAt) {}
+
+    /* ------------------------------------------------------------------ W1 additions */
+
+    /**
+     * The caller's own live membership in a given household, if any. The access policy (D-044)
+     * needs exactly this — "which member is this account, in the subject's household?" — to
+     * look up grants, which name a member rather than an account. One query, where filtering
+     * {@link #listActiveMembers} would load the whole household to find one row.
+     */
+    Optional<MemberInfo> findActiveMembership(UUID householdId, UUID accountId);
+
+    /** Every live membership an account holds, oldest first (the frontend's default order). */
+    List<MemberInfo> findActiveMembershipsOf(UUID accountId);
+
+    /** Household-level facts other modules need: its mode and where its days start. */
+    Optional<HouseholdInfo> findHousehold(UUID householdId);
+
+    /**
+     * @param individual D-043: created through "Just me" and not yet joined by anyone else
+     * @param zone       D-053: the zone whose midnight bounds "today" for these members
+     */
+    record HouseholdInfo(UUID id, String name, boolean individual, ZoneId zone) {}
+
+    /**
+     * Live members with the labels a person-facing view needs (the family overview, the access
+     * log, "shared with me"). Separate from {@link MemberInfo} for the same reason as
+     * {@link GuardedChildInfo}. The label is what members already see in the household list,
+     * so returning it discloses nothing new.
+     */
+    List<MemberSummary> listActiveMemberSummaries(UUID householdId);
+
+    Optional<MemberSummary> findMemberSummary(UUID memberId);
+
+    record MemberSummary(UUID id, UUID householdId, UUID userAccountId, String memberType,
+                         String role, String displayLabel, Instant joinedAt, boolean active) {}
 }

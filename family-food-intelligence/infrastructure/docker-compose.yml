@@ -44,6 +44,24 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # Shared cache (D-056). Opt-in: `docker compose --profile redis up -d`, then run the backend
+  # with CACHE_TYPE=redis. The backend never needs it: CACHE_TYPE defaults to caffeine, and a
+  # Redis that goes away is skipped. Configured as a cache only: no persistence, bounded memory.
+  redis:
+    image: redis:7.2-alpine
+    container_name: ffi-redis
+    profiles: ["redis"]
+    command: ["redis-server", "--save", "", "--appendonly", "no",
+              "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   # One-shot: creates both buckets the app expects (platform.storage.ObjectStorageClient /
   # AppProperties.Storage) and sets the access level each one's data actually needs.
   minio-init:

@@ -101,6 +101,15 @@ public class MealController {
         meals.deleteMeal(currentUser.require().accountId(), mealId);
     }
 
+    @PostMapping("/meals/{mealId}/confirm")
+    @Operation(summary = "Add your own share of a household meal to your own log",
+               description = "D-041: a meal derives immediately only for the member who logged "
+                           + "it and children they guard. Another adult's portion is stored but "
+                           + "reaches their log only when they confirm it themselves.")
+    public MealResponse confirm(@PathVariable UUID mealId) {
+        return MealResponse.from(meals.confirmPortion(currentUser.require().accountId(), mealId));
+    }
+
     @GetMapping("/members/{memberId}/meals")
     @Operation(summary = "The meals one member had a share of, in a window",
                description = "Resolved from that member's portions, so a meal they ate none of "

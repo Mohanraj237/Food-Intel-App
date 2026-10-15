@@ -74,19 +74,37 @@ public class PersonalFitServiceImpl implements PersonalFitService {
 
     @Override
     public PersonalFitView evaluate(UUID callerAccountId, UUID memberId, ProductAssessmentInput input) {
+        return evaluateMany(callerAccountId, memberId, List.of(input)).get(0);
+    }
+
+    @Override
+    public List<PersonalFitView> evaluateMany(UUID callerAccountId, UUID memberId, List<ProductAssessmentInput> inputs) {
+        Resolved resolved = resolve(callerAccountId, memberId);
+        if (resolved.statusOnly() != null) {
+            return inputs.stream().map(i -> resolved.statusOnly()).toList();
+        }
+        String ruleSetVersion = ruleEngine.activeRuleSetVersion();
+        return inputs.stream().map(input -> assess(memberId, resolved.profile(), ruleSetVersion, input)).toList();
+    }
+
+    /** Either a status-only outcome, or the profile to assess against. */
+    private record Resolved(PersonalFitView statusOnly, ProfileView profile) {
+    }
+
+    private Resolved resolve(UUID callerAccountId, UUID memberId) {
         Optional<MemberInfo> maybeMember = householdAccess.findMember(memberId);
         if (maybeMember.isEmpty() || !maybeMember.get().active()) {
-            return notAuthorized(memberId);
+            return new Resolved(notAuthorized(memberId), null);
         }
 
         MemberInfo member = maybeMember.get();
         boolean isChild = CHILD_MEMBER_TYPE.equals(member.memberType());
         if (isChild) {
             if (!householdAccess.isGuardianOf(callerAccountId, memberId)) {
-                return notAuthorized(memberId);
+                return new Resolved(notAuthorized(memberId), null);
             }
         } else if (!callerAccountId.equals(member.userAccountId())) {
-            return notAuthorized(memberId);
+            return new Resolved(notAuthorized(memberId), null);
         }
 
         String purposeCode = isChild ? PURPOSE_CHILD_FOOD_SUITABILITY : PURPOSE_PERSONAL_FIT;
@@ -94,31 +112,31 @@ public class PersonalFitServiceImpl implements PersonalFitService {
             consentGate.require(memberId, purposeCode);
         } catch (AppException e) {
             if (e.code() == ErrorCode.CONSENT_REQUIRED) {
-                return statusOnly(memberId, "CONSENT_REQUIRED");
+                return new Resolved(statusOnly(memberId, "CONSENT_REQUIRED"), null);
             }
             if (e.code() == ErrorCode.CONSENT_WITHDRAWN) {
-                return statusOnly(memberId, "CONSENT_WITHDRAWN");
+                return new Resolved(statusOnly(memberId, "CONSENT_WITHDRAWN"), null);
             }
             throw e;
         }
 
-        ProfileView profile;
         try {
-            profile = profileService.getCurrentProfile(callerAccountId, memberId);
+            return new Resolved(null, profileService.getCurrentProfile(callerAccountId, memberId));
         } catch (AppException e) {
             if (e.code() == ErrorCode.RESOURCE_NOT_FOUND) {
-                return statusOnly(memberId, "NO_PROFILE");
+                return new Resolved(statusOnly(memberId, "NO_PROFILE"), null);
             }
             // Defensive only: step 1 already authorized against the same HouseholdAccess
             // facts ProfileService re-derives internally, so this should not normally
             // fire. Treated as NOT_AUTHORIZED rather than propagated, per the contract
             // that this method never throws for an authorization-shaped outcome.
-            return notAuthorized(memberId);
+            return new Resolved(notAuthorized(memberId), null);
         }
+    }
 
+    private PersonalFitView assess(UUID memberId, ProfileView profile, String ruleSetVersion, ProductAssessmentInput input) {
         List<String> allergenMatches = matchAllergens(input.declaredAllergenCodes(), profile.allergens());
 
-        String ruleSetVersion = ruleEngine.activeRuleSetVersion();
         String verdict;
         List<Reason> reasons;
 

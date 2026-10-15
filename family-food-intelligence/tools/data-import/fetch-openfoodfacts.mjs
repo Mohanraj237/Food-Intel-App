@@ -61,6 +61,17 @@ const FIELDS = [
   "nutriments",
   "nutrition_data_per",
   "countries_tags",
+  // Catalogue enrichment (V15, D-059): processing level, additive list, the vegetarian /
+  // vegan analysis, declared serving, label claims and OFF's own grade — all consumed by
+  // catalog.seed.OpenFoodFactsRowParser. A snapshot fetched before these were added lacks
+  // them; refetch-openfoodfacts.mjs --merge tops an old snapshot up per product.
+  "nova_group",
+  "additives_tags",
+  "ingredients_analysis_tags",
+  "serving_size",
+  "serving_quantity",
+  "labels_tags",
+  "nutriscore_grade",
   // Consumed by backend/.../catalog/seed/OpenFoodFactsImageBackfillRunner.java (a separate,
   // opt-in step from the product-facts import — see that class's own doc comment). Not every
   // OFF product has image_front_url specifically, so image_url (the generic "best" product

@@ -1,0 +1,40 @@
+.health-shelf-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  min-height: var(--tap-primary);
+}
+
+.health-shelf-card--link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.health-shelf-card--link:hover { border-color: var(--border-interactive); }
+
+.health-shelf-card--empty {
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.health-shelf-card__label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.health-shelf-card__fact {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.health-shelf-card__when {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

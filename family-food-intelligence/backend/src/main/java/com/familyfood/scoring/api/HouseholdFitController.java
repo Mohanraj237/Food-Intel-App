@@ -2,6 +2,8 @@ package com.familyfood.scoring.api;
 
 import com.familyfood.catalog.application.ProductQueryService;
 import com.familyfood.platform.security.CurrentUser;
+import com.familyfood.scoring.application.AssessmentInputMapper;
+import com.familyfood.scoring.application.AssessmentOrchestrator;
 import com.familyfood.scoring.application.HouseholdFitService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +26,9 @@ import java.util.UUID;
  * for the members the caller is authorized to see within it (D-002, D-024 point 4) — this
  * controller does not, and must not, loosen either of those.
  *
+ * <p>The input goes through {@link AssessmentOrchestrator} first so verdict rules can reference
+ * the engine-derived facts ({@code INR_STARS}, {@code NOVA_GROUP}) — D-059.
+ *
  * <p>Thin by design (Constitution §36): bind, extract the caller from {@link CurrentUser},
  * delegate, map the result.
  */
@@ -33,13 +38,16 @@ import java.util.UUID;
 public class HouseholdFitController {
 
     private final ProductQueryService productQueryService;
+    private final AssessmentOrchestrator orchestrator;
     private final HouseholdFitService householdFitService;
     private final CurrentUser currentUser;
 
     public HouseholdFitController(ProductQueryService productQueryService,
+                                  AssessmentOrchestrator orchestrator,
                                   HouseholdFitService householdFitService,
                                   CurrentUser currentUser) {
         this.productQueryService = productQueryService;
+        this.orchestrator = orchestrator;
         this.householdFitService = householdFitService;
         this.currentUser = currentUser;
     }
@@ -56,7 +64,7 @@ public class HouseholdFitController {
     public HouseholdFitResponse get(@PathVariable UUID householdId, @PathVariable UUID productId) {
         UUID callerAccountId = currentUser.require().accountId();
         var product = productQueryService.getProduct(productId);
-        var input = AssessmentInputMapper.from(product);
+        var input = orchestrator.assess(AssessmentInputMapper.from(product)).input();
         return HouseholdFitResponse.from(householdFitService.evaluate(callerAccountId, householdId, input));
     }
 }

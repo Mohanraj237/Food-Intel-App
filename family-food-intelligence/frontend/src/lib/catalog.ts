@@ -34,6 +34,21 @@ export interface ProductSummary {
   servingSizeG: number | null;
   servingDeclaredText: string | null;
   keyFacts: KeyFact[];
+  /** Search v2 (D-061). Present on summaries; absent on the product detail, which carries them on `currentVersion`. */
+  dietFlag?: 'VEG' | 'NON_VEG' | 'VEGAN' | 'UNKNOWN';
+  dietFlagEstimated?: boolean;
+  novaGroup?: number | null;
+  /** Allergen codes the label declares (CONTAINS or MAY_CONTAIN). Never a free-from claim. */
+  allergenCodes?: string[];
+  /** The persisted product-level score, filled by search only; absent when the product is not scored. */
+  assessment?: AssessmentBadge;
+}
+
+export interface AssessmentBadge {
+  status: 'SCORED' | 'INSUFFICIENT_DATA';
+  score: number | null;
+  stars: number | null;
+  grade: string | null;
 }
 
 export interface NutrientRow {
@@ -60,6 +75,13 @@ export interface ProductDetail extends ProductSummary {
     capturedAt: string;
     verifiedAt: string | null;
     captureMethod: string;
+    /** NOVA processing group 1–4, or null when unclassified (V15, D-059). */
+    novaGroup: number | null;
+    /** Which source the NOVA group came from (e.g. OPEN_FOOD_FACTS) — an estimate unless a reviewer set it. */
+    novaSource: string | null;
+    /** VEG · NON_VEG · VEGAN · UNKNOWN; `dietFlagEstimated` means it came from the ingredient list, not the pack's mark. */
+    dietFlag: 'VEG' | 'NON_VEG' | 'VEGAN' | 'UNKNOWN';
+    dietFlagEstimated: boolean;
   };
   nutrients: NutrientRow[];
   ingredients: Array<{
@@ -68,10 +90,43 @@ export interface ProductDetail extends ProductSummary {
     canonicalName: string | null;
     isAdditive: boolean;
     insNumber: string | null;
+    /** INS number linked to the additive reference table, when the label token carried a recognised one. */
+    additiveCode: string | null;
+    /** Codex name and functional class only — never a safety statement. */
+    additiveName: string | null;
+    additiveFunction: string | null;
   }>;
   allergens: Array<{ code: string; displayName: string; declarationType: string }>;
   barcodes: Array<{ gtin: string; gtinType: string | null; isPrimary: boolean }>;
   hasOpenConflict: boolean;
+}
+
+export type SearchSort =
+  | 'RELEVANCE'
+  | 'SCORE_DESC'
+  | 'SUGAR_ASC'
+  | 'ADDED_SUGAR_ASC'
+  | 'SODIUM_ASC'
+  | 'SAT_FAT_ASC'
+  | 'PROTEIN_DESC'
+  | 'FIBRE_DESC'
+  | 'QUALITY';
+
+/** A phrase the server read out of the query (D-061) — rendered as a chip from locale templates. */
+export interface InterpretedTerm {
+  type: 'CATEGORY' | 'MAX_NUTRIENT' | 'MIN_NUTRIENT' | 'SORT' | 'DIET' | 'EXCLUDE_ALLERGEN' | 'MAX_NOVA';
+  code: string | null;
+  value: number | null;
+  unit: string | null;
+  source: string;
+}
+
+export interface SearchRelated {
+  kind: 'BRAND' | 'PRODUCT';
+  brandName: string | null;
+  sameBrand: ProductSummary[];
+  categoryCode: string | null;
+  betterInCategory: ProductSummary[];
 }
 
 export interface SearchResponse {
@@ -79,6 +134,50 @@ export interface SearchResponse {
   total: number;
   page: number;
   size: number;
+  /** Search v2 (D-061) — absent from an older backend. */
+  sort?: SearchSort;
+  residualQuery?: string;
+  interpreted?: InterpretedTerm[];
+  excludedForMissingData?: number;
+  related?: SearchRelated;
+  didYouMean?: string;
+}
+
+/**
+ * Search filters, all per 100 g / 100 ml in the catalogue's units (grams; sodium in mg;
+ * energy in kcal). Every value is the person's own choice — never a threshold we set.
+ */
+export interface SearchFilters {
+  category?: string;
+  maxAddedSugar?: number;
+  maxTotalSugar?: number;
+  maxSodium?: number;
+  maxSatFat?: number;
+  maxEnergy?: number;
+  minProtein?: number;
+  minFibre?: number;
+  excludeAllergens?: string[];
+  dietary?: 'VEG' | 'VEGAN';
+  maxNova?: number;
+}
+
+export const NUMERIC_FILTER_KEYS = [
+  'maxTotalSugar',
+  'maxAddedSugar',
+  'maxSodium',
+  'maxSatFat',
+  'maxEnergy',
+  'minProtein',
+  'minFibre',
+] as const;
+export type NumericFilterKey = (typeof NUMERIC_FILTER_KEYS)[number];
+
+export interface Suggestion {
+  kind: 'BRAND' | 'CATEGORY' | 'PRODUCT';
+  label: string;
+  /** Brand name to search, category code, or product id. */
+  target: string;
+  secondary: string | null;
 }
 
 export interface Category {
@@ -92,18 +191,35 @@ export interface Category {
 
 /* ------------------------------------------------------------------ requests */
 
-export function searchProducts(params: {
-  q?: string;
-  category?: string;
-  page?: number;
-  size?: number;
-}): Promise<SearchResponse> {
+export function searchProducts(
+  params: {
+    q?: string;
+    page?: number;
+    size?: number;
+    sort?: SearchSort;
+  } & SearchFilters,
+): Promise<SearchResponse> {
   const search = new URLSearchParams();
   if (params.q) search.set('q', params.q);
   if (params.category) search.set('category', params.category);
+  for (const key of NUMERIC_FILTER_KEYS) {
+    const value = params[key];
+    if (value != null && Number.isFinite(value)) search.set(key, String(value));
+  }
+  if (params.excludeAllergens && params.excludeAllergens.length > 0) {
+    search.set('excludeAllergens', params.excludeAllergens.join(','));
+  }
+  if (params.dietary) search.set('dietary', params.dietary);
+  if (params.maxNova != null) search.set('maxNova', String(params.maxNova));
+  if (params.sort && params.sort !== 'RELEVANCE') search.set('sort', params.sort);
   search.set('page', String(params.page ?? 0));
   search.set('size', String(params.size ?? 20));
   return request<SearchResponse>(`/search?${search.toString()}`, { anonymous: true });
+}
+
+/** Search-box suggestions for what has been typed (2+ characters). Public. */
+export function getSuggestions(q: string): Promise<Suggestion[]> {
+  return request<Suggestion[]>(`/search/suggest?q=${encodeURIComponent(q)}`, { anonymous: true });
 }
 
 export function getProduct(id: string): Promise<ProductDetail> {

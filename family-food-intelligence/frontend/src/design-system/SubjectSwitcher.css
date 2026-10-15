@@ -1,0 +1,25 @@
+.subject-switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.subject-switcher--single {
+  color: var(--text-secondary);
+}
+
+.subject-switcher__label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.subject-switcher__select {
+  min-height: var(--tap-min);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-interactive);
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+}

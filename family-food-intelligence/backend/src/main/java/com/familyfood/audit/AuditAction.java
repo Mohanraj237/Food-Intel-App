@@ -56,6 +56,30 @@ public enum AuditAction {
     HEALTH_VISIBILITY_GRANTED,
     HEALTH_VISIBILITY_REVOKED,
 
+    // access (W1, D-044/D-045). A grant or revocation of VIEW/MANAGE on one scope. The two
+    // HEALTH_VISIBILITY_* values above remain for events recorded before W1.
+    ACCESS_GRANTED,
+    ACCESS_REVOKED,
+
+    // nutrition (D-039). A meal apportioned to a child is child data, so these sit
+    // alongside CHILD_DATA_ACCESSED rather than replacing it.
+    MEAL_LOGGED,
+    MEAL_UPDATED,
+    MEAL_DELETED,
+    /** An adult added their own share of a household meal to their own log (D-041). */
+    MEAL_PORTION_CONFIRMED,
+
+    // goals and habits (Phase 2). No action exists for a streak, badge or ranking,
+    // because no such capability exists (D-036, AC-3.7).
+    GOAL_CREATED,
+    GOAL_ENDED,
+    HABIT_CREATED,
+    HABIT_UPDATED,
+    HABIT_ARCHIVED,
+    HABIT_REACTIVATED,
+    HABIT_COMPLETION_RECORDED,
+    HABIT_COMPLETION_REMOVED,
+
     // catalogue
     PRODUCT_VERSION_PUBLISHED,
     PRODUCT_VERSION_SUPERSEDED,

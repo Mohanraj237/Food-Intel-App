@@ -82,14 +82,19 @@ export function ConsentPanel() {
         <NoHousehold />
       ) : (
         <div className="consent-panel__members">
-          {membersQuery.data.map((member) => (
-            <MemberConsentSection
-              key={member.id}
-              member={member}
-              policies={policiesQuery.data}
-              isSelf={accountId !== null && member.userAccountId === accountId}
-            />
-          ))}
+          {/* Yourself and the children in the household only. Another adult's choices are theirs
+              alone (D-002) and the one row we could show for them — the always-on essential
+              purpose — says nothing a person can act on, eight times over. */}
+          {membersQuery.data
+            .filter((member) => member.memberType === 'CHILD' || (accountId !== null && member.userAccountId === accountId))
+            .map((member) => (
+              <MemberConsentSection
+                key={member.id}
+                member={member}
+                policies={policiesQuery.data}
+                isSelf={accountId !== null && member.userAccountId === accountId}
+              />
+            ))}
         </div>
       )}
     </section>
@@ -258,6 +263,11 @@ function GrantsDependentRows({
     return <Skeleton lines={2} label={t('loading.default')} />;
   }
   if (grantsQuery.isError) {
+    // A 403 on a child's grants is an answer, not a failure: only that child's guardians may
+    // see or change them. Say so quietly instead of raising an error box.
+    if (grantsQuery.error instanceof ApiError && grantsQuery.error.status === 403) {
+      return <p className="consent-panel__guardian-only">{t('consent.guardianOnly')}</p>;
+    }
     return <ErrorState error={grantsQuery.error} onRetry={() => void grantsQuery.refetch()} />;
   }
   return <>{render(grantsQuery.data)}</>;

@@ -18,4 +18,12 @@ public interface PersonalFitService {
      * request. May throw {@code AppException} for a genuinely unexpected failure.
      */
     PersonalFitView evaluate(UUID callerAccountId, UUID memberId, ProductAssessmentInput input);
+
+    /**
+     * The same, for many products at once: authorization, consent and the profile are read
+     * once, then every input is evaluated against them. Results are in input order; an
+     * authorization-shaped outcome applies to every entry, exactly as a single call would.
+     */
+    java.util.List<PersonalFitView> evaluateMany(UUID callerAccountId, UUID memberId,
+                                                 java.util.List<ProductAssessmentInput> inputs);
 }

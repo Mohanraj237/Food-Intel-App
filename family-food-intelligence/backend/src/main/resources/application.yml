@@ -10,6 +10,10 @@ spring:
     username: ${DB_USERNAME:familyfood}
     password: ${DB_PASSWORD:}
     hikari:
+      # The pool, not the thread count, bounds database concurrency. With virtual threads a
+      # burst no longer waits for a request thread; it waits here, for up to connection-timeout.
+      # Size this to what Postgres can serve (instances x pool < max_connections, with headroom),
+      # never to the number of concurrent requests.
       maximum-pool-size: ${DB_POOL_MAX:10}
       minimum-idle: 2
       connection-timeout: 10000
@@ -47,6 +51,22 @@ spring:
     virtual:
       enabled: true
 
+  # Used only when familyfood.cache.type=redis (D-056); nothing connects otherwise.
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL:false}
+      # The longest one request waits on an unresponsive Redis, per operation, before falling
+      # back to the database; the circuit breaker then skips Redis for everyone else. Lettuce
+      # also applies it to a new connection's handshake, which a cold JVM can make slow.
+      timeout: 500ms
+      connect-timeout: 500ms
+      repositories:
+        enabled: false          # Redis is a cache here, never a store
+
 server:
   port: ${SERVER_PORT:8090}
   error:
@@ -70,6 +90,14 @@ management:
       probes:
         enabled: true
       show-details: never          # health detail can disclose infrastructure topology
+      status:
+        # DEGRADED: the shared cache is unreachable and reads go to the database (D-056). It
+        # maps to HTTP 200. No http-mapping here on purpose: setting one replaces the defaults,
+        # and DOWN would stop returning 503.
+        order: down, out-of-service, degraded, up, unknown
+  health:
+    redis:
+      enabled: false               # reports DOWN for an optional cache; CacheConfig adds "cache" instead
   metrics:
     tags:
       application: family-food-intelligence
@@ -83,6 +111,13 @@ springdoc:
 familyfood:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+
+  # D-056. caffeine: in-process, right for one instance. redis: shared by every instance
+  # (also set REDIS_*). none: caching off. Only public catalogue data is ever cached.
+  cache:
+    type: ${CACHE_TYPE:caffeine}
+    key-prefix: "ffi:"
+    retry-after: PT30S         # after a cache failure, skip the cache this long before retrying
 
   auth:
     # No default. Startup fails without it — a guessable signing key is worse than a crash.
@@ -119,6 +154,12 @@ familyfood:
     explanation-model: ${AI_EXPLANATION_MODEL:}
     timeout: PT20S
     max-retries: 1
+
+  # D-059. On start, if the ACTIVE rule set has score components but no product has been
+  # scored yet (the first boot after a rule set is activated by migration), run one
+  # background rescore so search and lists have scores without waiting for page views.
+  scoring:
+    rescore-on-startup: ${SCORING_RESCORE_ON_STARTUP:true}
 
   limits:
     login-attempts-per-hour: 10

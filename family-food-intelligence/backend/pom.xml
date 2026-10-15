@@ -26,6 +26,17 @@
     <springdoc.version>2.8.17</springdoc.version>
     <jjwt.version>0.13.0</jjwt.version>
     <bouncycastle.version>1.85</bouncycastle.version>
+
+    <!-- JVM diagnostics for `mvn spring-boot:run` only (dev). Replace them with
+         -Dspring-boot.run.jvmArguments=...; production flags are an operations decision
+         (docs/operations/operations-guide.md). Everything lands in target/ and is bounded:
+         the heap caps the dump size, GC logs rotate at 5 x 10 MB, and the JFR recording
+         (which also records pinned virtual threads) keeps two hours or 100 MB. -->
+    <spring-boot.run.jvmArguments>-Xmx1g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=target -XX:ErrorFile=target/hs_err_pid%p.log -XX:NativeMemoryTracking=summary -Xlog:gc*,safepoint:file=target/gc.log:time,uptime,level,tags:filecount=5,filesize=10m -XX:StartFlightRecording=name=ffi,maxage=2h,maxsize=100m,dumponexit=true,filename=target/ffi.jfr</spring-boot.run.jvmArguments>
+    <!-- Forked test JVMs write crash logs into target/ instead of the module root. No heap
+         dump: one per failed fork would fill a small disk. Relative on purpose, because
+         argLine is split on spaces and the checkout path has them. -->
+    <argLine>-XX:ErrorFile=target/hs_err_pid%p.log</argLine>
   </properties>
 
   <dependencies>
@@ -92,7 +103,7 @@
       <scope>runtime</scope>
     </dependency>
 
-    <!-- ============ caching (D-007: Caffeine, no Redis) ============ -->
+    <!-- ============ caching (D-056: Caffeine in one instance, Redis when shared) ============ -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-cache</artifactId>
@@ -100,6 +111,12 @@
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
+    </dependency>
+    <!-- Lettuce: non-blocking underneath, so a virtual thread waiting on Redis parks
+         rather than pinning its carrier. Only connects when familyfood.cache.type=redis. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
     </dependency>
 
     <!-- ============ observability ============ -->
@@ -110,6 +127,13 @@
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <!-- jvm.threads.virtual.pinned / .submit.failed: Spring Boot binds these as soon as
+         the class is present. Pinning is the one way virtual threads regress on JDK 21. -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-java21</artifactId>
       <scope>runtime</scope>
     </dependency>
     <dependency>
@@ -132,6 +156,18 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>apache-client</artifactId>
       <version>2.32.24</version>
+    </dependency>
+
+    <!-- ============ AI (label OCR, receipt parsing, the food assistant) ============ -->
+    <!-- Unused until the `ai` module lands (build plan Increment 5) — added here so it
+         is a pre-flight, orchestrator-owned change rather than something a later
+         increment has to touch pom.xml for. familyfood.ai.provider defaults to `stub`
+         (AI_ENABLED=false), so this dependency being present does not make a network
+         call happen; see AppProperties/application.yml (D-011, D-063). -->
+    <dependency>
+      <groupId>com.anthropic</groupId>
+      <artifactId>anthropic-java</artifactId>
+      <version>2.34.0</version>
     </dependency>
 
     <!-- ============ dev ============ -->

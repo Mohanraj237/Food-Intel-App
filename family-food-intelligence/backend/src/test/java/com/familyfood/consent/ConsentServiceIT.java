@@ -52,14 +52,16 @@ class ConsentServiceIT extends IntegrationTestBase {
     @Test
     @DisplayName("GET /consent/policies is public and returns the seeded purposes")
     void policiesArePublic() throws Exception {
-        // Order is fixed by consent_purpose.sort_order in the V1 seed: ACCOUNT(10),
-        // PERSONAL_FIT(20), CHILD_FOOD_SUITABILITY(30), LABEL_IMAGE_PROCESSING(40),
-        // PRODUCT_IMPROVEMENT(50) — index 2 is the one requires_verifiable purpose.
+        // Order is fixed by consent_purpose.sort_order, V1 seed interleaved with V14's
+        // two wellness-tracking purposes: ACCOUNT(10), PERSONAL_FIT(20),
+        // HEALTH_TRACKING(25), CHILD_FOOD_SUITABILITY(30), CHILD_WELLNESS_TRACKING(35),
+        // LABEL_IMAGE_PROCESSING(40), PRODUCT_IMPROVEMENT(50) — index 3 is the first
+        // requires_verifiable purpose.
         mockMvc.perform(get("/api/v1/consent/policies"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(5))
-                .andExpect(jsonPath("$[2].purposeCode").value("CHILD_FOOD_SUITABILITY"))
-                .andExpect(jsonPath("$[2].requiresVerifiable").value(true))
+                .andExpect(jsonPath("$.length()").value(7))
+                .andExpect(jsonPath("$[3].purposeCode").value("CHILD_FOOD_SUITABILITY"))
+                .andExpect(jsonPath("$[3].requiresVerifiable").value(true))
                 .andExpect(jsonPath("$[0].requiresVerifiable").value(false));
     }
 

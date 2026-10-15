@@ -44,14 +44,6 @@ export interface Observation {
   source: ObservationSource;
 }
 
-export interface VisibilityGrant {
-  id: string;
-  subjectMemberId: string;
-  audienceMemberId: string;
-  metricCategory: MetricCategory;
-  grantedAt: string;
-}
-
 export function listMetricDefinitions(): Promise<MetricDefinition[]> {
   return request<MetricDefinition[]>('/wellness/metrics');
 }
@@ -104,24 +96,3 @@ export function visibleCategories(memberId: string): Promise<MetricCategory[]> {
   return request<MetricCategory[]>(`/wellness/members/${encodeURIComponent(memberId)}/visibility`);
 }
 
-export function listShares(memberId: string): Promise<VisibilityGrant[]> {
-  return request<VisibilityGrant[]>(`/wellness/members/${encodeURIComponent(memberId)}/shares`);
-}
-
-export function share(
-  memberId: string,
-  audienceMemberId: string,
-  metricCategory: MetricCategory,
-): Promise<VisibilityGrant> {
-  return request<VisibilityGrant>(`/wellness/members/${encodeURIComponent(memberId)}/shares`, {
-    method: 'POST',
-    body: { audienceMemberId, metricCategory },
-  });
-}
-
-export function unshare(memberId: string, grantId: string): Promise<void> {
-  return request<void>(
-    `/wellness/members/${encodeURIComponent(memberId)}/shares/${encodeURIComponent(grantId)}`,
-    { method: 'DELETE' },
-  );
-}

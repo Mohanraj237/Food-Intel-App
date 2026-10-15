@@ -74,6 +74,30 @@ public enum ErrorCode {
     PORTION_MEMBER_NOT_IN_HOUSEHOLD(HttpStatus.UNPROCESSABLE_ENTITY, "error.portion_member_not_in_household"),
     /** A goal already exists for this member and metric; end it before starting another. */
     GOAL_ALREADY_ACTIVE(HttpStatus.CONFLICT, "error.goal_already_active"),
+    /**
+     * A goal a child may not have (D-047): anything other than an ACTIVITY, SLEEP or HYDRATION
+     * target with AT_LEAST or MAINTAIN. Like METRIC_NOT_PERMITTED_FOR_AGE, this is a product
+     * commitment rather than an authorization failure — no actor may create it.
+     */
+    GOAL_NOT_PERMITTED_FOR_CHILD(HttpStatus.UNPROCESSABLE_ENTITY, "error.goal_not_permitted_for_child"),
+    /**
+     * A restriction-framed goal (today: a calorie cap) that needs a reviewed safety floor
+     * before the product will hold it (D-047, D-025). Says "not yet", not "not allowed".
+     */
+    GOAL_REQUIRES_REVIEWED_STANDARD(HttpStatus.UNPROCESSABLE_ENTITY, "error.goal_requires_reviewed_standard"),
+
+    // ---- profiles and access (W1: D-044, D-046) ----
+    /**
+     * A child member given an adult age band, or an adult account given a child band. Refused
+     * because the band is the input to every age gate (D-036, D-046): a child with an adult
+     * band would open adult-only metrics.
+     */
+    AGE_BAND_NOT_VALID_FOR_MEMBER(HttpStatus.UNPROCESSABLE_ENTITY, "error.age_band_not_valid_for_member"),
+    /**
+     * A sharing grant the model does not allow: to a child, to someone outside the household,
+     * to oneself, of a child's data, or of a scope the product does not offer yet (D-044).
+     */
+    ACCESS_GRANT_NOT_ALLOWED(HttpStatus.UNPROCESSABLE_ENTITY, "error.access_grant_not_allowed"),
 
     // ---- product data (Constitution §77) ----
     BARCODE_AMBIGUOUS(HttpStatus.CONFLICT, "error.barcode_ambiguous"),

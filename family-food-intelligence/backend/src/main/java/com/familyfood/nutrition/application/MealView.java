@@ -21,5 +21,9 @@ public record MealView(UUID id,
                        Instant consumedAt,
                        NutritionAmounts totalNutrition,
                        List<MealItemView> items,
-                       List<MealPortionView> portions) {
+                       List<MealPortionView> portions,
+                       /** Who logged it — the only member who may edit or delete it (D-041).
+                        *  An account id household members can already see via the member
+                        *  list, so exposing it here reveals nothing new. */
+                       UUID loggedByUserId) {
 }

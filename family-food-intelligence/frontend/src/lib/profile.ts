@@ -102,6 +102,12 @@ export interface ProfileRequest {
   goals: GoalCode[];
   allergens: AllergenCode[];
   conditions: string[];
+  /**
+   * Self-reported (V14). Optional in the type only so older callers still compile — but a
+   * PUT is a replace, so omitting it clears a stored value exactly as sending `null` does.
+   * A caller editing an existing profile should carry the current value through.
+   */
+  activityLevel?: 'SEDENTARY' | 'LIGHTLY_ACTIVE' | 'MODERATELY_ACTIVE' | 'VERY_ACTIVE' | null;
 }
 
 export interface Profile {
@@ -115,6 +121,11 @@ export interface Profile {
   allergens: AllergenCode[];
   conditions: string[];
   createdAt: string;
+  /**
+   * Self-reported (V14), never used to compute a calorie target (D-047). Absent rather than
+   * `null` when unset, because the API omits null fields on this response.
+   */
+  activityLevel?: 'SEDENTARY' | 'LIGHTLY_ACTIVE' | 'MODERATELY_ACTIVE' | 'VERY_ACTIVE' | null;
 }
 
 /**

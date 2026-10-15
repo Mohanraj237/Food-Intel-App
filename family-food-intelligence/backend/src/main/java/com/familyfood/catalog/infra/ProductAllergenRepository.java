@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface ProductAllergenRepository extends JpaRepository<ProductAllergen, UUID> {
 
     List<ProductAllergen> findByProductVersionId(UUID productVersionId);
+
+    List<ProductAllergen> findByProductVersionIdIn(java.util.Collection<UUID> productVersionIds);
 }

@@ -5,40 +5,43 @@
   gap: var(--space-2);
   min-height: var(--tap-primary);
   padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1.5px solid transparent;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
   cursor: pointer;
   transition:
     background var(--dur-fast) var(--ease),
     border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease),
     opacity var(--dur-fast) var(--ease);
-  /* Stops a double-tap zooming on iOS and makes repeat taps feel immediate. */
   touch-action: manipulation;
 }
 
-.btn--sm { min-height: var(--tap-min); padding: var(--space-2) var(--space-3);
-           font-size: var(--text-sm); }
-.btn--lg { min-height: 56px; font-size: var(--text-h2); }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+
+.btn--sm { min-height: var(--tap-min); padding: var(--space-2) var(--space-4); font-size: var(--text-sm); }
+.btn--lg { min-height: 56px; padding-inline: var(--space-6); font-size: var(--text-h2); }
 .btn--full { width: 100%; }
 
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.btn--primary { background: var(--brand); color: var(--on-brand); }
+.btn--primary { background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-sm); }
 .btn--primary:hover:not(:disabled) { background: var(--brand-hover); }
 
 .btn--secondary {
-  background: transparent;
-  color: var(--brand);
+  background: var(--card-bg);
+  color: var(--text);
   border-color: var(--border-interactive);
 }
-.btn--secondary:hover:not(:disabled) { background: var(--brand-subtle); }
+.btn--secondary:hover:not(:disabled) { border-color: var(--brand); color: var(--brand-hover); background: var(--brand-subtle); }
 
-.btn--ghost { background: transparent; color: var(--text); }
-.btn--ghost:hover:not(:disabled) { background: var(--surface); }
+.btn--ghost { background: transparent; color: var(--text-secondary); }
+.btn--ghost:hover:not(:disabled) { background: var(--surface); color: var(--text); }
 
-.btn--destructive { background: transparent; color: var(--danger-fg);
-                    border-color: var(--danger-fg); }
+.btn--destructive { background: transparent; color: var(--danger-fg); border-color: var(--danger-fg); }
 .btn--destructive:hover:not(:disabled) { background: var(--danger-bg); }
 
 .btn__spinner {
@@ -51,8 +54,33 @@
   flex-shrink: 0;
 }
 
+.btn__label { display: inline-flex; align-items: center; gap: var(--space-2); }
+
 @keyframes btn-spin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) {
   .btn__spinner { animation: none; opacity: 0.6; }
 }
+
+/* A round icon-only button (save, close, share). */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+.icon-btn:hover { border-color: var(--border-interactive); color: var(--text); }
+.icon-btn:active { transform: scale(0.94); }
+
+.icon-btn--active { background: var(--brand-subtle); border-color: var(--brand); color: var(--brand); }

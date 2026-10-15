@@ -5,7 +5,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.UUID;
 
 /**
@@ -38,6 +40,21 @@ public class Household {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    /**
+     * D-035/D-043: created for one person through "Just me". Presentation only — the data path
+     * is identical to any other household — and it becomes false for good the moment a second
+     * member joins, so "I started alone, then added my family" moves no data.
+     */
+    @Column(name = "is_individual", nullable = false)
+    private boolean individual;
+
+    /** D-053: IANA zone whose midnight bounds "today" for this household's members. */
+    @Column(name = "time_zone", nullable = false)
+    private String timeZone;
+
+    /** India-first (D-019): the zone a household gets unless someone sets another. */
+    public static final String DEFAULT_TIME_ZONE = "Asia/Kolkata";
+
     protected Household() {
         // JPA
     }
@@ -57,7 +74,52 @@ public class Household {
         household.createdByUserId = createdByUserId;
         household.createdAt = now;
         household.updatedAt = now;
+        household.individual = false;
+        household.timeZone = DEFAULT_TIME_ZONE;
         return household;
+    }
+
+    /** A household of one, created through "Just me" (D-043). */
+    public static Household createIndividual(String name, UUID createdByUserId, Instant now) {
+        Household household = create(name, createdByUserId, now);
+        household.individual = true;
+        return household;
+    }
+
+    /**
+     * A second member has joined. One-way: a household that has had a family in it does not
+     * become "individual" again when someone leaves, because that framing would hide the
+     * members who are still there and the history they share.
+     *
+     * @return true if this call changed the household, so the caller can audit the change once
+     */
+    public boolean becomeFamily(Instant now) {
+        if (!individual) {
+            return false;
+        }
+        individual = false;
+        updatedAt = now;
+        return true;
+    }
+
+    /**
+     * Where this household's days start and end. Stored as text for readability in the
+     * database; resolved here so an invalid id can never reach a date calculation.
+     */
+    public ZoneId zone() {
+        try {
+            return ZoneId.of(timeZone);
+        } catch (DateTimeException e) {
+            return ZoneId.of(DEFAULT_TIME_ZONE);
+        }
+    }
+
+    public boolean isIndividual() {
+        return individual;
+    }
+
+    public String getTimeZone() {
+        return timeZone;
     }
 
     public UUID getId() {

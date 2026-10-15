@@ -1,5 +1,6 @@
 package com.familyfood.catalog.application;
 
+import com.familyfood.catalog.domain.ImagePurpose;
 import com.familyfood.catalog.domain.ImageSource;
 import com.familyfood.catalog.domain.ProductImage;
 import com.familyfood.catalog.infra.ProductImageRepository;
@@ -8,6 +9,7 @@ import com.familyfood.platform.config.AppProperties;
 import com.familyfood.platform.error.AppException;
 import com.familyfood.platform.error.ErrorCode;
 import com.familyfood.platform.storage.ObjectStorageClient;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,6 +81,9 @@ public class ProductImageService {
      *                       if the upload itself fails.
      */
     @Transactional
+    // The cached product detail carries the image URL. Eviction runs after commit (see
+    // platform.cache.CacheConfig), and is skipped when this throws, since nothing changed then.
+    @CacheEvict(cacheNames = CatalogCaches.PRODUCT, key = "#productId")
     public UUID attachImage(UUID productId, byte[] content, String mimeType, ImageSource source) {
         if (products.findById(productId).isEmpty()) {
             throw AppException.notFound("product");
@@ -107,6 +112,14 @@ public class ProductImageService {
             previous.clearPrimary();
             images.save(previous);
         });
+        // At most one live original per (product, purpose) — uq_product_image_purpose (V15).
+        // The replaced original is superseded, never deleted.
+        for (ProductImage sameView : images.findByProductIdOrderBySortOrderAscCreatedAtAsc(productId)) {
+            if (sameView.getPurpose() == ImagePurpose.FRONT && sameView.isLiveOriginal()) {
+                sameView.markSuperseded();
+                images.save(sameView);
+            }
+        }
 
         ProductImage image = ProductImage.create(productId, storageKey, source, contentHash, mimeType,
                 content.length, dimensions.width(), dimensions.height(), true);

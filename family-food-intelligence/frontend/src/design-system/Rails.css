@@ -1,4 +1,4 @@
-/* Section headers, category tiles, horizontal rails and the product grid. */
+/* Section headers, category tiles, horizontal rails, product grid, chips. */
 
 /* ---- section header ---- */
 
@@ -12,7 +12,8 @@
 
 .section-head__title {
   font-size: var(--text-h2);
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: var(--tracking-tight);
   line-height: var(--leading-snug);
   color: var(--text);
 }
@@ -25,30 +26,30 @@
 
 .section-head__action {
   flex-shrink: 0;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--brand);
-  text-decoration: none;
-  /* Comfortably tappable without visually inflating a text link. */
-  padding: var(--space-2) var(--space-1);
-  min-height: var(--tap-min);
   display: inline-flex;
   align-items: center;
+  gap: 2px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--brand-hover);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-1);
+  min-height: var(--tap-min);
 }
+
+:root[data-theme='dark'] .section-head__action { color: var(--brand); }
 
 .section-head__action:hover { text-decoration: underline; }
 
-/* ---- rails ----
-   Full-bleed on mobile: the rail runs edge to edge so a partially visible card
-   at the right margin signals "there is more here" without an arrow affordance
-   that touch users never press. Padding restores the page gutter inside it. */
+/* ---- rails: full-bleed on mobile ---- */
 
 .rail {
   display: flex;
   gap: var(--space-3);
   overflow-x: auto;
-  scroll-snap-type: x proximity;
-  padding-block: var(--space-1) var(--space-2);
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding-block: var(--space-1) var(--space-3);
   padding-inline: var(--page-gutter, var(--space-4));
   margin-inline: calc(-1 * var(--page-gutter, var(--space-4)));
   scrollbar-width: none;
@@ -60,44 +61,97 @@
 
 .rail--products > * { flex: 0 0 auto; }
 
-/* ---- category tiles ----
-   A small icon on a soft flat tint, label underneath — the "browse by
-   category" pattern a grocery app's own category row uses, not a row of big
-   saturated colour blocks. The tint (CategoryArt.tsx's categoryTint) mixes
-   into the theme's own card background, so it's automatically correct in
-   dark mode with no separate filter. */
+@media (prefers-reduced-motion: reduce) {
+  .rail { scroll-behavior: auto; }
+}
 
-.rail--categories { gap: var(--space-4); }
+/* ---- carousel: the rail plus a pair of previous/next arrows ----
+   The arrows are a desktop affordance — a mouse pointer, not a thumb, is what benefits
+   from a click target instead of a drag gesture — so they are hidden below 1024px and
+   the rail's own native scroll/swipe is the only (and sufficient) way to move it there. */
+
+.carousel {
+  position: relative;
+}
+
+.carousel__arrow {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .carousel__arrow {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background: var(--card-bg);
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-md);
+    color: var(--text-secondary);
+    z-index: 1;
+    transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  }
+
+  .carousel__arrow:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .carousel__arrow:hover:not(:disabled) { color: var(--text); }
+
+  .carousel__arrow--prev { left: calc(-1 * var(--space-2)); }
+  .carousel__arrow--next { right: calc(-1 * var(--space-2)); }
+}
+
+/* ---- category tiles: a wrapped grid, not a scroller — every category is visible ---- */
+
+/* auto-fit, not auto-fill: with a small, fixed category count (13), auto-fill would
+   reserve empty trailing tracks once the container is wide enough to fit more columns
+   than there are tiles, leaving a dead gap at the end of the row. auto-fit collapses
+   those unused tracks so the real tiles share the full row width instead. */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: var(--space-3) var(--space-2);
+}
+
+@media (min-width: 768px) {
+  .cat-grid { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: var(--space-4) var(--space-3); }
+}
+
+@media (min-width: 1280px) {
+  .cat-grid { grid-template-columns: repeat(auto-fit, minmax(100px, 132px)); }
+}
 
 .cat-tile {
-  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-2);
-  width: 76px;
   text-decoration: none;
-  scroll-snap-align: start;
 }
 
 .cat-tile__art {
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--card-border);
-  transition: transform var(--dur-fast) var(--ease);
+  width: 68px;
+  height: 68px;
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
 
 @media (hover: hover) {
-  .cat-tile:hover .cat-tile__art { transform: translateY(-2px); }
+  .cat-tile:hover .cat-tile__art { transform: translateY(-3px) scale(1.03); box-shadow: var(--shadow-md); }
 }
 
 .cat-tile__glyph {
-  font-size: 1.625rem;
+  font-size: 1.75rem;
   line-height: 1;
-  opacity: 0.85;
 }
 
 .cat-tile__label {
@@ -106,7 +160,6 @@
   color: var(--text-secondary);
   text-align: center;
   line-height: var(--leading-snug);
-  /* Two lines max keeps every tile in a row the same height. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -114,9 +167,8 @@
 }
 
 @media (min-width: 768px) {
-  .cat-tile { width: 84px; }
-  .cat-tile__art { width: 72px; height: 72px; }
-  .cat-tile__glyph { font-size: 1.875rem; }
+  .cat-tile__art { width: 76px; height: 76px; }
+  .cat-tile__glyph { font-size: 2rem; }
   .cat-tile__label { font-size: var(--text-sm); }
 }
 
@@ -128,24 +180,19 @@
   gap: var(--space-3);
 }
 
-/* At a 150px minimum, two tracks need 312px of content width — which a 320px
-   viewport (e.g. iPhone SE) doesn't clear once the page gutter is subtracted,
-   so `auto-fill` silently collapses to one oversized column. This narrows the
-   floor just for that bucket so the two-up phone layout the sizing above was
-   tuned for actually holds at the narrowest end too. */
 @media (max-width: 359px) {
   .pgrid { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); }
 }
 
 @media (min-width: 768px) {
   .pgrid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(184px, 1fr));
     gap: var(--space-4);
   }
 }
 
 @media (min-width: 1024px) {
-  .pgrid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .pgrid { grid-template-columns: repeat(auto-fill, minmax(204px, 1fr)); }
 }
 
 /* ---- chips ---- */
@@ -153,11 +200,11 @@
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  min-height: var(--tap-min);
+  gap: 6px;
+  min-height: 40px;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-full);
-  border: 1px solid var(--border-interactive);
+  border: 1.5px solid var(--border);
   background: var(--card-bg);
   color: var(--text-secondary);
   font-size: var(--text-sm);
@@ -172,15 +219,13 @@
 }
 
 @media (hover: hover) {
-  .chip:hover { border-color: var(--brand); color: var(--brand); }
+  .chip:hover { border-color: var(--border-interactive); color: var(--text); }
 }
 
-/* Active state carries colour AND a filled ground AND a heavier weight, so it
-   is not conveyed by hue alone. */
 .chip--active {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: var(--on-brand);
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
   font-weight: 700;
 }
 

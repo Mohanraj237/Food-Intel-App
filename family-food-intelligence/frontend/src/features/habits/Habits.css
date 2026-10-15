@@ -1,0 +1,230 @@
+/* Habits — a list-archetype screen (plan §5.3), split out of the combined Goals/Habits screen.
+   No streak, "days in a row" count, flame or badge exists anywhere here (D-036, CH-004): the
+   day cells below are a plain record of what happened, not a score to keep alive. */
+
+.habitspage {
+  max-width: var(--layout-list-max);
+  margin-inline: auto;
+}
+
+.habitspage__lede {
+  margin: 0 0 var(--space-5);
+  color: var(--text-secondary);
+}
+
+.habitspage__note {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.habitspage__success {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--success-bg);
+  color: var(--success-fg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.habitspage__also {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.habitspage__alsoLede {
+  margin: 0 0 var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.habitspage__alsoList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ----------------------------------------------------------------- habits */
+
+.habits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.habit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+.habit--archived {
+  background: var(--surface-sunken);
+}
+
+.habit__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.habit__title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.habit__name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.habit__cadence,
+.habit__consistency {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Seven equal columns, each held to the 44×44px minimum tap target (plan §14/2.5.8 — this
+   replaces the previous 14-equal-column strip that squeezed cells to ~20px wide by shrinking
+   them to fit, plan §19 G-05). The 7-day strip is one row of this; the month grid (nested in a
+   <details>) is the same class with 35 days, which the fixed 7-column track auto-wraps into
+   five week-rows.
+   `minmax(var(--tap-min), 1fr)` cannot both hold a true 44px floor and always add up to the
+   viewport's width on the narrowest phones this product still supports (seven 44px cells plus
+   gaps need roughly 390px of clear width once the page's and this card's own padding are
+   subtracted) — shrinking the cells instead, as the previous version did, is exactly the defect
+   being fixed here, so the trade this makes instead is a contained horizontal scroll on this one
+   small strip, never the page (the same `overflow-x: auto` pattern `.scroll-x` already uses
+   elsewhere in this design system). On every phone above roughly 390px — effectively all current
+   devices — this scrolls nowhere and simply reads as seven cells in a row. */
+.habit__days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(var(--tap-min), 1fr));
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.habit__month-grid {
+  margin-top: var(--space-2);
+}
+
+.habit__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 2px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+/* Done carries a fill AND a heavier weight, not colour alone. */
+.habit__day--done {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
+.habit__day:disabled {
+  cursor: progress;
+}
+
+.habit__dow {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+}
+
+.habit__month summary {
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.habit__edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.habit__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.habits__archived {
+  margin-top: var(--space-2);
+}
+
+.habits__archived summary {
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.habits__archived[open] summary {
+  margin-bottom: var(--space-2);
+}
+
+/* ------------------------------------------------------------------ forms */
+
+/* Single-task form archetype (plan §5.3): stays narrow even on a wide screen. */
+.habitform {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+  max-width: var(--layout-form-max);
+}
+
+.habitform__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

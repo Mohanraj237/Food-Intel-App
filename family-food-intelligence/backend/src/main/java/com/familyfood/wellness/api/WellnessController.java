@@ -6,11 +6,11 @@ import com.familyfood.wellness.application.RecordObservationCommand;
 import com.familyfood.wellness.application.WellnessService;
 import com.familyfood.wellness.domain.MetricCategory;
 import com.familyfood.wellness.domain.MetricCode;
+import com.familyfood.wellness.domain.ObservationSource;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -28,12 +29,15 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Health observations and their visibility (D-034 Phase 1).
+ * Health observations and their visibility.
  *
- * <p>Requires sign-in; not in {@code SecurityConfig}'s permit-all list. Every route is
- * scoped to a named subject member and authorized inside {@link WellnessService}, which is
- * the single place the age gate (D-036) and the default-closed visibility rule (D-038) are
- * enforced — deliberately not here, so a future second entry point cannot bypass them.
+ * <p>Requires sign-in; not in {@code SecurityConfig}'s permit-all list. Every route is scoped to
+ * a named subject member and authorized inside {@link WellnessService}, which consults the one
+ * access policy (D-044), the age gate (D-036) and the consent gate (D-048) — deliberately not
+ * here, so a second entry point cannot bypass them.
+ *
+ * <p>Sharing moved to {@code /api/v1/members/{id}/access-grants} in W1 (D-044), where it covers
+ * every health module rather than observations alone. {@code /visibility} keeps its shape.
  *
  * <p>There is no "interpret this value" route, and there will not be one until a citable
  * reviewed standard exists per metric family (D-037).
@@ -48,10 +52,12 @@ public class WellnessController {
 
     private final WellnessService wellness;
     private final CurrentUser currentUser;
+    private final Clock clock;
 
-    public WellnessController(WellnessService wellness, CurrentUser currentUser) {
+    public WellnessController(WellnessService wellness, CurrentUser currentUser, Clock clock) {
         this.wellness = wellness;
         this.currentUser = currentUser;
+        this.clock = clock;
     }
 
     /**
@@ -67,19 +73,25 @@ public class WellnessController {
                 .toList();
     }
 
+    /**
+     * Records a reading a person typed in. The source is always {@code MANUAL}: a client
+     * cannot label its own write DERIVED (that is what a meal produces) or IMPORT (reserved for
+     * a device integration), because the label is how a history says where a number came from.
+     */
     @PostMapping("/members/{memberId}/observations")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Record one measurement for a household member",
                description = "The unit is fixed by the metric; it is not accepted from the "
                            + "caller. A body or clinical metric on a child subject is refused "
                            + "with METRIC_NOT_PERMITTED_FOR_AGE (D-036) — this is a product "
-                           + "commitment, not an authorization failure.")
+                           + "commitment, not an authorization failure. Needs the subject's "
+                           + "tracking consent (D-048).")
     public ObservationView record(@PathVariable UUID memberId,
                                   @Valid @RequestBody RecordObservationRequest request) {
         UUID accountId = currentUser.require().accountId();
         return wellness.record(accountId, new RecordObservationCommand(
                 memberId, request.metricCode(), request.value(),
-                request.effectiveAt(), request.source()));
+                request.effectiveAt(), ObservationSource.MANUAL));
     }
 
     @GetMapping("/members/{memberId}/observations")
@@ -89,7 +101,7 @@ public class WellnessController {
                                         @RequestParam(required = false) Instant from,
                                         @RequestParam(required = false) Instant to) {
         UUID accountId = currentUser.require().accountId();
-        Instant end = to == null ? Instant.now() : to;
+        Instant end = to == null ? clock.instant() : to;
         Instant start = from == null ? end.minus(DEFAULT_WINDOW_DAYS, ChronoUnit.DAYS) : from;
         return wellness.window(accountId, memberId, start, end);
     }
@@ -101,7 +113,7 @@ public class WellnessController {
                                          @RequestParam(required = false) Instant from,
                                          @RequestParam(required = false) Instant to) {
         UUID accountId = currentUser.require().accountId();
-        Instant end = to == null ? Instant.now() : to;
+        Instant end = to == null ? clock.instant() : to;
         Instant start = from == null ? end.minus(DEFAULT_WINDOW_DAYS, ChronoUnit.DAYS) : from;
         return wellness.history(accountId, memberId, metricCode, start, end);
     }
@@ -117,34 +129,5 @@ public class WellnessController {
     @Operation(summary = "Categories of this member's data the caller may see")
     public Set<MetricCategory> visibleCategories(@PathVariable UUID memberId) {
         return wellness.visibleCategories(currentUser.require().accountId(), memberId);
-    }
-
-    /** Grants of the caller's own data. Only the subject may read or change their sharing. */
-    @GetMapping("/members/{memberId}/shares")
-    @Operation(summary = "What this member currently shares, and with whom (subject only)")
-    public List<VisibilityGrantResponse> shares(@PathVariable UUID memberId) {
-        return wellness.sharesBySubject(currentUser.require().accountId(), memberId).stream()
-                .map(VisibilityGrantResponse::from)
-                .toList();
-    }
-
-    @PostMapping("/members/{memberId}/shares")
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Share one category of your own data with one household member",
-               description = "Only the subject may grant. Idempotent — re-sharing an "
-                           + "already-shared category returns the existing grant.")
-    public VisibilityGrantResponse share(@PathVariable UUID memberId,
-                                         @Valid @RequestBody ShareRequest request) {
-        UUID accountId = currentUser.require().accountId();
-        return VisibilityGrantResponse.from(
-                wellness.share(accountId, memberId, request.audienceMemberId(), request.metricCategory()));
-    }
-
-    @DeleteMapping("/members/{memberId}/shares/{grantId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Stop sharing. The grant is marked revoked, never deleted, so the "
-                       + "record of who could see what survives.")
-    public void unshare(@PathVariable UUID memberId, @PathVariable UUID grantId) {
-        wellness.unshare(currentUser.require().accountId(), memberId, grantId);
     }
 }

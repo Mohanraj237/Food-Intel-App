@@ -1,0 +1,9 @@
+.health-shelf-teaser__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+
+.health-shelf-teaser__list > li {
+  list-style: none;
+}

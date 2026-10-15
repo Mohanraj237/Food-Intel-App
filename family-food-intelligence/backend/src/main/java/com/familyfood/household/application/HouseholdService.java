@@ -92,6 +92,42 @@ public class HouseholdService {
         return household;
     }
 
+    /**
+     * "Just me" (D-043): a household of one, so that a person can start tracking without
+     * thinking about a household at all. There is no second person model behind it (D-035).
+     *
+     * <p><b>Idempotent by design.</b> If the caller already belongs to a household — a double
+     * tap, a second device, or someone who joined a family first — nothing is created and
+     * their oldest membership is returned. "Just me" never makes a second household, because
+     * two households would split a person's history across two places for no benefit.
+     */
+    @Transactional
+    public IndividualProvisioning provisionIndividual(UUID callerAccountId, String displayLabel) {
+        List<HouseholdMember> existing = members.findByUserAccountIdAndLeftAtIsNull(callerAccountId);
+        if (!existing.isEmpty()) {
+            HouseholdMember oldest = existing.stream()
+                    .min(Comparator.comparing(HouseholdMember::getJoinedAt))
+                    .orElseThrow();
+            Household household = households.findById(oldest.getHouseholdId())
+                    .orElseThrow(() -> AppException.notFound("Household"));
+            return new IndividualProvisioning(household, oldest, false);
+        }
+
+        Instant now = clock.instant();
+        Household household = households.save(Household.createIndividual(displayLabel, callerAccountId, now));
+        HouseholdMember owner = members.save(
+                HouseholdMember.owner(household.getId(), callerAccountId, displayLabel, now));
+
+        audit.record(AuditAction.HOUSEHOLD_CREATED, "Household", household.getId(),
+                callerAccountId, household.getId(), AuditOutcome.SUCCESS,
+                Map.of("ownerMemberId", owner.getId(), "individual", true));
+
+        return new IndividualProvisioning(household, owner, true);
+    }
+
+    /** @param created false when the caller already had a household and nothing was made */
+    public record IndividualProvisioning(Household household, HouseholdMember member, boolean created) {}
+
     // ---------------------------------------------------------------- invite adult
 
     /**
@@ -151,13 +187,14 @@ public class HouseholdService {
 
         invitation.accept(callerAccountId, now);
         invitations.save(invitation);
+        boolean becameFamily = markFamily(invitation.getHouseholdId(), now);
 
         audit.record(AuditAction.HOUSEHOLD_INVITATION_ACCEPTED, "HouseholdInvitation",
                 invitation.getId(), callerAccountId, invitation.getHouseholdId(),
                 AuditOutcome.SUCCESS, Map.of());
         audit.record(AuditAction.HOUSEHOLD_MEMBER_ADDED, "HouseholdMember", member.getId(),
                 callerAccountId, invitation.getHouseholdId(), AuditOutcome.SUCCESS,
-                Map.of("memberType", "ADULT"));
+                Map.of("memberType", "ADULT", "becameFamily", becameFamily));
 
         return member;
     }
@@ -175,9 +212,11 @@ public class HouseholdService {
         HouseholdMember child = members.save(HouseholdMember.child(householdId, displayLabel, now));
         GuardianLink link = guardianLinks.save(
                 GuardianLink.create(child.getId(), guardian.getId(), rel, authorityBasis, now));
+        boolean becameFamily = markFamily(householdId, now);
 
         audit.record(AuditAction.HOUSEHOLD_MEMBER_ADDED, "HouseholdMember", child.getId(),
-                callerAccountId, householdId, AuditOutcome.SUCCESS, Map.of("memberType", "CHILD"));
+                callerAccountId, householdId, AuditOutcome.SUCCESS,
+                Map.of("memberType", "CHILD", "becameFamily", becameFamily));
         audit.record(AuditAction.GUARDIAN_LINK_CREATED, "GuardianLink", link.getId(),
                 callerAccountId, householdId, AuditOutcome.SUCCESS,
                 Map.of("childMemberId", child.getId()));
@@ -214,7 +253,8 @@ public class HouseholdService {
                     Household household = householdsById.get(member.getHouseholdId());
                     return new HouseholdSummary(
                             member.getHouseholdId(), household.getName(), member.getId(),
-                            member.getRole().name(), member.getDisplayLabel(), member.getJoinedAt());
+                            member.getRole().name(), member.getDisplayLabel(), member.getJoinedAt(),
+                            household.isIndividual(), household.getTimeZone());
                 })
                 .toList();
     }
@@ -353,6 +393,22 @@ public class HouseholdService {
 
     // -------------------------------------------------------------------- internals
 
+    /**
+     * D-043: a household of one stops being one the moment a second member joins. Returns
+     * whether this call made that change, so it is recorded exactly once.
+     */
+    private boolean markFamily(UUID householdId, Instant now) {
+        return households.findById(householdId)
+                .map(household -> {
+                    boolean changed = household.becomeFamily(now);
+                    if (changed) {
+                        households.save(household);
+                    }
+                    return changed;
+                })
+                .orElse(false);
+    }
+
     /** Authorization check with no audit side effect, for read paths. */
     private HouseholdMember requireActiveMember(UUID householdId, UUID callerAccountId) {
         return members.findByHouseholdIdAndUserAccountIdAndLeftAtIsNull(householdId, callerAccountId)
@@ -391,5 +447,6 @@ public class HouseholdService {
      * {@code MemberResponse.from()} uses for {@code HouseholdMember.getRole()}.
      */
     public record HouseholdSummary(UUID householdId, String householdName, UUID memberId,
-                                   String role, String displayLabel, Instant joinedAt) {}
+                                   String role, String displayLabel, Instant joinedAt,
+                                   boolean individual, String timeZone) {}
 }

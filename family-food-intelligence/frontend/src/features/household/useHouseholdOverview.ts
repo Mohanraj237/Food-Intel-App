@@ -10,9 +10,9 @@ import { listGrants, listPolicies, type ConsentPolicy } from '@/lib/consent';
  *
  * This aggregates only endpoints that already exist — members, per-member
  * profiles, the consent ledger — and derives the rest. Nothing here invents a
- * metric the product does not actually record: there is no weight, no calorie
- * count, no activity minutes, because the product deliberately does not collect
- * them (D-017, and the child-safety boundary in post-mvp-backlog.md).
+ * metric. Health records (meals, activity, body measurements) are deliberately
+ * not read here; `FamilyWellness` shows them, per member, only where the viewer
+ * is permitted to see them (D-038).
  *
  * The question it answers is the one this product can answer honestly: *can we
  * give each person a real result yet, and what is each of them watching?*

@@ -11,6 +11,7 @@ import com.familyfood.catalog.application.dto.PackSizeDto;
 import com.familyfood.catalog.application.dto.ProductDetailDto;
 import com.familyfood.catalog.application.dto.ProductSummaryDto;
 import com.familyfood.catalog.application.dto.SourceRefDto;
+import com.familyfood.catalog.domain.Additive;
 import com.familyfood.catalog.domain.Allergen;
 import com.familyfood.catalog.domain.Brand;
 import com.familyfood.catalog.domain.Category;
@@ -25,8 +26,10 @@ import com.familyfood.catalog.domain.ProductNutrient;
 import com.familyfood.catalog.domain.ProductSource;
 import com.familyfood.catalog.domain.ProductStatus;
 import com.familyfood.catalog.domain.ProductVersion;
+import com.familyfood.catalog.infra.AdditiveRepository;
 import com.familyfood.catalog.infra.AllergenRepository;
 import com.familyfood.catalog.infra.BrandRepository;
+import com.familyfood.catalog.infra.CategoryAliasRepository;
 import com.familyfood.catalog.infra.CategoryRepository;
 import com.familyfood.catalog.infra.IngredientRepository;
 import com.familyfood.catalog.infra.NutrientRepository;
@@ -40,6 +43,7 @@ import com.familyfood.catalog.infra.ProductSourceRepository;
 import com.familyfood.catalog.infra.ProductVersionRepository;
 import com.familyfood.platform.error.AppException;
 import com.familyfood.platform.error.ErrorCode;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,7 +86,10 @@ public class ProductQueryService {
     private final NutrientRepository nutrientRefs;
     private final AllergenRepository allergenRefs;
     private final IngredientRepository ingredientRefs;
+    private final AdditiveRepository additiveRefs;
+    private final CategoryAliasRepository categoryAliasRefs;
     private final ProductImageService productImages;
+    private final UnknownBarcodeService unknownBarcodes;
 
     public ProductQueryService(ProductRepository products,
                                ProductVersionRepository versions,
@@ -97,7 +104,10 @@ public class ProductQueryService {
                                NutrientRepository nutrientRefs,
                                AllergenRepository allergenRefs,
                                IngredientRepository ingredientRefs,
-                               ProductImageService productImages) {
+                               AdditiveRepository additiveRefs,
+                               CategoryAliasRepository categoryAliasRefs,
+                               ProductImageService productImages,
+                               UnknownBarcodeService unknownBarcodes) {
         this.products = products;
         this.versions = versions;
         this.barcodes = barcodes;
@@ -111,12 +121,40 @@ public class ProductQueryService {
         this.nutrientRefs = nutrientRefs;
         this.allergenRefs = allergenRefs;
         this.ingredientRefs = ingredientRefs;
+        this.additiveRefs = additiveRefs;
+        this.categoryAliasRefs = categoryAliasRefs;
         this.productImages = productImages;
+        this.unknownBarcodes = unknownBarcodes;
     }
 
     // ------------------------------------------------------------------------ single product
 
+    /** Cached (D-056). An unknown or hidden product throws, and a throw is never cached. */
+    @Cacheable(cacheNames = CatalogCaches.PRODUCT, key = "#id")
     public ProductDetailDto getProduct(UUID id) {
+        return loadProduct(id);
+    }
+
+    /**
+     * The same detail read fresh from the database — for after-commit consumers (score
+     * recomputation, rescore jobs) that must see facts written moments ago regardless of
+     * whether the cache has been evicted yet.
+     */
+    public ProductDetailDto getProductUncached(UUID id) {
+        return loadProduct(id);
+    }
+
+    /** Ids of ACTIVE products in stable id order — paging for bulk jobs (rescore, D-059). */
+    public List<UUID> listActiveProductIds(int page, int size) {
+        return products.findIdsByStatus(ProductStatus.ACTIVE,
+                org.springframework.data.domain.PageRequest.of(page, size));
+    }
+
+    public int countActiveProducts() {
+        return (int) Math.min(Integer.MAX_VALUE, products.countByStatus(ProductStatus.ACTIVE));
+    }
+
+    private ProductDetailDto loadProduct(UUID id) {
         Product product = products.findById(id)
                 .filter(p -> p.getStatus() == ProductStatus.ACTIVE)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -129,9 +167,16 @@ public class ProductQueryService {
         return buildDetail(summary, product, version);
     }
 
+    /**
+     * Not cached: which product a GTIN maps to, and whether it has become ambiguous, is read
+     * fresh on every scan (AC-4.4). The product page the scan then opens reads the cached
+     * detail by id.
+     */
     public ProductDetailDto getProductByBarcode(String gtin) {
         List<ProductBarcode> matches = barcodes.findByGtinAndActiveTrue(gtin);
         if (matches.isEmpty()) {
+            // Which barcodes people scan that we lack is catalogue-improvement data (V15).
+            unknownBarcodes.recordMiss(gtin);
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
 
@@ -150,6 +195,19 @@ public class ProductQueryService {
 
     // ---------------------------------------------------------------------------- categories
 
+    /**
+     * What people type for each category → the category code (V15 {@code category_alias}),
+     * for search's query parser. Cached with the category list: both change only with a
+     * migration.
+     */
+    @Cacheable(cacheNames = CatalogCaches.CATEGORY_ALIASES, key = "'all'")
+    public Map<String, String> categoryAliases() {
+        Map<String, String> aliases = new java.util.TreeMap<>();
+        categoryAliasRefs.findAll().forEach(a -> aliases.put(a.getAlias(), a.getCategoryCode()));
+        return aliases;
+    }
+
+    @Cacheable(cacheNames = CatalogCaches.CATEGORIES, key = "'all'")
     public List<CategoryDto> listCategories() {
         return categories.findAllByOrderBySortOrderAsc().stream()
                 .map(c -> new CategoryDto(c.getCode(), c.getName(), c.getPath(), c.getSortOrder(),
@@ -261,6 +319,12 @@ public class ProductQueryService {
         Map<UUID, String> imageUrlsByProduct = productImages.currentImageUrls(
                 productList.stream().map(Product::getId).toList());
 
+        Map<UUID, List<String>> declaredAllergensByVersion = versionIds.isEmpty() ? Map.of()
+                : allergens.findByProductVersionIdIn(versionIds).stream()
+                        .filter(pa -> pa.getDeclarationType() != com.familyfood.catalog.domain.AllergenDeclaration.NOT_DECLARED)
+                        .collect(Collectors.groupingBy(ProductAllergen::getProductVersionId,
+                                Collectors.mapping(ProductAllergen::getAllergenCode, Collectors.toList())));
+
         List<ProductSummaryDto> result = new ArrayList<>();
         for (Product product : productList) {
             ProductVersion version = versionByProductId.get(product.getId());
@@ -296,7 +360,12 @@ public class ProductQueryService {
                     version.getDataQuality().name(),
                     version.getServingSizeG(),
                     version.getServingSizeDeclared(),
-                    keyFacts));
+                    keyFacts,
+                    version.getDietFlag().name(),
+                    version.isDietFlagEstimated(),
+                    version.getNovaGroup(),
+                    declaredAllergensByVersion.getOrDefault(version.getId(), List.of()).stream().sorted().toList(),
+                    null));
         }
         return result;
     }
@@ -340,12 +409,23 @@ public class ProductQueryService {
                         .toList())
                 .stream().collect(Collectors.toMap(Ingredient::getCode, Function.identity()));
 
+        Map<String, Additive> additivesByCode = additiveRefs.findAllById(
+                versionIngredients.stream()
+                        .map(ProductIngredient::getAdditiveCode)
+                        .filter(Objects::nonNull)
+                        .toList())
+                .stream().collect(Collectors.toMap(Additive::getInsNumber, Function.identity()));
+
         List<IngredientRowDto> ingredientRows = versionIngredients.stream()
                 .map(pi -> {
                     Ingredient ref = pi.getIngredientCode() == null ? null : ingredientRefsByCode.get(pi.getIngredientCode());
+                    Additive additive = pi.getAdditiveCode() == null ? null : additivesByCode.get(pi.getAdditiveCode());
                     return new IngredientRowDto(pi.getRawText(), pi.getPosition(),
                             ref != null ? ref.getCanonicalName() : null, pi.isAdditive(),
-                            ref != null ? ref.getInsNumber() : null);
+                            ref != null ? ref.getInsNumber() : null,
+                            pi.getAdditiveCode(),
+                            additive != null ? additive.getName() : null,
+                            additive != null ? additive.getFunctionCategory() : null);
                 })
                 .toList();
 
@@ -369,11 +449,16 @@ public class ProductQueryService {
 
         boolean hasOpenConflict = conflicts.existsByProductVersionIdAndStatus(version.getId(), ProductConflict.Status.OPEN);
 
+        ProductSource novaSource = version.getNovaSourceId() == null ? null : sourcesById.get(version.getNovaSourceId());
         CurrentVersionDto currentVersion = new CurrentVersionDto(
                 version.getId(), version.getVersionNo(), version.getEffectiveFrom(),
                 version.getServingSizeG(), version.getServingSizeDeclared(), version.getServingPlausible(),
                 version.getDataQuality().name(), version.getCapturedAt(), version.getVerifiedAt(),
-                version.getCaptureMethod().name());
+                version.getCaptureMethod().name(),
+                version.getNovaGroup(),
+                novaSource == null ? null : novaSource.getSourceType().name(),
+                version.getDietFlag().name(),
+                version.isDietFlagEstimated());
 
         return ProductDetailDto.from(summary, currentVersion, nutrientRows, ingredientRows,
                 allergenRows, barcodeRows, hasOpenConflict);

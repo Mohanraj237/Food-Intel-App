@@ -22,7 +22,8 @@ import {
 import { listGrants, listPolicies } from '@/lib/consent';
 import { Button } from '@/design-system/Button';
 import { ErrorState, Skeleton } from '@/design-system/States';
-import { memberInitial } from '@/design-system/HouseholdMemberCard';
+import { Avatar } from '@/design-system/Avatar';
+import { Icon } from '@/design-system/Icon';
 import { Link } from 'react-router-dom';
 import './FamilyScreen.css';
 
@@ -194,23 +195,14 @@ export function ProfilePanel({ householdId, member, onBack }: ProfilePanelProps)
   const saveErrorMessage = saveMutation.error instanceof ApiError ? saveMutation.error.message : null;
 
   return (
-    <div className="page">
-      <Button variant="ghost" size="sm" onClick={onBack}>
+    <div className="page layout-form">
+      <button type="button" className="page-head__back" onClick={onBack}>
+        <Icon name="arrow-left" size={18} />
         {t('action.back')}
-      </Button>
+      </button>
 
       <div className="profile__identity">
-        <span
-          className={[
-            'family__avatar',
-            member.memberType === 'CHILD' ? 'family__avatar--child' : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          aria-hidden="true"
-        >
-          {memberInitial(member.displayLabel)}
-        </span>
+        <Avatar name={member.displayLabel} size="lg" child={isChild} tone={isChild ? undefined : 1} />
         <h1>
           {isChild
             ? t('household.profileOf', { name: member.displayLabel })
@@ -230,7 +222,7 @@ export function ProfilePanel({ householdId, member, onBack }: ProfilePanelProps)
           <p className="profile__consent-body">
             {t('profile.childConsentBody', { name: member.displayLabel })}
           </p>
-          <Link to="/settings" className="btn btn--primary btn--sm">
+          <Link to="/you" className="btn btn--primary btn--sm">
             {t('profile.childConsentAction')}
           </Link>
         </div>

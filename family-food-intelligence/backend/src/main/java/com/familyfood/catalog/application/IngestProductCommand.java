@@ -2,6 +2,7 @@ package com.familyfood.catalog.application;
 
 import com.familyfood.catalog.domain.AllergenDeclaration;
 import com.familyfood.catalog.domain.CaptureMethod;
+import com.familyfood.catalog.domain.DietFlag;
 import com.familyfood.catalog.domain.GtinType;
 import com.familyfood.catalog.domain.NutrientBasis;
 import com.familyfood.catalog.domain.SourceType;
@@ -25,6 +26,11 @@ import java.util.UUID;
  * the source did not supply it, and {@code versionStatus}/{@code dataQuality} must be set
  * by the caller to reflect how trustworthy the source actually is — never defaulted to
  * {@code VERIFIED} by this class.
+ *
+ * <p>The enrichment fields (V15, D-059) — {@code novaGroup} (1–4 or null),
+ * {@code dietFlag} + {@code dietFlagEstimated}, {@code fvnlPctEstimated} (the fruit/veg/nut/
+ * legume percentage, always an estimate from the ingredient list) — are optional; the
+ * pre-V15 constructor leaves them absent.
  */
 public record IngestProductCommand(
         String name,
@@ -48,7 +54,26 @@ public record IngestProductCommand(
         VersionStatus versionStatus,
         DataQuality dataQuality,
         UUID verifiedByUserId,
-        Instant verifiedAt) {
+        Instant verifiedAt,
+        Integer novaGroup,
+        DietFlag dietFlag,
+        boolean dietFlagEstimated,
+        BigDecimal fvnlPctEstimated) {
+
+    /** The pre-V15 shape: no processing level, no diet flag, no FVNL estimate. */
+    public IngestProductCommand(String name, String brandName, String categoryCode,
+                                BigDecimal packSizeValue, String packSizeUnit, String gtin, GtinType gtinType,
+                                BigDecimal servingSizeG, String servingSizeDeclared, String ingredientsRawText,
+                                List<String> ingredientTokens, List<NutrientValue> nutrients,
+                                List<AllergenValue> allergens, SourceType sourceType, CaptureMethod captureMethod,
+                                UUID capturedByUserId, String sourceRef, String licenseNote,
+                                VersionStatus versionStatus, DataQuality dataQuality, UUID verifiedByUserId,
+                                Instant verifiedAt) {
+        this(name, brandName, categoryCode, packSizeValue, packSizeUnit, gtin, gtinType, servingSizeG,
+                servingSizeDeclared, ingredientsRawText, ingredientTokens, nutrients, allergens, sourceType,
+                captureMethod, capturedByUserId, sourceRef, licenseNote, versionStatus, dataQuality,
+                verifiedByUserId, verifiedAt, null, null, true, null);
+    }
 
     public record NutrientValue(String nutrientCode, BigDecimal amountPer100, String unit, NutrientBasis basisPer100) {
     }

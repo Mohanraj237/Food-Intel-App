@@ -1,0 +1,20 @@
+{
+  "ask.heading": "Ask",
+  "ask.gate.badge": "Coming soon",
+  "ask.gate.body": "Asking questions in plain language isn't available yet. When it arrives, answers will only ever describe your own records and never give medical advice.",
+  "ask.mockedBanner": "MOCKED — Ask isn't connected to a real model or to your data. Every answer below is a sample, and none of this is medical advice — talk to a healthcare professional for that.",
+  "ask.hint": "Tap a question below to see a sample answer.",
+  "ask.thinking": "Thinking…",
+  "ask.mockedTag": "MOCKED reply",
+  "ask.chipsLabel": "Questions you can ask",
+  "ask.intent.howAmIDoingToday": "How am I doing today?",
+  "ask.intent.waterThisWeek": "How is my water this week?",
+  "ask.intent.nextDose": "When's my next dose?",
+  "ask.intent.nextAppointment": "What's my next appointment?",
+  "ask.intent.whatShouldIEat": "What should I eat next?",
+  "ask.answer.howAmIDoingToday": "Once this is connected, this would summarize what you logged today in plain language — no score, no grade.",
+  "ask.answer.waterThisWeek": "Once this is connected, this would say how many of the last 7 days you logged water, the same way Today's cards do.",
+  "ask.answer.nextDose": "Once this is connected, this would name your next scheduled dose and when it is due, exactly as you entered it — never a calculated dosage.",
+  "ask.answer.nextAppointment": "Once this is connected, this would name your next appointment and when it is — exactly what you or a family member entered.",
+  "ask.answer.whatShouldIEat": "Once this is connected, this would suggest something from the Food tab based on your own recent choices — never a medical or nutritional directive."
+}

@@ -47,9 +47,12 @@ public class DataRightsController {
     @GetMapping("/api/v1/account/export")
     @Operation(summary = "Export the caller's own data",
                description = "Every household the caller belongs to (their own membership, "
-                           + "profile history and consent ledger), every child they "
-                           + "currently guard (same shape), and their own product "
-                           + "contributions. Never another person's data (AC-9.2).")
+                           + "profile history, consent ledger and health record: "
+                           + "observations, goals, habits with the days they were done, the "
+                           + "meals they had a share of with only their own share, and what "
+                           + "they shared with whom), every child they currently guard (same "
+                           + "shape), and their own product contributions. Never another "
+                           + "person's data (AC-9.2).")
     public AccountExportResponse export() {
         UUID accountId = currentUser.require().accountId();
         return AccountExportResponse.from(dataRights.exportMyData(accountId));
@@ -75,7 +78,9 @@ public class DataRightsController {
                description = "Only an active guardian of this specific child may call this. "
                            + "Distinct from removing/leaving a household (DELETE .../members/"
                            + "{memberId}), which only ends the membership: this erases the "
-                           + "child's profile and scrubs their membership record. consent_"
+                           + "child's profile and health record (observations, goals, habits, "
+                           + "their share of every meal) and scrubs their membership record. "
+                           + "A meal others also ate survives without the child's share. consent_"
                            + "record and audit_event survive as evidence (AC-9.3). Never "
                            + "usable against an ADULT member — an adult erases their own "
                            + "data only through account deletion.")

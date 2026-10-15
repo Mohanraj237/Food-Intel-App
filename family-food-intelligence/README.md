@@ -17,16 +17,53 @@ does not make claims about anyone's body.
 
 ## Running it
 
-Requires Java 21, Node 22, Docker.
+Requires Java 21, Maven, Node 22, Docker.
+
+**Fast path (Windows, PowerShell):**
+
+```powershell
+scripts\start-dev.ps1              # Postgres + MinIO + backend (:8090) + frontend (:5173)
+scripts\start-dev.ps1 -WithRedis   # same, plus the shared Redis cache (D-056) instead of caffeine
+scripts\stop-dev.ps1               # stops backend + frontend, brings the Docker services down
+scripts\stop-dev.ps1 -RemoveVolumes  # also drops the Postgres/MinIO volumes
+```
+
+`-WithRedis` is the one flag that drives both sides of the opt-in Redis cache: it starts
+the Docker Compose `redis` service (profile `redis`, off by default) and sets
+`CACHE_TYPE=redis` for the backend. Omit it and the backend runs on the default in-process
+caffeine cache. `stop-dev.ps1` always tears down whichever of these were running. Backend
+and frontend output land in `backend/target/dev-backend.log` and
+`frontend/dev-frontend.log`; tracked PIDs live in `.dev-stack.json` (git-ignored, removed
+once `stop-dev.ps1` runs).
+
+**Manual, or non-Windows:**
 
 ```bash
-cp .env.example .env          # then fill in JWT_SECRET and PRIVACY_HASH_PEPPER
-#   openssl rand -base64 48   # for each
-
 docker compose -f infrastructure/docker-compose.yml up -d
-cd backend  && mvn spring-boot:run        # http://localhost:8090
-cd frontend && npm install && npm run dev # http://localhost:5173
+cd backend  && mvn spring-boot:run -Dspring-boot.run.profiles=local  # http://localhost:8090
+cd frontend && npm install && npm run dev                            # http://localhost:5173
 ```
+
+`application-local.yml` already supplies safe, working-but-fake values for the JWT
+signing key, the privacy hash pepper and the MinIO credentials, so no `.env` file
+is needed for this. Only create one (`cp .env.example .env`, then fill in the
+`REQUIRED` values — `openssl rand -base64 48`/`32` for the two secrets) if you need
+to run under a different profile: a real AI provider, non-default ports, or
+anything else `.env.example` documents.
+
+Stopping (manual): `docker compose -f infrastructure/docker-compose.yml down` (add `-v` to
+also drop the Postgres/MinIO volumes); `Ctrl-C` in each of the backend/frontend
+terminals.
+
+**Caching.** The backend caches catalogue data in-process by default
+(`CACHE_TYPE=caffeine`). The shared Redis cache (D-056) is opt-in: `scripts\start-dev.ps1
+-WithRedis`, or manually, `docker compose -f infrastructure/docker-compose.yml --profile
+redis up -d` and run the backend with `CACHE_TYPE=redis`. If Redis is absent or goes away,
+the backend keeps working from the database.
+
+**JVM diagnostics.** `mvn spring-boot:run` writes GC logs, a JFR recording and any crash
+log or heap dump under `backend/target/`. See `docs/operations/operations-guide.md`,
+"JVM runtime and diagnostics".
 
 ## Tests
 

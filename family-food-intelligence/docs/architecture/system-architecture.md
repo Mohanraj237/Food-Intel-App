@@ -1,7 +1,18 @@
 # System Architecture
 
 **Version:** 1.0 · **Date:** 2026-09-05 · **Status:** Accepted (Phase 0)
-**Binding decisions:** D-006 (stack), D-007 (no Redis), D-011 (AI boundaries), D-012 (no commercial influence), D-014 (versioning)
+**Binding decisions:** D-006 (stack), D-007 (DB-backed rate limiting; its no-Redis rule is superseded for caching by D-056), D-011 (AI boundaries), D-012 (no commercial influence), D-014 (versioning), D-057 (virtual threads for I/O, bounded pools for CPU work)
+
+> **Pivot note, 2026-09-12.** This document still describes the packaged-food pipelines
+> accurately. The wellness platform's architecture is in `wellness-platform-architecture.md`
+> (v2).
+>
+> That document's module map (§7) extends the §3 table below with `access`, `wellness`,
+> `nutrition`, `goals`, `habits`, `insights`, `experience`, `dashboard` and the later modules.
+>
+> It also supersedes two lines here:
+> - **§4 permission pipeline:** household role is not a health-data input (D-044).
+> - **§12 "no notification infrastructure":** superseded by D-050.
 
 ---
 
@@ -350,6 +361,6 @@ Single container + PostgreSQL + object storage. `docker-compose` for local (Post
 
 ## 12. What is deliberately not built
 
-Microservices · a message queue · a search cluster · Redis · an ML pipeline · a recommendation model · a public API · SSO · a native app · notification infrastructure beyond the single outcome prompt · a mobile-and-web-and-tablet matrix · offline-first sync beyond a read cache · advertising, sponsorship or ranking-payment capability of any kind (D-012).
+Microservices · a message queue · a search cluster · Redis as a store (it is an optional cache only, D-056) · an ML pipeline · a recommendation model · a public API · SSO · a native app · notification infrastructure beyond the single outcome prompt · a mobile-and-web-and-tablet matrix · offline-first sync beyond a read cache · advertising, sponsorship or ranking-payment capability of any kind (D-012).
 
 Each of these is either premature at this scale or, in the last case, permanently excluded.

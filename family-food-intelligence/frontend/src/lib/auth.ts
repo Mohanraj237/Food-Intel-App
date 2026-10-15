@@ -1,4 +1,4 @@
-import { clearSession, request, setSession, storedRefreshToken } from './api';
+import { ApiError, clearSession, request, setSession, storedRefreshToken } from './api';
 
 /**
  * The auth contract. Mirrors {@code AuthResponse} in
@@ -68,8 +68,13 @@ export async function restoreSession(): Promise<boolean> {
   try {
     applySession(await refresh(token));
     return true;
-  } catch {
-    clearSession();
+  } catch (error) {
+    // Only a token the server actually rejected is worth forgetting. A transport failure (no
+    // network, a dropped request under load) says nothing about the token, and clearing it
+    // would sign a person out of every future visit because of one bad moment on the network.
+    if (error instanceof ApiError && !error.isTransportFailure && error.status < 500) {
+      clearSession();
+    }
     return false;
   }
 }

@@ -7,6 +7,7 @@ import com.familyfood.household.application.HouseholdAccess;
 import com.familyfood.household.application.HouseholdAccess.MemberInfo;
 import com.familyfood.platform.error.AppException;
 import com.familyfood.platform.error.ErrorCode;
+import com.familyfood.profile.domain.ActivityLevel;
 import com.familyfood.profile.domain.AgeBand;
 import com.familyfood.profile.domain.AllergenCode;
 import com.familyfood.profile.domain.DietaryPreference;
@@ -82,7 +83,31 @@ public class ProfileService {
                                              Set<GoalCode> goals,
                                              Set<AllergenCode> allergenCodes,
                                              Set<String> conditions) {
+        return createOrUpdateProfile(callerAccountId, targetMemberId, ageBand, sexOrNull,
+                dietaryPreference, null, goals, allergenCodes, conditions);
+    }
+
+    /**
+     * As above, with the self-reported activity level (V14).
+     *
+     * <p><b>The band must match the member (D-046).</b> A CHILD member may only hold a child
+     * band, and an adult account only an adult band. The band is the input to every age gate
+     * in the product — metrics (D-036), child goals (D-047), the experience tier — so a child
+     * saved as {@code A31_45} would have every adult-only metric opened to them by a form
+     * choice. The UI already restricts the options; this is the place it becomes true.
+     */
+    @Transactional
+    public ProfileView createOrUpdateProfile(UUID callerAccountId,
+                                             UUID targetMemberId,
+                                             AgeBand ageBand,
+                                             Sex sexOrNull,
+                                             DietaryPreference dietaryPreference,
+                                             ActivityLevel activityLevelOrNull,
+                                             Set<GoalCode> goals,
+                                             Set<AllergenCode> allergenCodes,
+                                             Set<String> conditions) {
         MemberInfo member = authorize(callerAccountId, targetMemberId);
+        requireBandMatchesMember(member, ageBand);
         Instant now = clock.instant();
 
         Optional<PersonProfile> current =
@@ -104,7 +129,7 @@ public class ProfileService {
 
         PersonProfile created = PersonProfile.newVersion(
                 targetMemberId, nextVersion, ageBand, sexOrNull, dietaryPreference,
-                goals, allergenCodes, conditions, callerAccountId, now);
+                activityLevelOrNull, goals, allergenCodes, conditions, callerAccountId, now);
         profiles.save(created);
 
         boolean isChild = member.memberType().equals(CHILD_MEMBER_TYPE);
@@ -175,6 +200,40 @@ public class ProfileService {
     @Transactional
     public void eraseAllVersions(UUID targetMemberId) {
         profiles.deleteByHouseholdMemberId(targetMemberId);
+    }
+
+    /**
+     * The member's current age band, for a safety gate — or empty if they have no profile.
+     *
+     * <p><b>A trusted-caller read, like {@link #eraseAllVersions}.</b> It exists because the
+     * age gates (D-036 metrics, D-047 goals, D-046 experience tier) must be evaluated for the
+     * <em>subject</em> regardless of who is acting. A caregiver recording an elder's blood
+     * pressure (D-045) is not permitted to read the elder's profile — and must not need to be,
+     * for the product to check that the elder is an adult. Returning only the band, with no
+     * audit, is deliberate: the band is not disclosed to anyone by this call, it is consumed
+     * by a gate. It must never be surfaced through an API response on another person's
+     * behalf; {@link #getCurrentProfile} is the disclosure path, and it stays self/guardian.
+     */
+    @Transactional(readOnly = true)
+    public Optional<AgeBand> currentAgeBand(UUID targetMemberId) {
+        return profiles.findByHouseholdMemberIdAndIsCurrentTrue(targetMemberId)
+                .map(PersonProfile::getAgeBand);
+    }
+
+    /**
+     * D-046. A child member must hold a child band; an adult account must hold an adult band.
+     * Checked against the membership record, which the caller cannot change, rather than
+     * against anything in the request.
+     */
+    private static void requireBandMatchesMember(MemberInfo member, AgeBand ageBand) {
+        if (ageBand == null) {
+            return; // the not-null rule is reported by the request validator and the entity
+        }
+        boolean memberIsChild = member.memberType().equals(CHILD_MEMBER_TYPE);
+        if (memberIsChild != ageBand.isChild()) {
+            throw new AppException(ErrorCode.AGE_BAND_NOT_VALID_FOR_MEMBER,
+                    Map.of("ageBand", ageBand.name(), "memberType", member.memberType()));
+        }
     }
 
     /**

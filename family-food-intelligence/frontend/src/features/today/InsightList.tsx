@@ -1,28 +1,37 @@
 import { useQuery } from '@tanstack/react-query';
 import { t } from '@/lib/i18n';
-import { insightsForMember, type Insight, type InsightWindow } from '@/lib/insights';
+import { insightsForMember, type InsightWindow } from '@/lib/insights';
+import { toRecommendationCards } from '@/lib/recommendations';
+import { RecommendationCard } from '@/design-system/RecommendationCard';
 import { Skeleton } from '@/design-system/States';
 import './InsightList.css';
 
 /**
- * Derived statements about one member.
+ * The "what should I do next" teaser (plan §18 4.1) — rebuilt onto `RecommendationCard` fed by
+ * the new `lib/recommendations.ts` composition layer, replacing the previous raw-server-prose
+ * rendering (workstreams doc's C4 checklist). The external contract (`memberId`, `window`) is
+ * kept exactly as it was: this file stays at `features/today/InsightList.tsx` specifically so
+ * `TodayScreen.tsx` (C1-owned, out of this workstream's reach) keeps working unchanged, per the
+ * carve-out in workstreams doc §0.1 — only what's inside this file changed.
  *
- * <p>The design decision worth defending here: an insight whose `availability` is `NO_DATA`
- * or `PARTIAL` is rendered as ordinary content, not hidden and not styled as a warning.
- * "We do not have enough yet to show a trend" is the honest answer early on, and it is also
- * the answer that tells someone what to do next. Hiding it would leave a blank panel that
- * reads as a bug.
- *
- * <p>Evidence is shown on demand rather than always: the number and the sentence are the
- * point, but a reader who wants to check the arithmetic can, which is the whole reason the
- * backend carries evidence on every statement.
+ * `limit` defaults to 2, matching Today's own "teaser capped at 2 cards" spec (plan §18 1.1) —
+ * `TodayScreen.tsx`'s existing `<InsightList memberId={memberId} window="WEEK" />` call site
+ * gets that cap without needing to pass anything new. The full, uncapped history lives at
+ * `/next/insights` (`features/insights/InsightsHistoryScreen.tsx`), which does not use this
+ * component at all — it renders every window's cards directly, since a "see 2 more" teaser makes
+ * no sense on the page that *is* the "see more."
  */
 export function InsightList({
   memberId,
   window = 'WEEK',
+  limit = 2,
+  href = '/next/insights',
 }: {
   memberId: string;
   window?: InsightWindow;
+  limit?: number;
+  /** The teaser's "see more" destination; pass `null` to render no link at all. */
+  href?: string | null;
 }) {
   const insights = useQuery({
     queryKey: ['insights', memberId, window],
@@ -43,48 +52,17 @@ export function InsightList({
     return <p className="insight__unavailable">{t('insight.none')}</p>;
   }
 
+  const cards = toRecommendationCards(insights.data, { href: href ?? undefined }).slice(0, limit);
+
   return (
-    <ul className="insight-list" role="list">
-      {insights.data.map((insight, index) => (
-        <InsightRow key={`${insight.type}-${index}`} insight={insight} />
+    <ul className="insight-feed" role="list">
+      {/* `key` is destructured out rather than spread: React reserves it, and passing it
+          inside a spread props object is both a warning and a no-op on the component. */}
+      {cards.map(({ key, ...cardProps }, index) => (
+        <li key={`${key}#${index}`}>
+          <RecommendationCard {...cardProps} />
+        </li>
       ))}
     </ul>
   );
-}
-
-function InsightRow({ insight }: { insight: Insight }) {
-  const isFinding = insight.availability === 'SUFFICIENT';
-
-  return (
-    <li className={`insight insight--${insight.availability.toLowerCase()}`}>
-      <p className="insight__headline">{insight.headline}</p>
-      {insight.detail && <p className="insight__detail">{insight.detail}</p>}
-
-      {insight.evidence.length > 0 && (
-        <details className="insight__evidence">
-          <summary>{t('insight.showEvidence')}</summary>
-          <ul className="insight__evidence-list" role="list">
-            {insight.evidence.map((e, i) => (
-              <li key={i}>
-                <span className="insight__evidence-label">{e.label}</span>
-                <span className="insight__evidence-value">
-                  {formatValue(e.value)} {e.unit}
-                </span>
-                <span className="insight__evidence-days">
-                  {t('insight.evidenceDays', { count: e.observationDays })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-
-      {!isFinding && <p className="insight__note">{t('insight.notEnoughYet')}</p>}
-    </li>
-  );
-}
-
-/** Whole numbers read as whole numbers; everything else keeps one decimal. */
-function formatValue(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }

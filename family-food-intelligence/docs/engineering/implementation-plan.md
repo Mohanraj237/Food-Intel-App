@@ -2,6 +2,12 @@
 
 **Version:** 1.0 · **Date:** 2026-09-05 · **Owner:** Orchestrator
 
+> **Superseded in scope, 2026-09-12 (D-034, D-042).** The Phase 0–7 sequence below belongs to
+> the narrow packaged-food product. The wellness platform's phases (1 Foundation →
+> 6 Differentiation) and their exit gates are in `docs/architecture/wellness-platform-architecture.md`
+> §14. **Phase numbers in the two documents do not refer to the same work.** The scoring
+> evidence pipeline here (D-024/D-025, §6) is unchanged and still binding.
+
 ---
 
 ## 1. Target layout

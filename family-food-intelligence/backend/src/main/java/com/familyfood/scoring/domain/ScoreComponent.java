@@ -14,15 +14,24 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * One weighted nutrient contribution to a {@link RuleSet}'s 0-100 {@code ProductHealthScore}
- * (D-003). {@code thresholds} is a {@code {min, max}} shape read and documented by
- * {@code com.familyfood.scoring.application.ProductHealthScoreServiceImpl}: values are
- * clamped to {@code [min, max]} and interpolated linearly to a 0-100 sub-score, direction of
- * the interpolation depending on {@link #direction}.
+ * One nutrient's contribution to a {@link RuleSet}'s {@code ProductHealthScore} (D-003).
+ * How {@code thresholds} is read depends on the owning rule set's
+ * {@link ScoringAlgorithm}:
+ *
+ * <ul>
+ *   <li>{@code WEIGHTED_MEAN_V1}: {@code {min, max}} — values clamped to {@code [min, max]}
+ *       and interpolated linearly to a 0-100 sub-score, direction per {@link #direction}
+ *       ({@code com.familyfood.scoring.application.WeightedMeanAlgorithm}).
+ *   <li>{@code POINTS_NET_V2}: {@code {"type":"BANDS","bands":[{"gt":x,"points":n},…],
+ *       "cap":{…}}} — a step function transcribed from the cited standard's band table
+ *       ({@code com.familyfood.scoring.application.PointsNetAlgorithm}); {@link #role} says
+ *       whether the points add (BASELINE) or subtract (MODIFYING) and
+ *       {@link #foodTypeScope} which band table this row is.
+ * </ul>
  *
  * <p>Unlike {@link ScoringRule}, this row has no {@code basis} column — see
- * V5__scoring.sql — so the aggregation service evaluates each component once, against the
- * per-100g value when declared and falling back to per-serving otherwise.
+ * V5__scoring.sql — so both algorithms evaluate each component once, against the per-100
+ * value when declared and falling back to per-serving otherwise.
  *
  * <p>{@code categoryScope} stores a {@code category.code} (text), for the same reason
  * {@link ScoringRule#getAppliesToCategory()} does.
@@ -60,20 +69,36 @@ public class ScoreComponent {
     @Column(name = "standard_ref", nullable = false)
     private String standardRef;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ScoreComponentRole role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "food_type_scope")
+    private FoodType foodTypeScope;
+
     protected ScoreComponent() {
         // JPA
     }
 
     /**
-     * Builds a component. Used both by (a future) reviewed-threshold-set migration loader
-     * and, today, exclusively by test fixtures that never persist the result — see
-     * {@code ProductHealthScoreServiceImplTest} — since the ACTIVE rule_set has zero real
-     * rows of this kind (D-024).
+     * Builds a v1-shaped ({@code {min,max}}) BASELINE component with no food-type scope.
+     * Used by the {@code v1-draft-examples} fixtures and {@code WeightedMeanAlgorithmTest}.
      */
     public static ScoreComponent create(UUID ruleSetId, String code, String nutrientCode,
                                         Direction direction, BigDecimal weight,
                                         Map<String, Object> thresholds, String categoryScope,
                                         String standardRef) {
+        return create(ruleSetId, code, nutrientCode, direction, weight, thresholds, categoryScope,
+                standardRef, ScoreComponentRole.BASELINE, null);
+    }
+
+    /** Builds a component with an explicit role and food-type scope (v2 band tables). */
+    public static ScoreComponent create(UUID ruleSetId, String code, String nutrientCode,
+                                        Direction direction, BigDecimal weight,
+                                        Map<String, Object> thresholds, String categoryScope,
+                                        String standardRef, ScoreComponentRole role,
+                                        FoodType foodTypeScope) {
         ScoreComponent component = new ScoreComponent();
         component.id = UUID.randomUUID();
         component.ruleSetId = ruleSetId;
@@ -84,6 +109,8 @@ public class ScoreComponent {
         component.thresholds = thresholds;
         component.categoryScope = categoryScope;
         component.standardRef = standardRef;
+        component.role = role;
+        component.foodTypeScope = foodTypeScope;
         return component;
     }
 
@@ -121,5 +148,13 @@ public class ScoreComponent {
 
     public String getStandardRef() {
         return standardRef;
+    }
+
+    public ScoreComponentRole getRole() {
+        return role;
+    }
+
+    public FoodType getFoodTypeScope() {
+        return foodTypeScope;
     }
 }

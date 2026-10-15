@@ -589,3 +589,508 @@ Every metric code carries an explicit `permittedFor` age-class set. A new metric
 **What ships instead.** Per-dimension progress against goals the user set themselves, and readiness/coverage indicators that say what the product does and does not know. If a composite score is wanted later it needs an evidence pack per D-025 and an explicit decision reversing this entry.
 
 ---
+
+---
+
+## D-041 — A family meal writes to another adult's log only when that adult confirms it
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Conflict.** The Phase 2 brief requires that "one family meal should be loggable once and apportioned to individual members", with each member's nutrition persisted to their own record. **D-002** says adults are their own data principals with no proxy, ever. Deriving adult B's nutrition observations from adult A logging dinner is exactly a proxy write into B's health record. The first implementation called `replaceDerived` for every portion, which correctly refused the other adult — and so rolled back the entire meal for any household with two adults, the most common family shape.
+
+**Decision.** A meal and its portions are household facts; the nutrition derived from a portion is the member's health record. So:
+
+1. Logging a meal derives observations immediately only for members the logger may already write for — **themselves, and children they guard**. This reuses `WellnessAccess.canWriteFor`, the same relationship check every other write uses; there is no second rule.
+2. Another adult's portion is stored ("Priya had about half") but is **not** written to her log. The meal response marks it `inMemberLog: false`, and the UI says so plainly.
+3. That adult may **confirm** their own portion (`POST /api/v1/nutrition/meals/{id}/confirm`), which derives it with themselves as the caller.
+4. Only the member who logged a meal may edit or delete it. Editing or deleting **withdraws every observation derived from that meal**, including confirmed shares, because a derived share was only ever "my portion of meal X" — when X changes, the statement's basis is gone. Other adults' portions return to awaiting confirmation. Nothing an adult recorded independently is touched.
+
+**Rationale.** This is the only arrangement that makes the brief's family meal work without weakening D-002. The alternative — letting household membership authorize writing another adult's health data — is precisely the "a family relationship implies access" failure D-038 was written to prevent.
+
+**Consequences.** `meal_portion.derived_at` records whether a share is in that member's log; it states *that* a member confirmed, never what their values are. A two-adult household needs one extra tap per meal from the second adult. Accepted as the cost of the boundary.
+
+---
+
+## D-042 — The expanded individual + family brief: a full review of every prior decision
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Product (requested), Orchestrator (recorded)
+
+**Context.** D-034 accepted the wellness pivot and D-035–D-041 made the first design calls. A second, broader brief arrived the same day ("HealthifyMe for the individual + family"). It adds scope D-034 never named: caregivers and elderly members, age-specific experiences, notifications, gamification and family challenges, recipes/meal planning/grocery lists, an AI intelligence layer with natural-language questions, cross-domain search, dashboards, integrations and premium capabilities. The brief is explicit that old decisions must not be bypassed silently. This entry is that review. The design itself is in `docs/architecture/wellness-platform-architecture.md` (v2), the scope authority for the pivot.
+
+**Decisions that remain valid, unchanged.** D-001, D-002, D-003, D-004, D-006, D-007 (reversal condition unchanged), D-008, D-009, D-010, D-011, D-012, D-013, D-014, D-015, D-016, D-018, D-019, D-020, D-021, D-022, D-023, D-024, D-025, D-028, D-029, D-030, D-031, D-032, D-033, D-034, D-036, D-037, D-039, D-040, D-041. Two of them now carry more weight than when they were written:
+- **D-002** (no proxy consent for an adult) governs every caregiver and elderly design. See D-045.
+- **D-011** (AI never originates a number) governs the whole intelligence layer. See D-052.
+
+**Decisions changed or extended by this review.**
+
+| Decision | Change | By |
+|---|---|---|
+| D-035 (household of one) | Extended. The two modes are lenses, not accounts. A household of one is provisioned explicitly, and `is_individual` is maintained in code; before this, no code mapped or set it. | D-043 |
+| D-038 (default-closed visibility) | Principle kept, mechanism superseded. One access policy with scopes and VIEW/MANAGE levels covers every health module, not only observations. | D-044 |
+| D-005, D-017 | Already superseded (D-039, D-036). Nothing further. | — |
+| D-027 | Its outcome-capture caveat is obsolete: the `activity` module persists outcomes. Historical note only. | — |
+
+**Documentation conflicts resolved here, rather than left to be rediscovered.**
+
+1. **AC-3.7 / post-mvp-backlog streak row.** The ban on streaks, badges, leaderboards and notifications is absolute for a child and does not extend to adults. Adult engagement mechanics are governed by D-051.
+2. **AC-3.8 vs CH-010 / system-architecture §7.** The stricter AC-3.8 wins: no child data is sent to any external model provider (D-052).
+3. **CH-005 ("no behavioural surveillance of children").** Its guarantee rested on a schema property of `activity_event` that `health_observation` does not share. It is re-stated as an enforced rule: child tracking is guardian-entered only, consent-gated, and never passive or automatic (D-048).
+4. **CH-006 (no date of birth) vs vaccination records.** Records store what was administered and when. No date of birth is collected, and no schedule is computed (D-049).
+5. **`privacy-and-safety.md` "not a medication management system".** Superseded for reminders and taken/missed logs. "Never recommend a medication change" is retained and absolute (D-037, D-049).
+6. **`system-architecture.md` "no notification infrastructure".** Superseded by D-050.
+
+**Features that can be built now** (no further decision needed; each still meets the definition of done):
+- Individual and Family modes (D-043).
+- The unified access policy, sharing and caregiver delegation (D-044, D-045).
+- Age-adaptive experiences (D-046).
+- Profile completion, including self-reported activity level.
+- Nutrition, activity, sleep, hydration, body and wellbeing tracking for adults.
+- Guardian-entered child tracking of permitted categories (D-048).
+- Goals, within the D-047 guardrail, and habits.
+- The individual dashboard and a permission-aware family dashboard.
+- Coverage-aware insights over the user's own history.
+- Family meals, portions and confirmation (D-041).
+- Recipes and a household "my foods" library.
+- Meal planning and grocery lists: no commerce, no retailer dependency (D-012, D-016).
+- Permission-filtered search.
+- The in-app notification framework (D-050).
+- Appointments without documents.
+- The access log ("who viewed my data").
+
+**Features that still need a safety or privacy decision, or an external input, before they can be built or launched.**
+
+| Feature | What it needs | Status |
+|---|---|---|
+| Health-record documents: lab reports, prescriptions, scans | Privacy counsel on sensitive-category storage; column-level encryption (NFR-06) | Buildable behind a release gate (D-049) ⚖️ |
+| Medications with reminders | Clinical/privacy review of adherence data | Buildable behind a release gate (D-049) ⚖️ |
+| Clinical interpretation ("is this normal?") | Reviewed standard plus clinical sign-off per metric family (D-037) | ⚖️ BLOCKED |
+| Restrictive-goal safety floors (minimum energy, rate of loss) | Reviewed evidence pack (D-025) | ⚖️ BLOCKED; interim guardrail in D-047 |
+| An adult without an account managed by a caregiver (DPDP s.9 lawful guardian, power of attorney) | Privacy counsel | ⚖️ BLOCKED (D-045) |
+| DPDP-verifiable parental consent | Privacy counsel (D-001, unchanged) | ⚖️ PROVISIONAL |
+| AI summaries and natural-language answers | AI provider credential; privacy review for health data sent to a model | MOCKED until then (D-052) |
+| Push notifications | VAPID keys and a service-worker review; email and SMS need providers (D-008) | In-app ships first (D-050) |
+| Generic Indian food-composition data (e.g. IFCT 2017) | Licensing review | Until then home-cooked food is custom, user-entered nutrition, shown honestly |
+| Wearables: Health Connect, HealthKit, Google Fit | A native shell (D-006 reversal condition) plus OAuth credentials | BLOCKED |
+| Composite wellness score | Evidence pack; reversal of D-040 | DEFERRED (D-040) |
+| Paediatric growth tracking | Paediatric standard plus clinical review (D-036) | Out of scope |
+
+**Features that remain excluded, permanently or until a new decision reverses them explicitly:**
+- Diagnosis, triage and treatment recommendations.
+- Starting, stopping or changing a medication, dose calculation, and drug-interaction advice.
+- Any weight, BMI, body-fat, body-composition or calorie target for a minor.
+- Any engagement mechanic or notification addressed to a child.
+- Ranking or leaderboards between family members, for anyone.
+- Weight-loss competitions.
+- Very-low-calorie or rapid-loss plans.
+- Numeric targets for the D-017 excluded populations: pregnancy, CKD, oncology, paediatric therapeutic diets.
+- Advertising, sponsored ranking and data sale (D-012).
+- Scraping (D-016).
+- AI-originated numbers, thresholds or verdicts (D-011).
+- Safety-relevant information behind a paywall. Premium may never gate allergen flags, medication reminders, privacy controls or data export.
+
+**Defects found during the review, fixed as part of Phase 1** (listed so they are not mistaken for design):
+1. Meal reads leaked another adult's solo meals and per-portion nutrition to any household member.
+2. No consent purpose covered wellness tracking, and child tracking ran against the only child purpose's own text ("no consumption tracking").
+3. A CHILD member could be given an adult age band, which opened the adult-only metric gate.
+4. Account and child erasure left observations, goals, habits and meal portions behind, and export omitted them.
+5. `is_individual` was never set.
+6. Insight day counts used UTC boundaries (05:30 IST).
+7. A client could label a manual observation `DERIVED`.
+8. `confirmPortion` was not audited.
+9. The ArchUnit boundaries did not cover the five new modules.
+
+---
+
+## D-043 — Individual and Family are two lenses on one account, not two products
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator · **Extends:** D-035
+
+**Decision.**
+1. **"Me" is the caller's own member, in any household.** Anyone can use it, including a person in a household of five.
+2. **"Family" is the household overview**, filtered by the access policy (D-044).
+3. **A new user chooses at onboarding: "Just me" or "Me and my family".**
+   - "Just me" provisions a household of one with `is_individual = true` (`POST /api/v1/me/individual`).
+   - "Me and my family" creates an ordinary household.
+   - Neither is a separate data path.
+4. **`is_individual` flips to false the moment a second member joins**, whether an invitation is accepted or a child is added. Nothing migrates, and nothing the person logged moves.
+5. **A solo user is never nagged to add family (AC-2.7).** The Family lens offers the option once, quietly.
+
+**Rationale.** A mode stored on the account forces "which mode is this record in?" onto every table. A lens asks only "whose data am I looking at, and may I?", and D-044 already answers that.
+
+---
+
+## D-044 — One health access policy for every health module: scopes and levels
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator · **Supersedes:** D-038's mechanism (its principle stands)
+
+**Context.** D-038 introduced default-closed, per-category visibility for observations only. The rule "self, or guardian of a child" was then copy-pasted into `WellnessService`, `GoalService`, `HabitService` and `MealService`. Goals and habits ignored sharing grants entirely, and meals ignored D-038 altogether (D-042, defect 1). The brief adds caregivers who must *act*, not only view, and adds non-metric domains (medications, appointments, records). A fifth copy of the rule would be the one that drifts.
+
+**Decision.** A new `access` module owns the only implementation, `HealthAccessPolicy`, and the grant table (`health_access_grant`, migrated in place from `metric_visibility` in V14, history preserved).
+
+- **Scopes.** The seven metric categories (BODY, ACTIVITY, SLEEP, HYDRATION, NUTRITION, CLINICAL, WELLBEING) plus HABITS, MEDICATIONS, APPOINTMENTS, RECORDS and FOOD_PROFILE. FOOD_PROFILE covers allergens, dietary preference and food goals, which is what lets a caregiver "evaluate this product for Grandma". It never includes self-declared health conditions, which stay self- and guardian-only.
+- **Levels.** `VIEW`, and `MANAGE` (record, log or act on the subject's behalf in that scope; implies VIEW).
+- **Evaluation, in order.** The first answer is final.
+  1. Unknown or departed subject: not found.
+  2. The caller *is* the subject: SELF, MANAGE on every scope.
+  3. The subject is a CHILD and the caller holds a live guardian link: GUARDIAN, MANAGE on every scope. The metric age gate still applies (D-036).
+  4. Otherwise, the live grants from the subject to the caller's membership in the same household. CAREGIVER if any grant is MANAGE, SHARED if all are VIEW.
+  5. Otherwise NONE.
+- **Household role (`OWNER`) is never consulted.**
+- **Only the subject grants.** The audience must be an active ADULT member of the same household. Grants cannot be re-delegated. A child's data is never grantable: it is reachable only through a guardian link (D-038, unchanged).
+- **Goals inherit their metric's scope.** A steps goal is ACTIVITY data.
+- **Habits use HABITS.** A habit name can be sensitive, so habits get their own scope.
+- **Meals.** A meal's existence and who was served are facts among the people served. A portion's nutrition is that member's NUTRITION data: it is returned only to that member, their guardian, or a NUTRITION viewer, and is otherwise withheld. A meal the caller neither ate nor logged, and whose served members' nutrition they cannot see, is not returned.
+- **Every cross-member read and write is audited with the subject's member id** (new `audit_event.subject_member_id`). The subject, or a child's guardian, can read that trail as an access log.
+
+**Rationale.** The failure to design against is a family member, not a stranger (D-038). One policy, tested as a matrix of relationship × scope × level × age, is the only arrangement where a new module cannot quietly ship a sixth interpretation.
+
+**Consequences.**
+- `/api/v1/wellness/members/{id}/shares` moves to `/api/v1/members/{id}/access-grants`.
+- `/wellness/members/{id}/visibility` keeps its shape.
+- Other modules reach the policy only through its published interface. `ModuleBoundaryTest` gains rules for this.
+
+---
+
+## D-045 — Caregiver access is delegated by the adult, never assumed; no account-less adults yet
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED (delegation) / ⚖️ BLOCKED (account-less adult) · **Owner:** Orchestrator
+
+**Context.** The brief asks for caregivers and elderly members. D-002 forbids proxy consent for an adult, and its own context names "an elderly parent". The cases that matter are an adult child supporting a parent aged 60 or over, and a spouse supporting a spouse.
+
+**Decision.**
+1. **A caregiver is any household adult to whom the subject has granted MANAGE on one or more scopes (D-044).** This is not proxy consent. It is the data principal's own, specific, revocable authorisation.
+   - Caregiver actions are attributed (`recorded_by_user_id`), audited against the subject, and visible in the subject's access log.
+   - Revocation takes effect on the next request.
+   - A caregiver cannot grant onward, change the subject's sharing, export the subject's data, or delete the subject's account.
+2. **There is no pathway for an adult without an account** (a caregiver-managed profile, a lawful guardian of a person with a disability under DPDP s.9, or power of attorney). It needs privacy counsel and is **BLOCKED**. Until then, an elder joins by accepting an invitation and granting access themselves, which may be done on the caregiver's phone with the elder signing in.
+3. **The elderly experience is not a restriction tier (D-046).** Age 60+ never removes a capability. It changes what is shown first.
+
+---
+
+## D-046 — Experience tiers: CHILD, ADULT, OLDER_ADULT, UNKNOWN — derived, server-authoritative, fail-closed
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Decision.** The experience a member gets is derived on the server from their member type and current profile age band. No date of birth is used (CH-006).
+
+- **CHILD.** The member type is CHILD, or the profile band is a child band. Either one is enough.
+- **OLDER_ADULT.** An adult member with band `A60_PLUS`.
+- **ADULT.** Any other adult band.
+- **UNKNOWN.** An adult with no profile yet. Tracking waits for a profile (`PROFILE_REQUIRED_FOR_METRIC`, unchanged).
+
+The server returns the tier with explicit capability flags (`GET /api/v1/me`, `GET /api/v1/members/{id}/experience`). The UI renders them and never infers them.
+
+**Tier differences.**
+- **Child ("not a smaller adult").** Nutrition, activity, sleep, hydration, wellbeing and habits, all guardian-entered.
+  - No BODY or CLINICAL metrics, and no body goals.
+  - No streaks, badges, challenges or notifications to the child.
+  - Encouraging, non-evaluative copy.
+- **Older adult.** Every adult capability.
+  - The default home puts medications, appointments, reminders and caregiver support first.
+  - It offers a larger-type option.
+  - Nothing is removed on account of age.
+
+**Also enforced.** A CHILD member's profile must carry a child band, and an adult account's profile an adult band. `ProfileService` now refuses the mismatch (D-042, defect 3). The age gate also treats member type CHILD as a child regardless of band, as defence in depth.
+
+---
+
+## D-047 — Restriction-framed goals need a reviewed safety floor before they exist
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED (interim guardrail) · **Owner:** Orchestrator
+
+**Context.** The brief: "Avoid unsafe or extreme goals." The goals module accepted any target, including an `ENERGY_KCAL` `AT_MOST` of 300 kcal/day. Refusing it needs a number, and under D-025 that number cannot come from Claude's general knowledge.
+
+**Decision for a child subject**, which is permanent and not interim: a goal may only target an ACTIVITY, SLEEP or HYDRATION metric, and only with `AT_LEAST` or `MAINTAIN`.
+- No NUTRITION goal (no calorie, sugar, sodium or macro target), no BODY or CLINICAL goal, no WELLBEING target (a mood score is not something to aim at), and no `AT_MOST` on anything.
+- A breach is refused in the domain with `GOAL_NOT_PERMITTED_FOR_CHILD` (422) and audited with the age-refusal action.
+- Children's routines belong in habits ("fruit at breakfast"), which carry no numeric target.
+- This implements D-036's retained minor clause (no calorie-target capability for a minor). Raised by the Phase 2 frontend session, which found that the metric age gate alone let a guardian create a calorie cap for a child.
+
+**Decision for adults.** Until a reviewed evidence pack defines the floors:
+1. `ENERGY_KCAL` `AT_MOST` goals (calorie caps) are refused in the domain (`GOAL_REQUIRES_REVIEWED_STANDARD`).
+2. BODY goals stay adult-only (D-036). They carry no deadline, rate, deficit or projected date, and their screens carry a professional-guidance note.
+3. The product never computes a calorie target or deficit for anyone.
+4. D-017's excluded populations and the no-rapid-weight-loss framing remain in force.
+
+**Reversal condition.** A reviewed floor per D-025. The guardrail then becomes a validated threshold rather than a refusal.
+
+---
+
+## D-048 — Wellness tracking is its own consent purpose, for adults and (guardian-granted) for children
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED (adult) / PROVISIONAL (child mechanism, as D-001) · **Owner:** Orchestrator
+
+**Context.** No consent purpose covered wellness tracking (D-042, defect 2). The only child purpose, `CHILD_FOOD_SUITABILITY`, says "no consumption tracking, no behavioural profile", yet children's meals, activity and sleep were being recorded without any consent check. That runs against D-001, CH-002/CH-003 and D-018 (consent checked at processing time).
+
+**Decision.**
+1. **New purposes (V14).**
+   - `HEALTH_TRACKING`: adult, self-granted, not essential.
+   - `CHILD_WELLNESS_TRACKING`: guardian-granted, `requires_verifiable`, PROVISIONAL like D-001.
+2. **Consent gates collection and disclosure.**
+   - Every write requires the subject's purpose to be ACTIVE at processing time: observations, meal derivation, goals, habits and habit completions.
+   - So does every cross-member read.
+3. **A subject's own reads of already-collected data remain available after withdrawal**, so they can see, export and erase it.
+4. **Child tracking is guardian-entered only.** No passive or automatic source (wearable import, location) may write child data. This is CH-005 restated as an enforced rule (D-042).
+5. **A meal portion for a member whose tracking consent is not active** is stored as a household fact and not derived. It has the same shape as an unconfirmed adult portion (D-041).
+
+---
+
+## D-049 — Health records, medications and appointments are built behind consent and a release gate
+
+**Date:** 2026-09-12 · **Status:** PROVISIONAL (becomes ACCEPTED when Phase 4 starts) · **Owner:** Orchestrator
+
+**Decision.** The D-001 precedent applies: build the capability properly, gate its processing, and block production launch with real data until counsel signs off ⚖️.
+
+- **Records.**
+  - Document metadata, plus the file in a private bucket.
+  - Magic-byte type check, size cap, no public URL, short-lived signed URLs.
+  - No OCR or AI processing of medical documents until separately reviewed.
+- **Medications.**
+  - User-entered name, dose text, schedule, reminders, and a taken/missed log.
+  - Never dose calculation, interaction checking, or a suggestion to change anything.
+- **Appointments.** Who, where, when and notes, with reminders.
+- **Vaccinations.** Administered vaccine plus date, with no date of birth and no computed schedule.
+- **Consent purposes.** `HEALTH_RECORDS` and `CHILD_HEALTH_RECORDS`.
+- **Encryption.** Column-level encryption (NFR-06) of record metadata and notes before production.
+- **Access.** Scopes RECORDS, MEDICATIONS and APPOINTMENTS under D-044. Caregiver MANAGE is the elderly-support path.
+
+---
+
+## D-050 — Notifications: in-app first, opt-in, capped, never addressed to a child
+
+**Date:** 2026-09-12 · **Status:** PROVISIONAL (becomes ACCEPTED when Phase 2's notification work starts) · **Owner:** Orchestrator · **Supersedes:** `system-architecture.md` "no notification infrastructure"
+
+**Decision.**
+- **Preferences.** Per member, per category: goals, habits, meals, hydration, activity, sleep, medication, appointments, family, insights. Plus quiet hours and a daily cap.
+- **Channels.** The first channel is an in-app inbox. Web Push follows; email and SMS need providers (D-008).
+- **Defaults.** Engagement categories default to off. Only reminders a person explicitly creates (medication, appointment) default to on.
+- **Children.** No notification is ever addressed to a child subject. Reminders *about* a child go to the guardian.
+- **Copy.** No fear, shame or guilt. No "you missed" or "you broke". A reminder states the thing and the time.
+
+---
+
+## D-051 — Engagement mechanics: adults only, opt-in, cooperative, never punitive
+
+**Date:** 2026-09-12 · **Status:** PROVISIONAL (becomes ACCEPTED when Phase 6 starts) · **Owner:** Orchestrator
+
+**Decision.**
+- **Children.** The child clause of AC-3.7 stands verbatim: no streak, badge, leaderboard, challenge or notification for a child.
+- **What adults may opt into:**
+  - Consistency milestones ("30 days of water logged"), never "streak lost".
+  - Personal bests.
+  - Cooperative family challenges: one shared household target, with no per-member ranking.
+- **Challenge data.** A challenge total counts only scopes each participant has shared (D-044). With two participants, a total that would reveal the other person's value is shown only if both share that scope.
+- **Never.** No weight or body challenges, and children never take part or appear.
+- **Leaderboards between family members are permanently excluded for everyone.**
+
+---
+
+## D-052 — Intelligence layer: deterministic facts, AI phrasing only, no child data to any model
+
+**Date:** 2026-09-12 · **Status:** PROVISIONAL (becomes ACCEPTED when Phase 5 starts) · **Owner:** Orchestrator
+
+**Decision.**
+- **Summaries.** Weekly and monthly, individual and family. They are assembled deterministically from the insights engine's typed facts.
+- **LLM phrasing** is an optional rephrasing step behind D-011's numeric-fidelity check and the banned-vocabulary scan. It falls back to the template on any failure.
+- **Natural-language questions** map to a closed set of intents answered by deterministic queries ("how did I do this week?").
+- **Refusals.** Medical, diagnostic and medication questions are refused with a professional-referral template.
+- **Children.** Child data is never sent to an external model provider (AC-3.8 over CH-010). Children's parts of a family summary are templates only.
+- **Recommendations** (meals, recipes, goals, habits) are rules over the user's own data and stated goals, and never sponsored (D-012).
+- **Availability.** Status stays MOCKED until a provider credential and a privacy review of health data sent to a model both exist.
+
+---
+
+## D-053 — "Today" is local to the household
+
+**Date:** 2026-09-12 · **Status:** ACCEPTED · **Owner:** Orchestrator
+
+**Context.** The application clock is UTC and insights counted days in UTC, so an Indian user's "today" rolled over at 05:30 IST. A breakfast logged at 05:00 belonged to yesterday (D-042, defect 6).
+
+**Decision.**
+- `household.time_zone` (IANA, default `Asia/Kolkata`, V14) defines day boundaries for its members. This covers today summaries, daily goals, habit days and insight day counts.
+- Storage stays UTC.
+- Time-zone changes are rare and prospective. Past observations keep their instants; only how they are bucketed changes.
+
+---
+
+## D-054 — Family page: a household summary and weekly trends, from what you can already see
+
+**Date:** 2026-09-13 · **Status:** ACCEPTED (product owner, 2026-09-12) · **Owner:** Orchestrator
+
+**Context.** The Family page showed one number per category, for today only. The product owner asked for a family summary as well as per-person views. Spec §6.7 rendered no family totals in W1–W2 and deferred a family insight to W3 under architecture §11. This decision brings that insight forward, bounded by the same aggregate rule.
+
+**Decision.**
+- **One read, one request.** `GET /households/{id}/overview` returns each visible member's last 7 household-local days (D-053), their live goals and their habit days, plus a household summary. The screen still makes one overview request with no per-member fan-out (spec §7.2). Each member's week, day and goal progress come from one observation read, so a visit writes the same access-log rows as before.
+- **The summary is computed from the caller's own cards, on the server** (`FamilySummaries`). A total therefore never contains a number the caller could not already read on someone's card (D-038's aggregate rule, architecture §11).
+  - Included: members with a visible HYDRATION, ACTIVITY, SLEEP, NUTRITION or HABITS scope.
+  - Hidden when fewer than two people are included.
+- **What it combines.**
+  - Water and steps: a family total.
+  - Sleep: an average per person who logged it.
+  - Meals: a count of people, never kcal, so a child's energy intake is never a family headline (UXD-08).
+  - Habits: done of due.
+  - Every figure states its coverage ("for 3 of 4 people"), and the summary names whose records it uses.
+- **What it never combines.** Health readings, body measurements and mood (D-036, D-037).
+- **Still excluded, unchanged.** No per-person figure inside the summary. No "most" or "least". No ordering people by a value. No comparison of a person with the family. Leaderboards stay permanently excluded (D-051). The updates feed is ordered by time logged, never by amount.
+- **Card changes** (amending UXD-18).
+  - Members who share nothing with the viewer appear as one quiet list in server order, not as full identity cards. A child you don't guard keeps the guardian line.
+  - The Family date is navigable (`?date=`), where W1 had it read-only.
+
+**Consequences.** Spec §4.4 and §6.7 are updated to match. The per-person chart rules still hold: one hue, gaps for unlogged days, dots only for readings, and no goal line on a reading.
+
+---
+
+## D-055 — Consumer identity and information architecture ("Fresh Kitchen")
+
+**Date:** 2026-09-13 · **Status:** ACCEPTED (product owner brief, 2026-09-13) · **Owner:** Orchestrator
+
+**Context.** The product owner reviewed the rendered application and the e2e screenshots and asked for it to be rethought as a launchable consumer food product rather than an engineering template: a food-consumer visual identity, a coherent customer-facing information architecture, a reusable design system, and better feature UX on every major screen. The v1 identity (teal on white, system font, Unicode glyphs, hairline cards everywhere), the Today-first navigation, the "What's next" hub that showed developer status badges ("Not built yet · C4", "D-049 gated", "MOCKED") on consumer routes, and copy-heavy screens all read as an admin console.
+
+**Decision.**
+- **Identity.** `docs/design/design-system.md` v2: warm cream ground, white cards, terracotta brand (`#C2410C`), fresh-green accent for positive moments only, warm charcoal text, self-hosted Plus Jakarta Sans, an inline SVG icon set, pill buttons and chips, soft warm elevation. The verdict ramp, the allergen flag, "nothing is red", "colour never carries meaning alone" and every contrast floor are unchanged. Dark is a warm dark, still explicit opt-in.
+- **Information architecture.** Home (food discovery) is the landing screen for everyone, at `/`. Signed-in navigation is Home · Today · Log · Family · You; signed-out is Home · Search · Scan · Sign in. `/food` redirects to `/`. Onboarding finishes on Home.
+- **New consumer routes.** `/saved` — a shortlist kept on this device (localStorage, keyed by account, snapshot of card data; every surface says "on this device"; nothing is sent anywhere). `/history` (was `/food/recent`) and `/insights` (was `/next/insights`) are first-class; `/next` redirects to `/insights`. The `/next` hub screen and the `NotBuiltYet` placeholder are deleted.
+- **Flag-gated previews** (health shelf, ask, notifications) keep their routes and flags but their gated state is consumer copy ("Coming soon", what it will and will not do) — no decision numbers, workstream codes or "MOCKED" on a route a user can reach.
+- **Home** carries the promise ("Is this a good choice for your family?"), search and scan in thumb reach, "Your day so far" (four numbers from the same `/today` read), "Shopping for {household}" (readiness, what the household is watching, allergens to avoid, what's missing behind a disclosure), categories, saved, curated rails, recently viewed, and a trust strip.
+- **Product** keeps the fixed information order (D-003) and adds Save / Compare / Share actions, per-person fit rows with avatars, a six-tile "At a glance" per-100 g nutrient block before the full label (which is collapsed), and a provenance block with a data-quality badge.
+- **Today** tiles carry an icon and a goal bar; the goals card renders the shared `GoalMeter`; insights link to `/insights`.
+- **You** opens with an identity card (avatar, name, household), then Your records (profile, family, household, saved, recently viewed, insights), sharing, appearance, privacy choices (self and the children in the household only — another adult's choices are theirs, D-002, and a child the viewer does not guard says so quietly instead of raising an error), your data, policies, sign out.
+- **Session restore** no longer clears the stored refresh token on a transport failure; only a rejection the server actually returned (4xx) does. Found because a burst of requests under load signed the audit session out mid-run.
+
+**Alternatives considered.** A green primary (collides with the EVERYDAY verdict), a blue primary (collides with OCCASIONAL and reads as SaaS), keeping teal (the reason the app read as clinical), Google Fonts by link (a third-party request on a health product, D-018), a server-side saved list (no backend exists; a device-local shortlist is honest and useful now — server sync stays on the backlog).
+
+**Consequences.** Frontend only; no API or schema change. `npm run typecheck`, `npm test` (75, vocabulary gate included) and `npm run build` are green. Verified by rendering every major route in Chromium at 390px and 1440px, signed in as the demo father and signed out, light and dark (`frontend/e2e/screenshots-redesign/` beside the previous set; `E2E_SHOTS` overrides the folder). `NotificationsPanel`/`NotificationPreferencesSheet` are no longer reachable from any route (they were only reachable from the deleted hub) and stay in the tree behind their flag.
+
+---
+
+## D-056 — Redis is an optional shared cache for public catalogue data; supersedes D-007 for caching
+
+**Date:** 2026-09-13 · **Status:** ACCEPTED (product owner direction, 2026-09-13) · **Owner:** Orchestrator
+
+**Context.** D-007 kept caching in-process (Caffeine) until "more than one application instance". The product owner has asked for Redis caching. The Caffeine cache manager set up under D-007 had six cache names and no cached method, so nothing was actually cached.
+
+**Decision.**
+- **Supersedes D-007 for caching only.** Rate limiting stays database-backed; D-007 still governs it.
+- **One provider at a time,** chosen by `familyfood.cache.type`:
+  - `caffeine`: in-process. This is the default, so single-instance behaviour is unchanged.
+  - `redis`: shared by every instance.
+  - `none`: caching off.
+
+  There is no in-process tier in front of Redis, because an entry evicted on one instance would survive in another's heap.
+- **Redis is optional at runtime.**
+  - Startup never connects to it.
+  - A failed cache read is a miss; a failed write is "not cached".
+  - After one failure, the instance skips Redis for `retry-after` (30 s), so an outage costs one request a timeout rather than every request.
+  - Lettuce rejects commands while disconnected instead of queueing them.
+  - Health reports `DEGRADED` (HTTP 200), never DOWN. Liveness and readiness never include Redis.
+- **Only public catalogue data is cached.**
+  - `catalog.product`: product detail by id. TTL 30 min, evicted when the product's image changes.
+  - `catalog.categories`: TTL 1 h.
+
+  Nothing about a person is cached: no profile, verdict, consent state, health data or search text (D-018). Those are read fresh, and they never go to a second store with its own access control, retention and erasure duties. `CachingBoundaryTest` confines caching annotations and cache declarations to `catalog`, and direct cache access to `platform.cache`.
+- **Key convention:** `ffi:<module>.<what>:<version>::<id>`. The version segment hashes the cached type's structure and the applied schema version. A changed DTO or a new migration therefore starts a fresh keyspace instead of serving entries in an old shape, or entries read before a data fix.
+- **Storage format:** typed JSON per cache. Entries never name a class to instantiate.
+- **Transactions:** cache advice runs outside transaction advice. A hit borrows no database connection, and an eviction runs after its write commits.
+
+**Security.** Cached product detail feeds allergen matching, so write access to Redis amounts to write access to what users are shown about allergens. In any shared network, Redis requires AUTH (`REDIS_PASSWORD`) and TLS (`REDIS_SSL=true`), and it is reachable only from the application's network.
+
+**Consequences.**
+- One more optional service: compose profile `redis`, and `CACHE_TYPE` / `REDIS_*` in the environment.
+- Two staleness windows remain, each bounded by the TTL:
+  - evictions lost during an outage;
+  - changes made outside the process, such as a separate seed run or a SQL correction.
+- `/actuator/prometheus` is still denied by `SecurityConfig`. Scraping the new cache, Lettuce and virtual-thread metrics needs its own decision: a management port or an authenticated scrape.
+
+**Reversal condition.** A measured hit ratio below ~50%, or Redis incidents costing more than the database load they save. Reverting is a configuration change (`CACHE_TYPE=caffeine`).
+
+---
+
+## D-057 — Virtual threads for blocking I/O; CPU-bound work on bounded pools
+
+**Date:** 2026-09-13 · **Status:** ACCEPTED (product owner direction, 2026-09-13) · **Owner:** Orchestrator
+
+**Context.** `spring.threads.virtual.enabled=true` was already set, with no recorded decision. The product owner asked for virtual threads to be integrated deliberately, and not to be treated as the fix for the JVM crashes seen on the development machine.
+
+**Decision.**
+- **Virtual threads:** request handling, `@Scheduled` jobs, JDBC, Lettuce and S3 calls. All of these block on I/O.
+- **Never virtual threads:** CPU-bound work. It runs on a bounded pool of platform threads instead. Today that means Argon2id hashing (`PasswordHasher`, max(2, cores/2) threads). Without the pool, a burst of sign-ins would occupy most carrier threads, and every other request would wait behind them.
+- **The database pool bounds database concurrency.** `DB_POOL_MAX`, default 10, is sized to what Postgres can serve and never to request concurrency.
+- **Pinning is measured, not assumed away:**
+  - `jvm.threads.virtual.pinned` (micrometer-java21);
+  - JFR in `mvn spring-boot:run`.
+- **Not a crash fix.** The relation between virtual threads and the 21.0.7 access violations is unproven; see the operations guide, "JVM runtime".
+
+**Known gaps (flagged, not changed).**
+- `AuthenticationService.register` and `login` hash inside their transactions, so each holds a pooled connection for the duration of a hash. Changing authentication's transaction boundaries is security-sensitive and needs its own review.
+- `ProductImageService.attachImage` uploads to object storage inside its transaction. Only the seed runner calls it today.
+
+---
+
+## D-058 — Rule set v2 evidence pack: accept the FSSAI INR draft as a citable standard, add WHO SEARO NPM 2017, and record the scoring-content review process
+
+**Date:** 2026-09-14 · **Status:** ACCEPTED, pending a separate content review · **Owner:** Orchestrator (Food Intel App build plan, Increment 0)
+
+**Context.** D-024/D-025 shipped the scoring engine with zero active rules because no document in this repository specified a real, citable numeric nutrient threshold, and D-025 established the mandatory pipeline — `domain source → reviewed specification → migration → automated tests → activate rule_set` — for ever changing that. This decision is the first step of that pipeline for a "rule set v2": it records that the two sources chosen (FSSAI's draft Indian Nutrition Rating and the WHO Nutrient Profile Model for the South-East Asia Region) are the sources the evidence pack transcribes from, and what their own status is, so a future reader does not need to re-derive that context.
+
+**Decision.**
+1. **`WHO_SEARO_NPM_2017` is added as a new `reference_standard` row** (publisher WHO SEARO, jurisdiction GLOBAL, evidence level A, document URI `https://www.who.int/publications/i/item/9789290225447`) — this is a new citation, not previously seeded.
+2. **The existing `FSSAI_INR` `reference_standard` row is updated**, not replaced: `document_uri` becomes the specific draft notification (`https://comments.fssai.gov.in/Bestviewwl.aspx?NOTIFICATION_ID=4123`, notification F. No. Std./SP-08/T(FoPNL-N-01), 13 September 2022), `published_on` becomes the notification date, and the `scope_note` is rewritten to state plainly that this is a **draft regulation, not a final one** — comment period closed 28 November 2022, and (per contemporaneous reporting, not independently verified against a court record) the Supreme Court of India asked FSSAI for a front-of-pack-labelling timeline on 10 September 2026. The row's original scope note said "thresholds pending final [text cut off in the original]" — the numbers are in fact fully published in the draft's own Schedule III; what is pending is *finalisation of the regulation*, not the numbers, and the corrected scope note says so.
+3. **The draft's status is accepted as a citable evidence-level-B source for this project's scoring content**, explicitly *not* elevated to "the regulator's rating" anywhere in the product. Every place the derived score is shown states plainly that it is based on the *draft* method (`ratingScheme: "FSSAI_INR_DRAFT_2022_DERIVED"`), never presented as FSSAI's own official rating (D-003's separation between this project's independent assessment and any regulatory rating is unchanged and, if anything, sharpened by this decision — a draft regulation is one step further from "official" than a finalised one would have been).
+4. **This decision does not itself activate any rule.** `docs/data/scoring/rules-v2.md` is the actual proposed content, transcribed from these two sources plus the four already-seeded standards (`WHO_FREE_SUGARS_2015`, `WHO_SODIUM_2012`, `ICMR_NIN_DGI_2024`, `ICMR_NIN_RDA_2020`) and the NOVA classification (Monteiro et al., FAO 2019, cited as a classification, not a threshold). `docs/data/scoring/review.md` records the named reviewer's line-by-line approval; nothing in `rules-v2.md` is active until that approval exists and a subsequent migration (`V17`/`V18`) is written and reviewed on its own merits, per D-025 — this decision does not shortcut that process, it starts it.
+
+**What was deliberately left unresolved, not silently decided:** `rules-v2.md` itself flags nine open interpretive questions (category-to-standard mappings for heterogeneous catalogue buckets, an unresolved `MALT_DRINK` categorisation, a footnote-based sugar-threshold substitution, an acknowledged absence of saturated-fat and trans-fat rules for most categories, two un-sourced display-convention cut-offs, and one unverified secondary citation) — see `rules-v2.md` Part D and `review.md`'s checklist. None of these are resolved by this decision; they are the reviewer's to decide.
+
+**Alternatives rejected.** (a) Wait for FSSAI's regulation to be finalised before building anything — rejected: the draft's numbers are fully published and citable now, D-025's pipeline does not require a *finalised* government standard, only a *citable* one with a named source and date, and the product can (and per D-003 must) always label a draft as a draft. (b) Treat the FSSAI system as fully authoritative and skip the WHO SEARO layer — rejected: FSSAI's INR produces a single product-level score, not a per-nutrient, per-goal verdict, and this project's `PersonalFit`/`HouseholdFit` model needs the latter; WHO SEARO's per-category nutrient thresholds are the closest available fit for that, once reused with the interpretation flagged in `rules-v2.md`.
+
+**Reversal condition.** If FSSAI's regulation is finalised with different numbers than the draft, or is withdrawn, a new evidence source and a new decision supersede this one and `rules-v2.md`'s FSSAI-derived rows specifically — the WHO SEARO-derived rows are unaffected by that outcome, since they cite a separate, independently finalised WHO publication.
+
+---
+
+## D-059 — Scoring engine v2 and catalogue enrichment: points-net algorithm, derived facts, persisted scores, null → value enrichment
+
+**Date:** 2026-09-15 · **Status:** ACCEPTED (engine and schema); rule content still PENDING review (D-058) · **Owner:** Product owner (requested, build plan Increment 1), Orchestrator (recorded)
+
+**Context.** D-058 assembled the evidence for rule set v2. Before any reviewed content can be activated, the engine has to be able to run it: the FSSAI draft INR method is a points table with capping and star bands, not the `{min,max}` weighted mean V5 shipped with; the verdict rules proposed in `rules-v2.md` reference the product's star rating and processing level, which were not rule inputs; and nothing persisted a score, so search could not filter or sort on one. The catalogue also lacked the facts the method needs (processing level, the estimated fruit/veg/nut content, per-100 ml basis for drinks, additive marks).
+
+**Decision.**
+1. **Two algorithms, chosen per rule set** (`rule_set.algorithm`, V16). `WEIGHTED_MEAN_V1` is the original aggregation, unchanged. `POINTS_NET_V2` (`PointsNetAlgorithm`) places each per-100 value in a transcribed band table (`score_component.thresholds` of shape `{"type":"BANDS",...}`), sums BASELINE points, subtracts MODIFYING points capped per the standard's own table, and maps the net to a star band from `rule_set.algorithm_config`. Star bands are matched in list order, first match wins; that is how the source's printed overlap at 18 liquid points resolves unless the reviewer orders V17 differently.
+2. **Missing data is never assumed on the risk side.** Any undeclared BASELINE factor makes the score `INSUFFICIENT_DATA` with the missing inputs listed in `coverage`. An undeclared MODIFYING factor scores 0 and is reported as `ASSUMED_ZERO`, which is the methodology's flagged interpretation (§2.4) and stays the reviewer's call. Only per-100 values count. Fats and oils (`FAT_OIL`) get `INSUFFICIENT_DATA` with `SCORE_NOT_APPLICABLE`, never a number, because the source exempts them.
+3. **The 0–100 number is a display convention.** It rescales net points linearly between the star table's own top and bottom edges and is always shown after the star rating, never above it (D-003). The letter grade keeps V1's 20-point bands.
+4. **Derived facts are rule inputs.** `AssessmentOrchestrator` resolves the food type (category map default, overridden to LIQUID when facts are per 100 ml, FAT_OIL never overridden), gets the score, then adds `INR_STARS` (only when scored) and `NOVA_GROUP` (only when classified) to the input. `RuleEngineImpl` treats them like nutrients on `PER_100G`; a declared nutrient of the same code wins; a rule that fires on one reports `DERIVED_FACT_THRESHOLD`. Every assessing path (product page, household fit, alternatives, rescore) goes through the orchestrator and the one shared `AssessmentInputMapper`; the duplicate mapping in `recommendation` is gone.
+5. **Scores are persisted as derived product facts.** `ProductScoreService` stores `SCORED` and `INSUFFICIENT_DATA` results in `product_score` with an input hash and serves the row while the hash matches. `NOT_YET_SCORED` is never stored. Catalog publishes `ProductVersionCreated` after ingestion or enrichment; scoring recomputes after commit. `RescoreService` walks the catalogue page by page and records a `rescore_run`; `RescoreOnStartupRunner` starts one on the first boot where the ACTIVE set has components but no scores. This is not a cache of personal data (D-056 unchanged); `product_search_facts` exposes the ACTIVE set's persisted score to search.
+6. **Enrichment fills null → value only.** `ProductEnrichmentService` is the one way to add facts to an existing current version. It never overwrites, writes one new `product_source` row per pass for every filled fact, logs a non-material `product_change_log` entry (`OFF_ENRICHMENT`), evicts the cached detail and publishes the event. A pass with nothing new writes nothing. `OpenFoodFactsEnrichmentRunner` (profile `seed-catalog-enrich`) drives it from a snapshot topped up by `tools/data-import/refetch-openfoodfacts.mjs --merge`.
+7. **What an Open Food Facts row may contribute.** A NOVA group only when it is 1–4; the snapshot's junk values are dropped, never clamped. A diet flag only from `ingredients_analysis_tags`, always marked estimated. `en:non-vegetarian` wins; `en:non-vegan` only rules out VEGAN, because Open Food Facts sets it for any product with milk. The fruit/veg/nut figure only as an estimate (`FVNL_PCT`, `is_estimated = true`). Nutrients declared per 100 ml keep `PER_100ML`.
+8. **Additives are marked, not judged.** `AdditiveDetector` recognises INS/E numbers in label tokens and bracketed lists after a class name; bare quantities never match. The `additive` table (V15) holds only the Codex CXG 36-1989 name and functional class. It carries no safety or health statement and must never be used to imply one.
+9. **Schema details.** `product_version.nova_source_id`/`diet_source_id` foreign keys are `DEFERRABLE INITIALLY DEFERRED`, because a version and its source row reference each other. A replaced catalogue photo of the same view becomes `SUPERSEDED`, not `REJECTED`, and is never deleted.
+
+**What does not change.** The ACTIVE rule set is still `v1` with zero rows: the public assessment answers `NOT_YET_SCORED`, every verdict is `INSUFFICIENT_DATA`, and nothing is persisted. V17/V18 remain unwritten until `docs/data/scoring/review.md` carries the product owner's approval line. `scoring` still does not depend on `ai`.
+
+**Known data gap.** The committed 893-row snapshot has no `ingredients_analysis_tags` or `serving_size`, so diet flags and serving sizes stay `UNKNOWN`/absent until the re-fetch runs against Open Food Facts.
+
+**Alternatives rejected.** (a) Encode the INR tables in Java — rejected: the numbers are reviewed content and must live in migrations with a `standard_ref`, not in code (D-025). (b) Treat a missing baseline nutrient as zero so more products score — rejected: an undeclared value is not a declared zero (`ck_nutrient_has_value`). (c) Compute scores on every read — rejected: search needs to filter and sort on a stored value.
+
+**Reversal condition.** The reviewer rejecting `ASSUMED_ZERO` (§2.4) changes decision point 2 for modifying factors; a finalised FSSAI regulation with a different formula would need a new algorithm value, not an edit to this one.
+
+---
+
+## D-061 — Search v2: server-side filters and sort, a deterministic query parser, suggestions, related rows and batch fit
+
+**Date:** 2026-09-15 · **Status:** ACCEPTED (deterministic parts); LLM intent extraction DEFERRED to the `ai` module (Increment 5) · **Owner:** Product owner (requested, build plan Increment 2), Orchestrator (recorded)
+
+**Context.** Search matched text and one category, then the client re-sorted whatever pages it had loaded. People could not ask for "under 10 g sugar", "no nuts" or "vegetarian"; the box offered no suggestions; typing "Amul" showed Amul products but nothing around them. D-059 added the facts (`product_search_facts`) this needs.
+
+**Decision.**
+1. **Filters and sort run in SQL** over `product_search_facts`: maximum added sugar, total sugar, sodium, saturated fat and energy; minimum protein and fibre; allergens to exclude (CONTAINS ∪ MAY_CONTAIN, never a free-from claim); VEG (matches VEG and VEGAN) or VEGAN; maximum NOVA group. Nine sorts; undeclared values always sort last. Minimum filters and the protein/fibre sorts ignore physically impossible values (over 100 g per 100 g), mirroring the frontend plausibility rule.
+2. **Missing data is counted, not hidden.** A product that passes every filter it has data for but lacks a filtered fact is excluded and counted in `excludedForMissingData`; the UI says how many.
+3. **Every filter value is the person's own.** The parser and the sheet only carry numbers someone typed. The one constant is salt → sodium (÷ 2.5, Regulation (EU) No 1169/2011 Annex I), a unit conversion.
+4. **Deterministic parser first.** `SearchQueryParser` reads numeric limits, a closed phrase table (sorts, diet, allergens, processing) and category aliases, and echoes each as an interpreted term. A category word becomes a filter only when nothing else remains ("Amul butter" stays a name search). "non veg" and "non-vegan" never read as the opposite. Explicit parameters win; allergen exclusions union. Dismissing an interpreted chip removes that phrase from the words, so the URL never rewrites itself while someone types. LLM extraction, when built, must yield the same `SearchFilters` shape, pass the same validation, and never affect ranking.
+5. **Suggestions** (`/search/suggest`): up to 10 brands (by alias too), categories and products; prefix before trigram; public catalogue data cached per normalized query (`catalog.suggest`, 10 min). **Related rows**: for a brand query, the best-rated products in its main category from other brands; for one clear product, more from its brand and higher-rated products in its category. Empty lists stay empty. **Did you mean** only when a real name is close.
+6. **Batch fit** (`POST /households/{id}/products/fit:batch`, ≤ 50): membership, consent and profile read once per member; the same scope as single fit (the caller plus guarded children, never another adult); unknown products listed in `notFound`. An ACTIVE rule set's rules are held in a plain in-process map (never a Spring cache; DRAFT sets always read fresh).
+7. **Unknown barcodes** are recorded on a scan miss with GTIN, first/last seen and a count only.
+8. **Product page order**: allergen flag, per-person verdicts and better options (signed out: the rating sentence if rated, then the sign-in strip), then how the product was read, then the key facts, provenance, label, ingredients with additive names and the estimated diet flag, then the outcome capture.
+
+**Known limits.** "Better rated" rows and the score sort stay empty or neutral until rule set v2 is activated (D-058). Diet filters return little until the Open Food Facts re-fetch fills diet flags. Some savoury snacks sit in the Biscuits category because of the Open Food Facts category mapping; that is catalogue data, not search.
+
+**Alternatives rejected.** (a) Keep sorting on the client — rejected: it only sorts loaded pages and cannot filter. (b) Rewrite the URL with the parsed filters — rejected: the search box would change under the person's fingers while typing. (c) Treat an undeclared nutrient as passing a "max" filter — rejected: an absent value is not a low value.
+
+**Reversal condition.** If people rely on the LLM fallback enough that the phrase table falls behind, the table is extended from logged unrecognised phrases (hashed, D-018), not replaced.

@@ -1,0 +1,52 @@
+.recommendation-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5) var(--space-4) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.recommendation-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-3);
+  bottom: var(--space-3);
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--brand);
+}
+
+.recommendation-card__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-md);
+}
+
+.recommendation-card__line {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.recommendation-card__line--lead {
+  color: var(--text);
+  font-weight: 700;
+  font-size: var(--text-body);
+}
+
+.recommendation-card__suggestion { color: var(--text-secondary); }
+
+.recommendation-card__chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  font-size: 1.25rem;
+}

@@ -84,6 +84,10 @@ public class SecurityConfig {
                     // Per-person fit is not: it lives under /api/v1/households/**.
                     .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/search/**").permitAll()
+                    // D-060/D-066: category pages and comparisons are product facts; naming a
+                    // household on /compare still requires a principal (checked in the controller).
+                    .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/compare").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/reference/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/consent/policies/**").permitAll()
 

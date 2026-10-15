@@ -1,0 +1,70 @@
+.week-strip {
+  margin: 0;
+  display: inline-block;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.week-strip--fluid {
+  display: block;
+  width: 100%;
+}
+
+.week-strip__svg {
+  display: block;
+  overflow: visible;
+}
+
+.week-strip__baseline {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+
+.week-strip__tick {
+  fill: var(--chart-axis-text);
+  opacity: 0.45;
+}
+
+.week-strip__bar,
+.week-strip__dot {
+  fill: var(--chart-bar);
+}
+
+.week-strip__dot--hollow {
+  fill: var(--card-bg);
+  stroke: var(--chart-bar);
+  stroke-width: 1.5;
+}
+
+.week-strip__pair-link {
+  stroke: var(--chart-bar);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+
+/* The day being viewed is solid; the rest of the week is the same hue, softened — never a
+   second colour (spec A.1). */
+.week-strip__mark--soft {
+  opacity: 0.5;
+}
+
+.week-strip__goal {
+  stroke: var(--chart-goal-line);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+}
+
+.week-strip__bar {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: week-strip-grow var(--dur-slow) var(--ease) both;
+}
+
+@keyframes week-strip-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .week-strip__bar { animation: none; }
+}

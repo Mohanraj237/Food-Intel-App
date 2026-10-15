@@ -2,6 +2,19 @@
 
 **Version:** 2.2 · **Date:** 2026-09-06 · **Maintained by:** Orchestrator
 
+> **Pivot note, 2026-09-12 (D-034, D-042).** This matrix traces the original 56
+> packaged-food requirements, and those rows remain accurate for that capability. Wellness
+> platform requirements are traced in the feature map of
+> `docs/architecture/wellness-platform-architecture.md` §12, with the same status vocabulary.
+>
+> Rows changed by later decisions:
+> - **PX-8:** "no weight target for any profile" now holds for minors only (D-036). Adult
+>   calorie caps are held back by D-047.
+> - **FR-012:** D-005 is superseded by D-039; meal logging is in scope.
+> - **§5 exclusions:** calorie diary, exercise and sleep moved into scope by D-034. Meal
+>   planner and recipes move into scope by D-042. Wearables remain BLOCKED (D-042).
+> - **CH-005:** restated as an enforced rule by D-048.
+
 **v2.2 note:** updated after a Phase 6 hardening sprint that added 30 integration tests for
 `recommendation`, `activity`, and the ops-review additions to `capture` — all three had
 shipped in the prior sprint with no dedicated tests of their own. Found and fixed 4 real

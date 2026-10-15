@@ -7,38 +7,38 @@ import { applySession, login, logout, register, signOutLocally } from '@/lib/aut
 import { exportMyData, requestAccountDeletion } from '@/lib/account';
 import { getOpsAccess } from '@/lib/ops';
 import { useIsSignedIn } from '@/lib/useSession';
-import { getStoredTheme, setTheme, type ThemeChoice } from '@/lib/theme';
+import { useMeQuery } from '@/lib/me';
+import { useSaved } from '@/lib/saved';
 import { useDocumentTitleKey } from '@/lib/useDocumentTitle';
 import { ConsentPanel } from '@/features/consent/ConsentPanel';
 import { Button } from '@/design-system/Button';
-import { Card } from '@/design-system/Card';
 import { RowGroup, Row } from '@/design-system/RowGroup';
-import { Switch } from '@/design-system/Switch';
 import { BottomSheet, ConfirmSheet } from '@/design-system/BottomSheet';
+import { Avatar } from '@/design-system/Avatar';
+import { Icon } from '@/design-system/Icon';
+import { LogoMark } from '@/design-system/Logo';
+import { Skeleton } from '@/design-system/States';
 import './SettingsScreen.css';
 
 /**
- * Account and privacy.
- *
- * Account is real: it is the only path by which `isSignedIn()` can ever become
- * true, which every other screen's "sign in to see your family's fit" boundary
- * depends on. The privacy section renders whatever the consent feature exports —
- * see the import below — rather than this screen owning that UI itself.
+ * "You" — the account hub. Identity at the top, then your records, sharing, preferences,
+ * privacy and data, policies. A plain grouped list is the right shape for an account page;
+ * every consumer app's "My account" is exactly this, and it is reached rarely.
  */
 export function SettingsScreen() {
   const signedIn = useIsSignedIn();
-  useDocumentTitleKey('nav.settings');
+  useDocumentTitleKey('nav.you');
 
   return (
-    <div className="page">
-      <div className="settings__intro">
-        <h1>{t('nav.settings')}</h1>
-        <p className="settings__lede">{t('settings.intro')}</p>
-      </div>
+    <div className="page layout-list you">
+      {signedIn ? <ProfileHeader /> : <WelcomePanel />}
 
-      <AppearancePanel />
+      {signedIn && <RecordsPanel />}
+      {signedIn && <SharingPanel />}
 
-      {signedIn ? <AccountPanel /> : <AuthPanel />}
+      <RowGroup title={t('settings.appearanceHeading')}>
+        <Row icon="sun" label={t('you.appearance')} description={t('you.appearanceRowHint')} to="/you/appearance" />
+      </RowGroup>
 
       {signedIn && (
         <>
@@ -48,85 +48,114 @@ export function SettingsScreen() {
         </>
       )}
 
-      <PoliciesPanel />
+      <RowGroup title={t('settings.legalHeading')}>
+        <Row icon="shield" label={t('legal.privacyTitle')} to="/legal/privacy" />
+        <Row icon="list" label={t('legal.termsTitle')} to="/legal/terms" />
+      </RowGroup>
+
+      {signedIn && <SignOutPanel />}
     </div>
   );
 }
 
-/**
- * The privacy notice and terms, reachable whether or not you are signed in.
- *
- * Both documents used to 404, including from the `documentUri` recorded on every
- * consent grant. Someone deciding whether to create an account has the most
- * reason to read them, so this sits outside the signed-in branch.
- */
-function PoliciesPanel() {
+/* ------------------------------------------------------------- identity */
+
+function ProfileHeader() {
+  const me = useMeQuery();
+
+  if (me.isPending) {
+    return (
+      <div className="you__hero">
+        <Skeleton lines={2} label={t('loading.default')} />
+      </div>
+    );
+  }
+
+  const name = me.data?.member?.displayLabel ?? t('you.accountFallback');
+  const household = me.data?.household ?? null;
+  const subline = household
+    ? household.individual
+      ? t('you.soloSubline')
+      : t('you.familySubline', { household: household.name, count: household.memberCount })
+    : t('you.noHouseholdSubline');
+
   return (
-    <RowGroup title={t('settings.legalHeading')}>
-      <Row label={t('legal.privacyTitle')} to="/legal/privacy" />
-      <Row label={t('legal.termsTitle')} to="/legal/terms" />
-    </RowGroup>
+    <header className="you__hero">
+      <Avatar name={name} size="xl" tone={1} />
+      <div className="you__hero-text">
+        <h1 className="you__name">{name}</h1>
+        <p className="you__subline">{subline}</p>
+      </div>
+      {household ? (
+        <Link to="/you/profile" className="btn btn--secondary btn--sm you__edit">
+          <Icon name="edit" size={16} />
+          {t('profile.editAction')}
+        </Link>
+      ) : (
+        <Link to="/welcome" className="btn btn--primary btn--sm you__edit">
+          {t('you.finishSetup')}
+        </Link>
+      )}
+    </header>
   );
 }
 
-/**
- * Light is the primary consumer experience; dark is a real but explicit
- * choice, never inferred from the OS (see lib/theme.ts). This is the only
- * place that choice can be made.
- */
-function AppearancePanel() {
-  const [theme, setThemeState] = useState<ThemeChoice>(() => getStoredTheme());
-
-  function toggle(checked: boolean) {
-    const next: ThemeChoice = checked ? 'dark' : 'light';
-    setTheme(next);
-    setThemeState(next);
-  }
-
+function RecordsPanel() {
+  const saved = useSaved();
   return (
-    <RowGroup title={t('settings.appearanceHeading')}>
+    <RowGroup title={t('you.recordsHeading')}>
+      <Row icon="user" label={t('profile.heading')} description={t('you.profileHint')} to="/you/profile" />
+      <Row icon="family" label={t('nav.family')} to="/family" />
+      <Row icon="home" label={t('you.household')} description={t('you.householdHint')} to="/you/household" />
       <Row
-        label={t('settings.appearanceDark')}
-        description={t('settings.appearanceDarkHint')}
-        trailing={<Switch checked={theme === 'dark'} onChange={toggle} label={t('settings.appearanceDark')} />}
+        icon="heart"
+        label={t('you.saved')}
+        description={t('you.savedHint')}
+        to="/saved"
+        trailing={
+          saved.length > 0 ? (
+            <>
+              <span>{saved.length}</span>
+              <Icon name="chevron-right" size={18} />
+            </>
+          ) : undefined
+        }
       />
+      <Row icon="history" label={t('you.recentlyViewed')} to="/history" />
+      <Row icon="insight" label={t('you.insights')} description={t('you.insightsHint')} to="/insights" />
     </RowGroup>
   );
 }
 
-/**
- * A UI affordance only — links to the ops-review console for the (rare) signed-in caller
- * who holds the operator role. Every ops endpoint re-checks this server-side regardless
- * (D-032); this panel simply avoids showing a link that would just 403 for everyone else.
- * Renders nothing at all for a non-operator, not a disabled/greyed-out link.
- */
-function OpsAccessPanel() {
-  const access = useQuery({
-    queryKey: ['ops', 'access'],
-    queryFn: getOpsAccess,
-  });
+function SharingPanel() {
+  return (
+    <RowGroup title={t('you.sharingHeading')}>
+      <Row icon="share" label={t('you.sharing')} description={t('you.sharingHint')} to="/you/sharing" />
+      <Row icon="family" label={t('you.sharedWithMe')} to="/you/shared-with-me" />
+      <Row icon="shield" label={t('you.accessLog')} to="/you/access-log" />
+    </RowGroup>
+  );
+}
 
-  if (!access.isSuccess || !access.data.isOperator) {
-    return null;
-  }
+function OpsAccessPanel() {
+  const access = useQuery({ queryKey: ['ops', 'access'], queryFn: getOpsAccess });
+
+  if (!access.isSuccess || !access.data.isOperator) return null;
 
   return (
     <RowGroup>
-      <Row label={t('ops.consoleHeading')} description={t('ops.consoleLink')} to="/ops" />
+      <Row icon="grid" label={t('ops.consoleHeading')} description={t('ops.consoleLink')} to="/ops" />
     </RowGroup>
   );
 }
 
-function AccountPanel() {
-  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+function SignOutPanel() {
+  const [confirming, setConfirming] = useState(false);
 
   const signOut = useMutation({
     mutationFn: async () => {
       const token = storedRefreshToken();
       if (token) {
-        // Best-effort: the session ends locally even if the server call fails
-        // (offline, already expired) — a user asking to sign out must never be
-        // stuck signed in because of a network error.
         await logout(token).catch(() => undefined);
       }
     },
@@ -135,26 +164,22 @@ function AccountPanel() {
 
   return (
     <>
-      <RowGroup title={t('auth.accountHeading')}>
-        <Row label={t('nav.family')} to="/family" />
-        <Row label={t('settings.activityLink' as Parameters<typeof t>[0])} to="/activity" />
-        {/* Confirmed, not immediate. Sign-out was a single tap on a row styled
-            exactly like the navigation rows above it, so a mis-tap ended the
-            session with no way back except signing in again. */}
+      <RowGroup>
         <Row
+          icon="arrow-left"
           label={t('action.signOut')}
           onClick={() => {
-            if (!signOut.isPending) setConfirmingSignOut(true);
+            if (!signOut.isPending) setConfirming(true);
           }}
           trailing={signOut.isPending ? <span>{t('loading.default')}</span> : undefined}
         />
       </RowGroup>
 
       <ConfirmSheet
-        open={confirmingSignOut}
-        onClose={() => setConfirmingSignOut(false)}
+        open={confirming}
+        onClose={() => setConfirming(false)}
         onConfirm={() => {
-          setConfirmingSignOut(false);
+          setConfirming(false);
           signOut.mutate();
         }}
         title={t('settings.signOutConfirmTitle')}
@@ -166,7 +191,9 @@ function AccountPanel() {
   );
 }
 
-function AuthPanel() {
+/* ------------------------------------------------------------ signed out */
+
+function WelcomePanel() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -194,112 +221,124 @@ function AuthPanel() {
     mutation.reset();
   }
 
-  const errorMessage =
-    localError ?? (mutation.error instanceof ApiError ? mutation.error.message : null);
+  const errorMessage = localError ?? (mutation.error instanceof ApiError ? mutation.error.message : null);
 
   return (
-    <Card as="section" className="settings__section" aria-labelledby="auth-heading">
-      <div className="settings__switch" role="tablist" aria-label={t('auth.accountHeading')}>
-        <button
-          id="auth-tab-signin"
-          type="button"
-          role="tab"
-          aria-selected={mode === 'signin'}
-          aria-controls="auth-tabpanel"
-          className={mode === 'signin' ? 'settings__tab settings__tab--active' : 'settings__tab'}
-          onClick={() => switchMode('signin')}
-        >
-          {t('auth.signInHeading')}
-        </button>
-        <button
-          id="auth-tab-signup"
-          type="button"
-          role="tab"
-          aria-selected={mode === 'signup'}
-          aria-controls="auth-tabpanel"
-          className={mode === 'signup' ? 'settings__tab settings__tab--active' : 'settings__tab'}
-          onClick={() => switchMode('signup')}
-        >
-          {t('auth.signUpHeading')}
-        </button>
+    <section className="welcome" aria-labelledby="auth-heading">
+      <div className="welcome__intro">
+        <LogoMark size={44} />
+        <h1 id="auth-heading" className="welcome__title">
+          {t('auth.welcomeTitle')}
+        </h1>
+        <p className="welcome__lede">{t('auth.welcomeLede')}</p>
+        <ul className="welcome__points" role="list">
+          <li>
+            <Icon name="family" size={18} />
+            <span>{t('auth.point1')}</span>
+          </li>
+          <li>
+            <Icon name="shield" size={18} />
+            <span>{t('auth.point2')}</span>
+          </li>
+          <li>
+            <Icon name="lock" size={18} />
+            <span>{t('auth.point3')}</span>
+          </li>
+        </ul>
       </div>
 
-      <div id="auth-tabpanel" role="tabpanel" aria-labelledby={`auth-tab-${mode}`}>
-        <h2 id="auth-heading" className="sr-only">
-          {mode === 'signin' ? t('auth.signInHeading') : t('auth.signUpHeading')}
-        </h2>
+      <div className="welcome__form">
+        <div className="segmented" role="tablist" aria-label={t('auth.accountHeading')}>
+          <button
+            id="auth-tab-signin"
+            type="button"
+            role="tab"
+            aria-selected={mode === 'signin'}
+            aria-controls="auth-tabpanel"
+            className={mode === 'signin' ? 'segmented__item segmented__item--active' : 'segmented__item'}
+            onClick={() => switchMode('signin')}
+          >
+            {t('auth.signInHeading')}
+          </button>
+          <button
+            id="auth-tab-signup"
+            type="button"
+            role="tab"
+            aria-selected={mode === 'signup'}
+            aria-controls="auth-tabpanel"
+            className={mode === 'signup' ? 'segmented__item segmented__item--active' : 'segmented__item'}
+            onClick={() => switchMode('signup')}
+          >
+            {t('auth.signUpHeading')}
+          </button>
+        </div>
 
-        <form className="settings__form" onSubmit={submit}>
-          <label className="field">
-            <span className="field__label">{t('auth.email')}</span>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-
-          <label className="field">
-            <span className="field__label">{t('auth.password')}</span>
-            <input
-              type="password"
-              required
-              minLength={mode === 'signup' ? 12 : undefined}
-              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {mode === 'signup' && <span className="field__hint">{t('auth.passwordHint')}</span>}
-          </label>
-
-          {mode === 'signup' && (
+        <div id="auth-tabpanel" role="tabpanel" aria-labelledby={`auth-tab-${mode}`}>
+          <form className="settings__form" onSubmit={submit}>
             <label className="field">
-              <span className="field__label">{t('auth.confirmPassword')}</span>
+              <span className="field__label">{t('auth.email')}</span>
+              <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+
+            <label className="field">
+              <span className="field__label">{t('auth.password')}</span>
               <input
                 type="password"
                 required
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                minLength={mode === 'signup' ? 12 : undefined}
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
+              {mode === 'signup' && <span className="field__hint">{t('auth.passwordHint')}</span>}
             </label>
-          )}
 
-          {errorMessage && (
-            <p className="form-error" role="alert">{errorMessage}</p>
-          )}
+            {mode === 'signup' && (
+              <label className="field">
+                <span className="field__label">{t('auth.confirmPassword')}</span>
+                <input
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </label>
+            )}
 
-          <Button type="submit" fullWidth loading={mutation.isPending}>
-            {mode === 'signin' ? t('action.signIn') : t('action.signUp')}
-          </Button>
+            {errorMessage && (
+              <p className="form-error" role="alert">
+                {errorMessage}
+              </p>
+            )}
 
-          {/* There is no reset flow yet. Saying so plainly beats an absent link,
-              which leaves a locked-out user with nothing at all. */}
-          {mode === 'signin' && (
-            <details className="settings__forgot">
-              <summary>{t('settings.forgotPassword')}</summary>
-              <p className="field__hint">{t('settings.forgotPasswordHelp')}</p>
-            </details>
-          )}
+            <Button type="submit" fullWidth loading={mutation.isPending}>
+              {mode === 'signin' ? t('action.signIn') : t('action.signUp')}
+            </Button>
 
-          {/* Shown at the moment of the decision, not buried in Settings. */}
-          {mode === 'signup' && (
-            <p className="settings__legal-consent">
-              {t('auth.legalAgreement')}{' '}
-              <Link to="/legal/privacy">{t('legal.privacyTitle')}</Link>
-              {' · '}
-              <Link to="/legal/terms">{t('legal.termsTitle')}</Link>
-            </p>
-          )}
-        </form>
+            {mode === 'signin' && (
+              <details className="settings__forgot">
+                <summary>{t('settings.forgotPassword')}</summary>
+                <p className="field__hint">{t('settings.forgotPasswordHelp')}</p>
+              </details>
+            )}
+
+            {mode === 'signup' && (
+              <p className="settings__legal-consent">
+                {t('auth.legalAgreement')} <Link to="/legal/privacy">{t('legal.privacyTitle')}</Link>
+                {' · '}
+                <Link to="/legal/terms">{t('legal.termsTitle')}</Link>
+              </p>
+            )}
+          </form>
+        </div>
       </div>
-    </Card>
+    </section>
   );
 }
 
-/** Data export and account deletion (NFR-09, AC-9.2/AC-9.3). */
+/* ---------------------------------------------------------- data rights */
+
 function DataRightsPanel() {
   return (
     <RowGroup title={t('privacy.dataRightsHeading')}>
@@ -313,8 +352,6 @@ function ExportRow() {
   const mutation = useMutation({
     mutationFn: exportMyData,
     onSuccess: (data) => {
-      // A plain client-side download: the data never leaves the browser except
-      // to be written to a file the user chose to save.
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -326,11 +363,11 @@ function ExportRow() {
   });
 
   const errorMessage = mutation.error instanceof ApiError ? mutation.error.message : null;
-  const description = errorMessage
-    ?? (mutation.isSuccess ? t('privacy.exportSuccess') : t('privacy.exportExplainer'));
+  const description = errorMessage ?? (mutation.isSuccess ? t('privacy.exportSuccess') : t('privacy.exportExplainer'));
 
   return (
     <Row
+      icon="download"
       label={t('privacy.exportData')}
       description={description}
       onClick={() => {
@@ -347,11 +384,6 @@ function DeleteAccountRow() {
 
   const mutation = useMutation({
     mutationFn: requestAccountDeletion,
-    // Signing out immediately would unmount this success message before anyone
-    // could read it (the panel only renders while signed in) — a short delay
-    // lets the confirmation actually be seen before the screen falls back to
-    // the signed-out view. The refresh token is already revoked server-side by
-    // this point; this delay only affects when the local session is cleared.
     onSuccess: () => {
       window.setTimeout(signOutLocally, 3000);
     },
@@ -360,17 +392,12 @@ function DeleteAccountRow() {
   const errorMessage = mutation.error instanceof ApiError ? mutation.error.message : null;
 
   if (mutation.isSuccess) {
-    return <Row label={t('privacy.deleteHeading')} description={t('privacy.deleteSuccess')} />;
+    return <Row icon="trash" label={t('privacy.deleteHeading')} description={t('privacy.deleteSuccess')} />;
   }
 
   return (
     <>
-      <Row
-        label={t('privacy.deleteAccount')}
-        description={t('privacy.deleteExplainer')}
-        tone="danger"
-        onClick={() => setOpen(true)}
-      />
+      <Row icon="trash" label={t('privacy.deleteAccount')} description={t('privacy.deleteExplainer')} tone="danger" onClick={() => setOpen(true)} />
       <BottomSheet open={open} onClose={() => setOpen(false)} title={t('privacy.deleteHeading')}>
         <p>{t('privacy.deleteWarning')}</p>
         <p>{t('privacy.otherMembersUnaffected')}</p>
@@ -387,12 +414,7 @@ function DeleteAccountRow() {
           <Button variant="ghost" onClick={() => setOpen(false)}>
             {t('action.cancel')}
           </Button>
-          <Button
-            variant="destructive"
-            disabled={typedConfirm !== 'DELETE'}
-            loading={mutation.isPending}
-            onClick={() => mutation.mutate()}
-          >
+          <Button variant="destructive" disabled={typedConfirm !== 'DELETE'} loading={mutation.isPending} onClick={() => mutation.mutate()}>
             {t('privacy.deleteConfirm')}
           </Button>
         </div>

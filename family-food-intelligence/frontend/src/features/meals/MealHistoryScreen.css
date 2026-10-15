@@ -1,0 +1,55 @@
+/* Meal history — a plain feed, newest first (plan §18 Journey 2.3, list archetype §5.3).
+   Width is capped by the page root's `.layout-list` utility, not here. */
+
+.mealhistory__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.mealhistory__awaitingLink {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--brand);
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+}
+
+.mealhistory__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mealhistory__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mealhistory__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+}
+
+.mealhistory__name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mealhistory__meta {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

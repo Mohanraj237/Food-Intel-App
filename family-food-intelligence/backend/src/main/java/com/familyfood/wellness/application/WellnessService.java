@@ -1,55 +1,61 @@
 package com.familyfood.wellness.application;
 
-import com.familyfood.household.application.HouseholdAccess;
-import com.familyfood.household.application.HouseholdAccess.MemberInfo;
+import com.familyfood.access.application.AccessDecision;
+import com.familyfood.access.application.HealthAccessPolicy;
+import com.familyfood.access.application.TrackingConsent;
+import com.familyfood.access.domain.AccessScope;
 import com.familyfood.audit.AuditAction;
 import com.familyfood.audit.AuditService;
+import com.familyfood.household.application.HouseholdAccess;
+import com.familyfood.household.application.HouseholdAccess.MemberInfo;
 import com.familyfood.platform.error.AppException;
 import com.familyfood.platform.error.ErrorCode;
 import com.familyfood.profile.application.ProfileService;
-import com.familyfood.profile.application.ProfileView;
 import com.familyfood.profile.domain.AgeBand;
 import com.familyfood.wellness.domain.HealthObservation;
 import com.familyfood.wellness.domain.MetricCategory;
 import com.familyfood.wellness.domain.MetricCode;
-import com.familyfood.wellness.domain.MetricVisibilityGrant;
 import com.familyfood.wellness.domain.ObservationSource;
 import com.familyfood.wellness.infra.HealthObservationRepository;
-import com.familyfood.wellness.infra.MetricVisibilityRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
- * Phase 1 of the wellness scope: recording and reading health observations, with the two
- * safety properties that everything built on top of this inherits.
+ * Recording and reading health observations, with the safety properties everything built on
+ * top of this inherits.
  *
- * <h2>1. The age gate (D-036)</h2>
+ * <h2>1. Access (D-044)</h2>
+ * Who may read or record what is decided by {@link HealthAccessPolicy} and nowhere else —
+ * self, a guardian of a child, or someone the subject granted VIEW or MANAGE on the metric's
+ * category. Household role is never consulted. Before W1 this class held its own copy of the
+ * rule; that copy is gone, not kept alongside.
+ *
+ * <h2>2. The age gate (D-036)</h2>
  * A body or clinical metric is refused for a child subject <em>in the domain</em>, not hidden
- * in the UI. The check is on the <em>subject's</em> age band, never the actor's: a guardian
- * recording their own weight is ordinary, and the same guardian recording a child's weight is
- * the thing this refuses. It fails closed — a subject with no profile has an unknown age, and
- * an unknown age is treated as possibly a child.
+ * in the UI. The check is on the <em>subject's</em> age, never the actor's, and it fails closed:
+ * no profile means an unknown age, which is treated as possibly a child. A subject whose member
+ * type is CHILD is a child whatever band their profile holds (D-046, defence in depth).
  *
- * <h2>2. Default-closed visibility (D-038)</h2>
- * Three independent questions, in order, and a "no" at any step is final:
- * <ol>
- *   <li>Is the metric permitted for this subject's age band?</li>
- *   <li>Does the actor have a relationship to the subject — self, or guardian?</li>
- *   <li>Has the subject granted visibility of this category to this actor?</li>
- * </ol>
- * Household role is never consulted. {@code OWNER} is not a health-data role, because the
- * failure mode worth designing against is not a stranger but a family member.
+ * <h2>3. Consent (D-048)</h2>
+ * Collection needs the subject's tracking purpose to be active — {@code HEALTH_TRACKING} for an
+ * adult, {@code CHILD_WELLNESS_TRACKING} for a child. Disclosure to anyone else needs it too, and
+ * the policy applies that. A subject's own reads of what is already stored stay available.
+ *
+ * <p>Checked in that order — access, age, consent — so that "we do not store this for a child"
+ * is the answer a guardian gets for a child's weight whether or not consent has been given.
  *
  * <p>Deliberately absent: any interpretation of a value. No category, no reference range, no
  * "elevated". Naming a number is a clinical claim and needs a reviewed standard (D-037).
@@ -60,28 +66,24 @@ public class WellnessService implements WellnessAccess {
     private static final String RESOURCE_TYPE_OBSERVATION = "HEALTH_OBSERVATION";
     private static final String CHILD_MEMBER_TYPE = "CHILD";
 
-    /**
-     * Categories a reader may always see about themselves, and the set a guardian may see
-     * about a child they guard. Not "everything": a guardian's access is broad by necessity
-     * but the categories a child can hold at all are already narrowed by {@link MetricCode}.
-     */
-    private static final Set<MetricCategory> ALL_CATEGORIES = EnumSet.allOf(MetricCategory.class);
-
     private final HealthObservationRepository observations;
-    private final MetricVisibilityRepository visibility;
+    private final HealthAccessPolicy access;
+    private final TrackingConsent trackingConsent;
     private final HouseholdAccess households;
     private final ProfileService profiles;
     private final AuditService audit;
     private final Clock clock;
 
     public WellnessService(HealthObservationRepository observations,
-                           MetricVisibilityRepository visibility,
+                           HealthAccessPolicy access,
+                           TrackingConsent trackingConsent,
                            HouseholdAccess households,
                            ProfileService profiles,
                            AuditService audit,
                            Clock clock) {
         this.observations = observations;
-        this.visibility = visibility;
+        this.access = access;
+        this.trackingConsent = trackingConsent;
         this.households = households;
         this.profiles = profiles;
         this.audit = audit;
@@ -92,18 +94,13 @@ public class WellnessService implements WellnessAccess {
 
     @Transactional
     public ObservationView record(UUID callerAccountId, RecordObservationCommand command) {
-        MemberInfo subject = requireMember(command.subjectMemberId());
-        requireWriteRelationship(callerAccountId, subject);
+        MetricCode metric = command.metricCode();
+        AccessDecision decision = access.requireManage(
+                callerAccountId, command.subjectMemberId(), metric.category().scope(), RESOURCE_TYPE_OBSERVATION);
+        MemberInfo subject = decision.subject();
 
-        AgeBand band = requireAgeBand(callerAccountId, subject);
-        if (!command.metricCode().isPermittedFor(band)) {
-            // Audited as a denial, because an attempt to record a child's weight is exactly
-            // the event a reviewer of this product would want to be able to find.
-            audit.denied(AuditAction.HEALTH_METRIC_REFUSED_FOR_AGE, RESOURCE_TYPE_OBSERVATION,
-                    subject.id(), callerAccountId, subject.householdId(),
-                    "metric " + command.metricCode() + " not permitted for age band " + band);
-            throw new AppException(ErrorCode.METRIC_NOT_PERMITTED_FOR_AGE);
-        }
+        requirePermittedForAge(callerAccountId, subject, metric);
+        trackingConsent.require(subject);
 
         Instant now = clock.instant();
         Instant effectiveAt = command.effectiveAt() == null ? now : command.effectiveAt();
@@ -115,22 +112,14 @@ public class WellnessService implements WellnessAccess {
 
         HealthObservation saved = observations.save(HealthObservation.record(
                 subject.id(),
-                command.metricCode(),
+                metric,
                 command.value(),
                 effectiveAt,
                 callerAccountId,
                 command.source() == null ? ObservationSource.MANUAL : command.source(),
                 now));
 
-        // A child's observation is child data and is audited as such, in addition to the
-        // ordinary record event — the strict category must not lose coverage.
-        if (CHILD_MEMBER_TYPE.equals(subject.memberType())) {
-            audit.success(AuditAction.CHILD_DATA_ACCESSED, RESOURCE_TYPE_OBSERVATION,
-                    saved.getId(), callerAccountId, subject.householdId());
-        }
-        audit.success(AuditAction.HEALTH_METRIC_RECORDED, RESOURCE_TYPE_OBSERVATION,
-                saved.getId(), callerAccountId, subject.householdId());
-
+        auditWrite(callerAccountId, decision, saved.getId(), metric.category().scope());
         return ObservationView.from(saved);
     }
 
@@ -150,17 +139,8 @@ public class WellnessService implements WellnessAccess {
                                          MetricCode metricCode,
                                          Instant from,
                                          Instant to) {
-        MemberInfo subject = requireMember(subjectMemberId);
-        Set<MetricCategory> readable = readableCategories(callerAccountId, subject);
-
-        if (!readable.contains(metricCode.category())) {
-            audit.denied(AuditAction.HEALTH_DATA_ACCESS_DENIED, RESOURCE_TYPE_OBSERVATION,
-                    subject.id(), callerAccountId, subject.householdId(),
-                    "no visibility grant for category " + metricCode.category());
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
-        auditCrossMemberRead(callerAccountId, subject);
+        access.requireView(callerAccountId, subjectMemberId, metricCode.category().scope(),
+                RESOURCE_TYPE_OBSERVATION);
 
         return observations
                 .findByHouseholdMemberIdAndMetricCodeAndEffectiveAtBetweenOrderByEffectiveAtDesc(
@@ -183,8 +163,8 @@ public class WellnessService implements WellnessAccess {
                                         UUID subjectMemberId,
                                         Instant from,
                                         Instant to) {
-        MemberInfo subject = requireMember(subjectMemberId);
-        Set<MetricCategory> readable = readableCategories(callerAccountId, subject);
+        AccessDecision decision = access.decide(callerAccountId, subjectMemberId);
+        Set<MetricCategory> readable = readableCategories(decision);
 
         if (readable.isEmpty()) {
             // Not an error: a household member who shares nothing is a valid, expected
@@ -192,91 +172,22 @@ public class WellnessService implements WellnessAccess {
             return List.of();
         }
 
-        auditCrossMemberRead(callerAccountId, subject);
+        access.auditRead(callerAccountId, decision,
+                readable.stream().map(MetricCategory::scope).toList(), RESOURCE_TYPE_OBSERVATION);
 
         return observations
                 .findByHouseholdMemberIdAndMetricCategoryInAndEffectiveAtBetweenOrderByEffectiveAtDesc(
-                        subjectMemberId, new ArrayList<>(readable), from, to)
+                        subjectMemberId, List.copyOf(readable), from, to)
                 .stream()
                 .map(ObservationView::from)
                 .toList();
     }
 
-    /* ------------------------------------------------------------------ visibility */
-
     /** What the caller may currently see about a subject — drives the UI's own honesty. */
     @Override
     @Transactional(readOnly = true)
     public Set<MetricCategory> visibleCategories(UUID callerAccountId, UUID subjectMemberId) {
-        return readableCategories(callerAccountId, requireMember(subjectMemberId));
-    }
-
-    /**
-     * A subject shares one category with one audience member.
-     *
-     * <p>Only the subject may grant. A guardian cannot grant on an adult's behalf (D-002),
-     * and an owner cannot grant on anyone's behalf. For a child subject there is nothing to
-     * grant — a guardian's access already comes from the guardian link, and no other party
-     * gains access to a child's data through this mechanism.
-     */
-    @Transactional
-    public MetricVisibilityGrant share(UUID callerAccountId,
-                                       UUID subjectMemberId,
-                                       UUID audienceMemberId,
-                                       MetricCategory category) {
-        MemberInfo subject = requireMember(subjectMemberId);
-        if (!isSelf(callerAccountId, subject)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-        MemberInfo audience = requireMember(audienceMemberId);
-        if (!audience.householdId().equals(subject.householdId())) {
-            throw new AppException(ErrorCode.NOT_HOUSEHOLD_MEMBER);
-        }
-        if (audienceMemberId.equals(subjectMemberId)) {
-            throw new AppException(ErrorCode.VALIDATION_FAILED);
-        }
-
-        // Idempotent: re-sharing an already-shared category returns the live grant rather
-        // than tripping the partial unique index with a 500.
-        Optional<MetricVisibilityGrant> existing = visibility
-                .findBySubjectMemberIdAndAudienceMemberIdAndRevokedAtIsNull(subjectMemberId, audienceMemberId)
-                .stream()
-                .filter(g -> g.getMetricCategory() == category)
-                .findFirst();
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-
-        MetricVisibilityGrant granted = visibility.save(MetricVisibilityGrant.grant(
-                subjectMemberId, audienceMemberId, category, callerAccountId, clock.instant()));
-        audit.success(AuditAction.HEALTH_VISIBILITY_GRANTED, RESOURCE_TYPE_OBSERVATION,
-                granted.getId(), callerAccountId, subject.householdId());
-        return granted;
-    }
-
-    /** Withdraws a grant. Only the subject may revoke their own sharing. */
-    @Transactional
-    public void unshare(UUID callerAccountId, UUID subjectMemberId, UUID grantId) {
-        MemberInfo subject = requireMember(subjectMemberId);
-        if (!isSelf(callerAccountId, subject)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-        MetricVisibilityGrant grant = visibility.findByIdAndSubjectMemberId(grantId, subjectMemberId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
-        grant.revoke(clock.instant());
-        visibility.save(grant);
-        audit.success(AuditAction.HEALTH_VISIBILITY_REVOKED, RESOURCE_TYPE_OBSERVATION,
-                grant.getId(), callerAccountId, subject.householdId());
-    }
-
-    /** Live grants a subject has made, for their own privacy screen. */
-    @Transactional(readOnly = true)
-    public List<MetricVisibilityGrant> sharesBySubject(UUID callerAccountId, UUID subjectMemberId) {
-        MemberInfo subject = requireMember(subjectMemberId);
-        if (!isSelf(callerAccountId, subject)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-        return visibility.findBySubjectMemberIdAndRevokedAtIsNull(subjectMemberId);
+        return readableCategories(access.decide(callerAccountId, subjectMemberId));
     }
 
     /* ------------------------------------------------- WellnessAccess (other modules) */
@@ -284,9 +195,10 @@ public class WellnessService implements WellnessAccess {
     /**
      * Retract-and-restate, never mutate. See {@link WellnessAccess#replaceDerived}.
      *
-     * <p>The age gate still applies. Routing a body metric through a derived source must not
-     * become a way to record one for a child, so each value is checked exactly as a manual
-     * write would be — the check lives on the metric, so there is nothing to remember here.
+     * <p>Every gate a manual write passes applies here too — the caller must hold MANAGE on each
+     * metric's category, each metric must be permitted for the subject's age, and the subject's
+     * tracking consent must be active. Routing a value through a derived source must never be a
+     * way round any of them.
      */
     @Override
     @Transactional
@@ -295,27 +207,42 @@ public class WellnessService implements WellnessAccess {
                                UUID sourceRef,
                                Map<MetricCode, BigDecimal> values,
                                Instant effectiveAt) {
-        MemberInfo subject = requireMember(subjectMemberId);
-        requireWriteRelationship(callerAccountId, subject);
+        AccessDecision decision = access.decide(callerAccountId, subjectMemberId);
+        Set<AccessScope> scopes = values.keySet().stream()
+                .map(metric -> metric.category().scope())
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(AccessScope.class)));
+        for (AccessScope scope : scopes) {
+            if (!decision.canManage(scope)) {
+                // Re-asked through the policy only to get its audited refusal; it throws.
+                access.requireManage(callerAccountId, subjectMemberId, scope, RESOURCE_TYPE_OBSERVATION);
+            }
+        }
+        MemberInfo subject = decision.subject();
 
-        observations.deleteByHouseholdMemberIdAndSourceRef(subjectMemberId, sourceRef);
+        observations.deleteByHouseholdMemberIdAndSourceRef(subject.id(), sourceRef);
         if (values.isEmpty()) {
             return;
         }
 
-        AgeBand band = requireAgeBand(callerAccountId, subject);
-        Instant now = clock.instant();
+        for (MetricCode metric : values.keySet()) {
+            requirePermittedForAge(callerAccountId, subject, metric);
+        }
+        trackingConsent.require(subject);
 
+        Instant now = clock.instant();
         for (Map.Entry<MetricCode, BigDecimal> entry : values.entrySet()) {
-            if (!entry.getKey().isPermittedFor(band)) {
-                audit.denied(AuditAction.HEALTH_METRIC_REFUSED_FOR_AGE, RESOURCE_TYPE_OBSERVATION,
-                        subject.id(), callerAccountId, subject.householdId(),
-                        "derived metric " + entry.getKey() + " not permitted for age band " + band);
-                throw new AppException(ErrorCode.METRIC_NOT_PERMITTED_FOR_AGE);
-            }
             observations.save(HealthObservation.record(
-                    subjectMemberId, entry.getKey(), entry.getValue(), effectiveAt,
+                    subject.id(), entry.getKey(), entry.getValue(), effectiveAt,
                     callerAccountId, ObservationSource.DERIVED, now, sourceRef));
+        }
+
+        // A write into someone else's record — a caregiver logging an elder's meal (D-045),
+        // a guardian a child's — belongs in that person's access log. The subject's own writes
+        // are not "access" and would only be noise there.
+        if (decision.isCrossMember()) {
+            for (AccessScope scope : scopes) {
+                auditWrite(callerAccountId, decision, sourceRef, scope);
+            }
         }
     }
 
@@ -335,7 +262,7 @@ public class WellnessService implements WellnessAccess {
                                                    UUID subjectMemberId,
                                                    Instant from,
                                                    Instant to) {
-        Map<MetricCode, BigDecimal> totals = new java.util.EnumMap<>(MetricCode.class);
+        Map<MetricCode, BigDecimal> totals = new EnumMap<>(MetricCode.class);
         for (ObservationView o : window(callerAccountId, subjectMemberId, from, to)) {
             totals.merge(o.metricCode(), o.value(), BigDecimal::add);
         }
@@ -348,7 +275,7 @@ public class WellnessService implements WellnessAccess {
                                                            UUID subjectMemberId,
                                                            Instant from,
                                                            Instant to) {
-        Map<MetricCode, ObservationView> latest = new java.util.EnumMap<>(MetricCode.class);
+        Map<MetricCode, ObservationView> latest = new EnumMap<>(MetricCode.class);
         // The window is already newest-first, so the first sighting of a metric wins.
         for (ObservationView o : window(callerAccountId, subjectMemberId, from, to)) {
             latest.putIfAbsent(o.metricCode(), o);
@@ -358,125 +285,109 @@ public class WellnessService implements WellnessAccess {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean mayDeriveFor(UUID callerAccountId, UUID subjectMemberId, MetricCategory category) {
+        AccessDecision decision = access.decide(callerAccountId, subjectMemberId);
+        return decision.canManage(category.scope()) && trackingConsent.isActive(decision.subject());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean isMetricPermittedForSubject(UUID callerAccountId,
                                                UUID subjectMemberId,
                                                MetricCode metricCode) {
         MemberInfo subject = requireMember(subjectMemberId);
-        try {
-            return metricCode.isPermittedFor(requireAgeBand(callerAccountId, subject));
-        } catch (AppException e) {
-            // No profile means an unknown age, and an unknown age is treated as possibly a
-            // child — the same fail-closed posture as recording.
-            if (e.code() == ErrorCode.PROFILE_REQUIRED_FOR_METRIC) {
-                return false;
-            }
-            throw e;
-        }
+        return ageVerdict(subject, metricCode) == AgeVerdict.PERMITTED;
     }
 
-    /* -------------------------------------------------------------------- erasure */
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isChildSubject(UUID subjectMemberId) {
+        MemberInfo subject = requireMember(subjectMemberId);
+        return CHILD_MEMBER_TYPE.equals(subject.memberType())
+                || profiles.currentAgeBand(subject.id()).map(AgeBand::isChild).orElse(false);
+    }
 
-    /** Called by account erasure (D-028). Observations are the subject's data, not a record
-     *  of consent, so they are removed outright rather than pseudonymised. */
+    /* -------------------------------------------------------------- data rights */
+
+    /** Called by account and child erasure (D-028). Observations are the subject's own data. */
     @Transactional
     public void eraseAllForMember(UUID subjectMemberId) {
         observations.deleteByHouseholdMemberId(subjectMemberId);
-        visibility.deleteBySubjectMemberId(subjectMemberId);
+    }
+
+    /** Every observation a member has, for their data export (AC-9.2). No authorization here:
+     *  the export orchestrator has already established the caller is the subject or guardian. */
+    @Transactional(readOnly = true)
+    public List<ObservationView> exportForMember(UUID subjectMemberId) {
+        return observations.findByHouseholdMemberIdOrderByEffectiveAtDesc(subjectMemberId).stream()
+                .map(ObservationView::from)
+                .toList();
     }
 
     /* --------------------------------------------------------------------- internals */
+
+    private enum AgeVerdict { PERMITTED, REFUSED, UNKNOWN_AGE }
+
+    /**
+     * The D-036 gate, for one subject and one metric. Reads the band through the trusted
+     * {@link ProfileService#currentAgeBand}, because the gate must hold for the subject no
+     * matter who is acting — a caregiver may record an elder's blood pressure without being
+     * allowed to read the elder's profile (D-045).
+     */
+    private AgeVerdict ageVerdict(MemberInfo subject, MetricCode metric) {
+        Optional<AgeBand> band = profiles.currentAgeBand(subject.id());
+        if (band.isEmpty()) {
+            return AgeVerdict.UNKNOWN_AGE;
+        }
+        boolean child = CHILD_MEMBER_TYPE.equals(subject.memberType()) || band.get().isChild();
+        if (child && metric.permittedFor() == MetricCode.AgeClass.ADULT_ONLY) {
+            return AgeVerdict.REFUSED;
+        }
+        return AgeVerdict.PERMITTED;
+    }
+
+    private void requirePermittedForAge(UUID callerAccountId, MemberInfo subject, MetricCode metric) {
+        switch (ageVerdict(subject, metric)) {
+            case PERMITTED -> { }
+            case UNKNOWN_AGE -> throw new AppException(ErrorCode.PROFILE_REQUIRED_FOR_METRIC);
+            case REFUSED -> {
+                // Audited as a denial, because an attempt to record a child's weight is exactly
+                // the event a reviewer of this product would want to be able to find.
+                audit.deniedForSubject(AuditAction.HEALTH_METRIC_REFUSED_FOR_AGE, RESOURCE_TYPE_OBSERVATION,
+                        subject.id(), callerAccountId, subject.householdId(), subject.id(),
+                        "metric " + metric + " not permitted for this subject's age");
+                throw new AppException(ErrorCode.METRIC_NOT_PERMITTED_FOR_AGE);
+            }
+        }
+    }
+
+    /** The metric categories among the scopes a decision lets the caller see. */
+    private static Set<MetricCategory> readableCategories(AccessDecision decision) {
+        Set<MetricCategory> categories = new LinkedHashSet<>();
+        for (AccessScope scope : decision.viewableScopes()) {
+            MetricCategory.of(scope).ifPresent(categories::add);
+        }
+        return categories.isEmpty() ? EnumSet.noneOf(MetricCategory.class) : EnumSet.copyOf(categories);
+    }
+
+    /**
+     * Records a write with the subject attached, so a caregiver's or guardian's write appears in
+     * the subject's access log. A child's data is additionally audited in the strict category.
+     */
+    private void auditWrite(UUID callerAccountId, AccessDecision decision, UUID resourceId, AccessScope scope) {
+        Map<String, Object> metadata = Map.of(
+                "scope", scope.name(), "relationship", decision.relationship().name());
+        if (decision.isChildSubject()) {
+            audit.successForSubject(AuditAction.CHILD_DATA_ACCESSED, RESOURCE_TYPE_OBSERVATION, resourceId,
+                    callerAccountId, decision.householdId(), decision.subjectId(), metadata);
+        }
+        audit.successForSubject(AuditAction.HEALTH_METRIC_RECORDED, RESOURCE_TYPE_OBSERVATION, resourceId,
+                callerAccountId, decision.householdId(), decision.subjectId(), metadata);
+    }
 
     private MemberInfo requireMember(UUID memberId) {
         return households.findMember(memberId)
                 .filter(MemberInfo::active)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
-    }
-
-    private boolean isSelf(UUID callerAccountId, MemberInfo subject) {
-        return callerAccountId.equals(subject.userAccountId());
-    }
-
-    /**
-     * Who may write an observation about a subject: the subject themselves, or a guardian of
-     * a child subject. Notably <em>not</em> another adult in the household, however senior —
-     * an adult is their own data principal (D-002), and there is no proxy.
-     */
-    private void requireWriteRelationship(UUID callerAccountId, MemberInfo subject) {
-        if (isSelf(callerAccountId, subject)) {
-            return;
-        }
-        if (CHILD_MEMBER_TYPE.equals(subject.memberType())
-                && households.isGuardianOf(callerAccountId, subject.id())) {
-            return;
-        }
-        audit.denied(AuditAction.HEALTH_DATA_ACCESS_DENIED, RESOURCE_TYPE_OBSERVATION,
-                subject.id(), callerAccountId, subject.householdId(),
-                "caller is neither the subject nor a guardian of this subject");
-        throw new AppException(ErrorCode.ACCESS_DENIED);
-    }
-
-    /**
-     * The subject's current age band, which the D-036 gate needs.
-     *
-     * <p>Fails closed. A subject with no profile has an unknown age, and an unknown age must
-     * not be treated as adult — that would make "skip the profile step" a way to record a
-     * child's weight.
-     */
-    private AgeBand requireAgeBand(UUID callerAccountId, MemberInfo subject) {
-        try {
-            ProfileView profile = profiles.getCurrentProfile(callerAccountId, subject.id());
-            return profile.ageBand();
-        } catch (AppException e) {
-            if (e.code() == ErrorCode.RESOURCE_NOT_FOUND) {
-                throw new AppException(ErrorCode.PROFILE_REQUIRED_FOR_METRIC);
-            }
-            throw e;
-        }
-    }
-
-    /**
-     * The categories the caller may read about this subject.
-     *
-     * <p>Self sees everything. A guardian sees a child's categories, because someone has to
-     * and the set a child may hold is already narrowed by {@link MetricCode}. Everyone else
-     * sees exactly what the subject has explicitly shared — the empty set by default.
-     */
-    private Set<MetricCategory> readableCategories(UUID callerAccountId, MemberInfo subject) {
-        if (isSelf(callerAccountId, subject)) {
-            return ALL_CATEGORIES;
-        }
-        if (CHILD_MEMBER_TYPE.equals(subject.memberType())
-                && households.isGuardianOf(callerAccountId, subject.id())) {
-            return ALL_CATEGORIES;
-        }
-
-        // Another adult: only what they were given, and the grant names a member rather than
-        // an account, so we resolve the caller's own membership in the subject's household.
-        Optional<MemberInfo> audience = households.listActiveMembers(subject.householdId()).stream()
-                .filter(m -> callerAccountId.equals(m.userAccountId()))
-                .findFirst();
-        if (audience.isEmpty()) {
-            return Set.of();
-        }
-
-        return visibility
-                .findBySubjectMemberIdAndAudienceMemberIdAndRevokedAtIsNull(subject.id(), audience.get().id())
-                .stream()
-                .map(MetricVisibilityGrant::getMetricCategory)
-                .collect(java.util.stream.Collectors.toCollection(() -> EnumSet.noneOf(MetricCategory.class)));
-    }
-
-    /** Every read of someone else's health data leaves a trace (D-038). */
-    private void auditCrossMemberRead(UUID callerAccountId, MemberInfo subject) {
-        if (isSelf(callerAccountId, subject)) {
-            return;
-        }
-        // Child reads additionally land in the strict child-data category.
-        if (CHILD_MEMBER_TYPE.equals(subject.memberType())) {
-            audit.success(AuditAction.CHILD_DATA_ACCESSED, RESOURCE_TYPE_OBSERVATION,
-                    subject.id(), callerAccountId, subject.householdId());
-        }
-        audit.success(AuditAction.HEALTH_DATA_ACCESSED, RESOURCE_TYPE_OBSERVATION,
-                subject.id(), callerAccountId, subject.householdId());
     }
 }

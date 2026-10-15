@@ -2,8 +2,6 @@ package com.familyfood.wellness.domain;
 
 import com.familyfood.profile.domain.AgeBand;
 
-import java.util.Set;
-
 /**
  * The closed set of measurements this product will store, and — for each one — the age
  * classes it may be stored for.
@@ -118,6 +116,21 @@ public enum MetricCode {
     }
 
     /**
+     * How a window of this metric is reduced to one number. Accumulating categories sum;
+     * point-in-time readings take the latest; clock-like sleep offsets take the latest because
+     * a total of bedtimes is noise.
+     */
+    public MetricAggregation aggregation() {
+        return switch (this) {
+            case BEDTIME_OFFSET_MIN, WAKE_OFFSET_MIN -> MetricAggregation.LATEST;
+            default -> switch (category) {
+                case NUTRITION, HYDRATION, ACTIVITY, SLEEP -> MetricAggregation.SUM;
+                case BODY, CLINICAL, WELLBEING -> MetricAggregation.LATEST;
+            };
+        };
+    }
+
+    /**
      * Whether this metric may be recorded for a subject in the given age band.
      *
      * <p>The subject's band, never the actor's: a guardian recording their own weight is
@@ -128,14 +141,11 @@ public enum MetricCode {
     }
 
     /**
-     * Child age bands, per {@code person_profile.age_band}. Kept as an explicit set rather
-     * than a name prefix test so that renaming a band cannot silently reclassify a child as
-     * an adult and open every adult-only metric to them.
+     * Whether a band is a child band. Delegates to {@link AgeBand#isChild()}, which states it per
+     * constant — one definition for every age gate in the product (D-036, D-046, D-047), rather
+     * than a second list here that could fall out of step with it.
      */
-    private static final Set<AgeBand> CHILD_BANDS = Set.of(
-            AgeBand.C1_3, AgeBand.C4_6, AgeBand.C7_9, AgeBand.C10_12, AgeBand.C13_17);
-
     public static boolean isChildBand(AgeBand band) {
-        return CHILD_BANDS.contains(band);
+        return band != null && band.isChild();
     }
 }

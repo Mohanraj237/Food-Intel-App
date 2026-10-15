@@ -76,6 +76,11 @@ public class PersonProfile {
     @Column(name = "dietary_preference")
     private DietaryPreference dietaryPreference;
 
+    /** Self-reported; never an input to an energy target (D-047). Nullable. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "activity_level")
+    private ActivityLevel activityLevel;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -124,6 +129,22 @@ public class PersonProfile {
                                            Set<String> conditions,
                                            UUID createdByUserId,
                                            Instant now) {
+        return newVersion(householdMemberId, version, ageBand, sex, dietaryPreference, null,
+                goals, allergens, conditions, createdByUserId, now);
+    }
+
+    /** As above, with the self-reported activity level added in V14. */
+    public static PersonProfile newVersion(UUID householdMemberId,
+                                           int version,
+                                           AgeBand ageBand,
+                                           Sex sex,
+                                           DietaryPreference dietaryPreference,
+                                           ActivityLevel activityLevel,
+                                           Set<GoalCode> goals,
+                                           Set<AllergenCode> allergens,
+                                           Set<String> conditions,
+                                           UUID createdByUserId,
+                                           Instant now) {
         if (version < 1) {
             // Mirrors the ck (version >= 1) CHECK. Kept here too for the same reason as
             // ConsentRecord's mirrored invariant: an early, legible failure.
@@ -148,6 +169,7 @@ public class PersonProfile {
         profile.ageBand = ageBand;
         profile.sex = sex;
         profile.dietaryPreference = dietaryPreference;
+        profile.activityLevel = activityLevel;
         profile.createdAt = now;
         profile.createdByUserId = createdByUserId;
         profile.goals = goals == null ? new LinkedHashSet<>() : new LinkedHashSet<>(goals);
@@ -198,6 +220,10 @@ public class PersonProfile {
 
     public DietaryPreference getDietaryPreference() {
         return dietaryPreference;
+    }
+
+    public ActivityLevel getActivityLevel() {
+        return activityLevel;
     }
 
     public Instant getCreatedAt() {

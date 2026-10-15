@@ -130,6 +130,14 @@ CREATE TABLE meal_portion (
     portion_fraction    numeric(6,4) NOT NULL
                             CHECK (portion_fraction > 0 AND portion_fraction <= 10),
 
+    -- When this share was written into the member's own log, or NULL if it has not
+    -- been (D-041). A meal derives immediately only for the logger and children they
+    -- guard; another adult's share waits here until that adult confirms it, because
+    -- writing one adult's health record from another adult's action is a proxy
+    -- write D-002 forbids. This column records *that* a member confirmed, never what
+    -- their values are, so it is safe to show to the rest of the household.
+    derived_at          timestamptz,
+
     created_at          timestamptz NOT NULL DEFAULT now(),
 
     CONSTRAINT uq_meal_portion_member UNIQUE (meal_id, household_member_id)

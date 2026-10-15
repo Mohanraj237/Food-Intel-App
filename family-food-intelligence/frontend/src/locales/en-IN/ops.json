@@ -1,0 +1,20 @@
+{
+  "ops.consoleHeading": "Catalogue review",
+  "ops.consoleLink": "Open the review queue",
+  "ops.queueHeading": "Contribution review queue",
+  "ops.queueEmpty": "Nothing here right now.",
+  "ops.status.PENDING": "Pending",
+  "ops.status.APPROVED": "Approved",
+  "ops.status.REJECTED": "Rejected",
+  "ops.submittedAtLabel": "Submitted",
+  "ops.reviewedAtLabel": "Reviewed",
+  "ops.reviewNotesLabel": "Review notes",
+  "ops.approve": "Approve",
+  "ops.reject": "Reject",
+  "ops.rejectReasonLabel": "Reason (shown in the review record)",
+  "ops.rejectConfirm": "Confirm rejection",
+  "ops.approveSuccess": "Approved. A real catalogue product now exists for this.",
+  "ops.rejectSuccess": "Rejected.",
+  "ops.signInRequiredTitle": "Sign in to review contributions",
+  "ops.signInRequiredBody": "This queue is for reviewers."
+}

@@ -20,7 +20,8 @@ public record MealResponse(UUID id,
                            Instant consumedAt,
                            NutritionResponse totalNutrition,
                            List<MealItemResponse> items,
-                           List<MealPortionResponse> portions) {
+                           List<MealPortionResponse> portions,
+                           UUID loggedByUserId) {
 
     static MealResponse from(MealView view) {
         return new MealResponse(
@@ -31,6 +32,7 @@ public record MealResponse(UUID id,
                 view.consumedAt(),
                 NutritionResponse.from(view.totalNutrition()),
                 view.items().stream().map(MealItemResponse::from).toList(),
-                view.portions().stream().map(MealPortionResponse::from).toList());
+                view.portions().stream().map(MealPortionResponse::from).toList(),
+                view.loggedByUserId());
     }
 }

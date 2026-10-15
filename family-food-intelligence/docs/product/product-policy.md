@@ -1,5 +1,18 @@
 # Product Policy
 
+> **Scope superseded, 2026-09-12 (D-034, D-042).** This file describes the original, narrow
+> packaged-food product. The product is now an individual + family health and wellness
+> platform, with the packaged-food decision capability at its core. Scope, modules and roadmap
+> live in `docs/architecture/wellness-platform-architecture.md` (v2). What still applies here
+> and binds the wider product:
+> - food language and explanation rules;
+> - no commercial influence (D-012);
+> - provenance and alternatives policy (D-013–D-015);
+> - "never collapse members into one misleading medical score" (D-040).
+>
+> Superseded: the identity, MVP scope and exclusion lists below, and line 149's "no meal
+> logging (D-005)", which D-039 replaced.
+
 **Migrated from the original engineering constitution** (`CLAUDE.md` v1, 2026-09-05, §1/8/9/10/14/19/23/27/28/29/30/49/50/51/55/56/58/59/76/88/89). Content preserved verbatim from the original numbered sections; reorganized by topic so a session working on product/UX questions doesn't have to load architecture or security content. If this ever disagrees with `docs/decisions/decision-log.md`, the decision log wins.
 
 ---

@@ -1,5 +1,18 @@
 # Post-MVP Backlog
 
+> **Pivot note, 2026-09-12 (D-042).** The full wellness feature map, with phase and status
+> for every item, now lives in `docs/architecture/wellness-platform-architecture.md` §12.
+>
+> Items this file listed as "Release 1+" or "do not build until validated" that are now in
+> scope: meal logging, recipes, meal planning, grocery lists (no commerce), family dashboards,
+> notifications for adults, elder support through caregiver delegation (D-045), and records,
+> medications and appointments (behind D-049's gate).
+>
+> The **"Permanently excluded" section below is not superseded.** D-042 adds to it:
+> leaderboards between family members, weight-loss competitions, very-low-calorie plans, and
+> paywalled safety information. The "streaks, badges, leaderboards" row is child-absolute and
+> adult-constrained (D-051).
+
 The only sanctioned landing place for ideas that are not in the MVP. Adding an item here is free; moving one into active scope requires a decision-log entry and a change to `requirements-traceability.md`.
 
 ---
@@ -8,7 +21,7 @@ The only sanctioned landing place for ideas that are not in the MVP. Adding an i
 
 | Item | Why it waits | Entry condition |
 |---|---|---|
-| Saved products and comparisons | Not required to test the thesis | Cohort asks for it |
+| Saved products synced to the account | A device-local shortlist shipped with D-055 (`/saved`); syncing it needs a backend and a privacy note | Cohort keeps a shortlist across devices |
 | Recent-scan history beyond the current shallow list | Same | Retention signal exists |
 | Product formulation-change notifications ("reformulated on…") | Needs version history that only accumulates with time | ≥6 months of version data |
 | Hindi UI | D-019; architecture is ready, translation is the work | Cohort composition justifies it |

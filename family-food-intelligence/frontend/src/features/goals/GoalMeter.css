@@ -1,0 +1,62 @@
+/* The track uses --border-interactive (3.4:1, spec §7.1) so an empty bar is still visible. An
+   "at least" goal fills with the brand hue; "at most" and a child's goals stay neutral and never
+   change colour when the number is passed (spec §6.5). */
+.goal-meter__bar {
+  height: 6px;
+  margin-top: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--border);
+  overflow: hidden;
+}
+
+.goal-meter__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+  transition: width var(--dur-slow) var(--ease);
+}
+
+.goal-meter__bar--neutral span {
+  background: var(--text-secondary);
+}
+
+.goal-meter--compact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.goal-meter--compact .goal-meter__bar {
+  height: 4px;
+  margin-top: 0;
+}
+
+.goal-meter__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-meter__status--none {
+  color: var(--text-tertiary);
+}
+
+.goal-meter__window {
+  color: var(--text-tertiary);
+}
+
+.goal-meter__fact {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-weight: 700;
+  line-height: 1.5;
+}

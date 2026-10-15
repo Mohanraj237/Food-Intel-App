@@ -15,6 +15,8 @@ familyfood:
     hash-pepper: test-pepper
   ai:
     enabled: false
+  scoring:
+    rescore-on-startup: false   # tests drive rescore explicitly (ProductScoreServiceIT)
   limits:
     login-attempts-per-hour: 5
 

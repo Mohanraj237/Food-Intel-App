@@ -26,4 +26,14 @@ public interface HabitCompletionRepository extends JpaRepository<HabitCompletion
     long countByHabitIdAndCompletedOnBetween(UUID habitId, LocalDate from, LocalDate to);
 
     void deleteByHabitIdAndCompletedOn(UUID habitId, LocalDate completedOn);
+
+    /** Every day a habit was done — the member's export (AC-9.2). */
+    List<HabitCompletion> findByHabitIdOrderByCompletedOnDesc(UUID habitId);
+
+    /** Which of several habits were done on one day — one query for a day summary. */
+    List<HabitCompletion> findByHabitIdInAndCompletedOn(java.util.Collection<UUID> habitIds, LocalDate completedOn);
+
+    /** Which of several habits were done on each day of a window — one query for a week of day summaries. */
+    List<HabitCompletion> findByHabitIdInAndCompletedOnBetween(java.util.Collection<UUID> habitIds,
+                                                               LocalDate from, LocalDate to);
 }

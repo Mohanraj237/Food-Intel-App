@@ -1,10 +1,15 @@
 package com.familyfood.datarights.api;
 
+import com.familyfood.access.application.AccessGrantView;
 import com.familyfood.capture.application.ContributionService.ContributionSummary;
 import com.familyfood.consent.application.ConsentExportView;
 import com.familyfood.datarights.application.AccountExportView;
+import com.familyfood.goals.application.GoalView;
+import com.familyfood.habits.application.HabitService.HabitExport;
 import com.familyfood.identity.application.AccountErasureService.AccountSummary;
+import com.familyfood.nutrition.application.MealView;
 import com.familyfood.profile.application.ProfileView;
+import com.familyfood.wellness.application.ObservationView;
 
 import java.time.Instant;
 import java.util.List;
@@ -34,6 +39,7 @@ public record AccountExportResponse(
             Instant joinedAt,
             List<ProfileView> profileVersions,
             List<ConsentExportView> consent,
+            HealthExport health,
             List<ChildExport> guardedChildren) {
 
         static HouseholdExport from(AccountExportView.HouseholdExport view) {
@@ -46,6 +52,7 @@ public record AccountExportResponse(
                     view.joinedAt(),
                     view.profileVersions(),
                     view.consent(),
+                    HealthExport.from(view.health()),
                     view.guardedChildren().stream().map(ChildExport::from).toList());
         }
     }
@@ -55,12 +62,26 @@ public record AccountExportResponse(
             String displayLabel,
             Instant joinedAt,
             List<ProfileView> profileVersions,
-            List<ConsentExportView> consent) {
+            List<ConsentExportView> consent,
+            HealthExport health) {
 
         static ChildExport from(AccountExportView.ChildExport view) {
             return new ChildExport(
                     view.memberId(), view.displayLabel(), view.joinedAt(),
-                    view.profileVersions(), view.consent());
+                    view.profileVersions(), view.consent(), HealthExport.from(view.health()));
+        }
+    }
+
+    public record HealthExport(
+            List<ObservationView> observations,
+            List<GoalView> goals,
+            List<HabitExport> habits,
+            List<MealView> meals,
+            List<AccessGrantView> sharingGrants) {
+
+        static HealthExport from(AccountExportView.HealthExport view) {
+            return new HealthExport(
+                    view.observations(), view.goals(), view.habits(), view.meals(), view.sharingGrants());
         }
     }
 }

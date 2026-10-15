@@ -1,26 +1,22 @@
-/* A plain grouped list of rows — the consumer "Settings row" pattern.
-   Replaces nested bordered Cards (Card-in-Card-in-Card) with one hairline
-   divider between rows and no per-row box, which is what let Settings/Family
-   read as an admin console even though the content itself was calm. */
-
 .row-group + .row-group {
-  margin-top: var(--space-6);
+  margin-top: var(--space-5);
 }
 
 .row-group__title {
   font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--text-tertiary);
   margin-bottom: var(--space-2);
-  padding-inline: var(--space-1);
+  padding-inline: var(--space-2);
 }
 
 .row-group__list {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -41,20 +37,27 @@
   cursor: pointer;
 }
 
-.row-group__list > .row:last-child {
-  border-bottom: none;
-}
+.row-group__list > .row:last-child { border-bottom: none; }
 
-.row--static {
-  cursor: default;
-}
+.row--static { cursor: default; }
 
 @media (hover: hover) {
   a.row:hover,
-  button.row:hover:not(.row--static) {
-    background: var(--surface);
-  }
+  button.row:hover:not(.row--static) { background: var(--surface); }
 }
+
+.row__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.row--danger .row__icon { background: var(--danger-bg); color: var(--danger-fg); }
 
 .row__text {
   display: flex;
@@ -70,9 +73,7 @@
   color: var(--text);
 }
 
-.row--danger .row__label {
-  color: var(--danger-fg);
-}
+.row--danger .row__label { color: var(--danger-fg); }
 
 .row__desc {
   font-size: var(--text-sm);
@@ -91,7 +92,7 @@
 
 .row__chevron {
   flex-shrink: 0;
-  font-size: 1.25rem;
-  line-height: 1;
+  display: grid;
+  place-items: center;
   color: var(--text-tertiary);
 }

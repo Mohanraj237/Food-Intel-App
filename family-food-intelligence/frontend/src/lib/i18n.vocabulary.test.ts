@@ -56,6 +56,29 @@ const BANNED: ReadonlyArray<{ pattern: RegExp; reason: string; claimOnly?: boole
   { pattern: /\bweight loss\b/i, reason: 'no weight targets exist in this product (D-017)', claimOnly: true },
   { pattern: /\bcalorie (target|limit|goal)\b/i, reason: 'no numeric restriction targets (D-017)', claimOnly: true },
   { pattern: /\bburn (calories|fat)\b/i, reason: 'fitness framing is out of scope' },
+
+  // --- plan §9 "Banned-vocabulary extensions" ---
+  // claimOnly: a reassurance/disclaimer sentence naming the word while denying it is
+  // legitimate copy (e.g. "you haven't missed anything" or "we never say a reading is
+  // abnormal"); the affirmative/labelling form is the defect.
+  { pattern: /\bmissed\b/i, reason: 'streak/logging-miss shaming language', claimOnly: true },
+  { pattern: /\boff track\b/i, reason: 'gamified shaming framing', claimOnly: true },
+  { pattern: /\boverweight\b/i, reason: 'a clinical label about a person’s body, not ours to assign', claimOnly: true },
+  { pattern: /\bobese\b/i, reason: 'a clinical label about a person’s body, not ours to assign', claimOnly: true },
+  { pattern: /\bunderweight\b/i, reason: 'a clinical label about a person’s body, not ours to assign', claimOnly: true },
+  { pattern: /\bnormal range\b/i, reason: 'a clinical judgement about a reading, not ours to make', claimOnly: true },
+  { pattern: /\babnormal\b/i, reason: 'a clinical judgement about a reading, not ours to make', claimOnly: true },
+  { pattern: /\bideal weight\b/i, reason: 'no weight targets exist in this product (D-017)', claimOnly: true },
+  { pattern: /\btarget weight\b/i, reason: 'no weight targets exist in this product (D-017)', claimOnly: true },
+  { pattern: /\bcalories left\b/i, reason: 'no numeric restriction targets (D-017)', claimOnly: true },
+  // The rest have no acceptable form at all — even a negated sentence still leans on the
+  // shaming/moralising frame the word carries, so no claimOnly exception is offered.
+  { pattern: /\byou broke\b/i, reason: 'a direct-address blame phrase; we report, we do not blame' },
+  { pattern: /\bstreak lost\b/i, reason: 'gamified loss framing' },
+  { pattern: /\bcheat (meal|day)\b/i, reason: 'moralises food/eating' },
+  { pattern: /\bguilt[- ]free\b/i, reason: 'moralising marketing framing' },
+  { pattern: /\bpicky\b/i, reason: 'moralises a person’s (often a child’s) eating' },
+  { pattern: /\bovereating\b/i, reason: 'moralises a person’s eating' },
 ];
 
 describe('user-facing copy', () => {

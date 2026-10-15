@@ -1,5 +1,6 @@
 package com.familyfood.insights.application;
 
+import com.familyfood.household.application.HouseholdAccess;
 import com.familyfood.insights.domain.Insight;
 import com.familyfood.insights.domain.Insight.Availability;
 import com.familyfood.insights.domain.InsightType;
@@ -46,7 +47,8 @@ class InsightServiceTest {
     @BeforeEach
     void setUp() {
         wellness = mock(WellnessAccess.class);
-        service = new InsightService(wellness, Clock.fixed(NOW, ZoneOffset.UTC));
+        // No household found → days are bucketed in the default zone (Asia/Kolkata, D-053).
+        service = new InsightService(wellness, mock(HouseholdAccess.class), Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static ObservationView obs(MetricCode metric, String value, Instant at) {

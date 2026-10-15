@@ -8,11 +8,12 @@
 .card--raised {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
 }
 
 .card--sunken {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
 }
 
@@ -20,4 +21,4 @@
 .card--pad-md { padding: var(--space-4); }
 .card--pad-lg { padding: var(--space-5); gap: var(--space-4); }
 
-.card--elevated { box-shadow: var(--shadow-sm); }
+.card--elevated { box-shadow: var(--shadow-md); }

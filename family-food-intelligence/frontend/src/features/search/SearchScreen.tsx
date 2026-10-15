@@ -1,104 +1,78 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { t, type MessageKey } from '@/lib/i18n';
-import { getCategories, searchProducts, type ProductSummary } from '@/lib/catalog';
-import { isPlausible } from '@/lib/nutrition';
+import {
+  getCategories,
+  searchProducts,
+  NUMERIC_FILTER_KEYS,
+  type InterpretedTerm,
+  type NumericFilterKey,
+  type ProductSummary,
+  type SearchFilters,
+  type SearchSort,
+} from '@/lib/catalog';
+import { formatAmount } from '@/lib/nutrition';
+import {
+  FILTER_UNITS,
+  SEARCH_SORTS,
+  activeFilterCount,
+  readFilters,
+  readSort,
+  removePhrase,
+  withQuery,
+  writeFilters,
+} from '@/lib/searchParams';
+import { useBatchFit, type CardFit } from '@/lib/useBatchFit';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { Button } from '@/design-system/Button';
-import { Chip, ProductGrid, SectionHeader } from '@/design-system/Rails';
+import { Chip, ProductGrid, ProductRail, SectionHeader } from '@/design-system/Rails';
+import type { ProductCardData } from '@/design-system/ProductCard';
 import { ErrorState } from '@/design-system/States';
+import { Icon } from '@/design-system/Icon';
 import { toCardData } from '../home/HomeScreen';
+import { FilterSheet } from './FilterSheet';
 import './SearchScreen.css';
 
-/** Results requested per page, and the size of each "Load more" step. */
 const PAGE_SIZE = 30;
 
-/**
- * Client-side-only "best data quality first" ordering.
- *
- * The backend's `/search` does not accept a `sort` parameter (see
- * `src/lib/catalog.ts`), so this never re-queries or fabricates anything — it
- * re-orders the same pages of real `dataQuality` values the server already
- * returned. Ranks mirror the badge treatment on the product screen
- * (`features/product/ProductScreen.tsx`): verified first, unresolved
- * conflicts last. An unrecognised or missing value sorts alongside
- * `UNVERIFIED` rather than to either extreme, so an unexpected enum value
- * degrades quietly instead of jumping to the front or back.
- */
-const UNRECOGNISED_RANK = 2; // alongside UNVERIFIED — see qualityRank below
-
-const QUALITY_RANK: Record<string, number> = {
-  VERIFIED: 0,
-  RECENT: 1,
-  UNVERIFIED: UNRECOGNISED_RANK,
-  STALE: 3,
-  NEEDS_REVIEW: 4,
-  CONFLICTING: 5,
+const FILTER_NUTRIENT: Record<NumericFilterKey, string> = {
+  maxTotalSugar: 'TOTAL_SUGAR_G',
+  maxAddedSugar: 'ADDED_SUGAR_G',
+  maxSodium: 'SODIUM_MG',
+  maxSatFat: 'SAT_FAT_G',
+  maxEnergy: 'ENERGY_KCAL',
+  minProtein: 'PROTEIN_G',
+  minFibre: 'FIBRE_G',
 };
 
-function qualityRank(dataQuality: string | null): number {
-  if (dataQuality === null) return UNRECOGNISED_RANK;
-  return QUALITY_RANK[dataQuality] ?? UNRECOGNISED_RANK;
+function nutrientName(code: string | null): string {
+  return code ? t(`search.nutrient.${code}` as MessageKey) : '';
+}
+
+/** A card that knows the viewer's own verdict and the product's small rating, when there is one. */
+function toSearchCard(p: ProductSummary, fit: CardFit | undefined): ProductCardData {
+  return {
+    ...toCardData(p),
+    verdict: fit?.verdict ?? null,
+    allergenFlagged: fit?.allergenFlagged ?? false,
+    ratingStars: p.assessment?.status === 'SCORED' ? p.assessment.stars : null,
+  };
 }
 
 /**
- * Nutrient ordering.
- *
- * "Which of these has the least sugar?" is the question this product exists to
- * answer, and until now the only orderings offered were relevance and data
- * quality — neither of which a shopper is actually asking. Like the quality
- * sort this re-orders the pages already fetched rather than inventing a
- * server-side ranking, so it is honest about only covering what is loaded.
- *
- * A product with no usable figure for the chosen nutrient sorts last rather
- * than first: an absent value is not a low value, and ranking "unknown" as
- * "best" would be the most misleading thing this screen could do.
- */
-const NUTRIENT_SORTS = {
-  sugar: 'ADDED_SUGAR_G',
-  sodium: 'SODIUM_MG',
-} as const;
-
-type SortMode = 'relevance' | 'quality' | 'sugar' | 'sodium';
-
-const SORT_MODES: ReadonlyArray<{ mode: SortMode; key: MessageKey }> = [
-  { mode: 'relevance', key: 'search.sortRelevance' },
-  { mode: 'quality', key: 'search.sortQuality' },
-  { mode: 'sugar', key: 'search.sortSugar' },
-  { mode: 'sodium', key: 'search.sortSodium' },
-];
-
-function isSortMode(value: string): value is SortMode {
-  return SORT_MODES.some((s) => s.mode === value);
-}
-
-/** The comparable amount for a nutrient, or `null` when there is none to trust. */
-function nutrientAmount(product: ProductSummary, nutrientCode: string): number | null {
-  const fact = product.keyFacts.find((f) => f.nutrientCode === nutrientCode);
-  if (!fact) return null;
-  // Per 100 is the only basis that compares across products of different pack
-  // sizes, which is exactly what an ordering needs.
-  return isPlausible(fact.amountPer100, fact.unit) ? fact.amountPer100 : null;
-}
-
-/**
- * Search results.
- *
- * The query lives in the URL, not in component state, so a result page is
- * shareable, survives a reload, and works with the back button — all of which a
- * shopper expects and none of which come free from a local `useState`.
- *
- * The empty result is the screen that matters most. Query success will be low
- * against a young catalogue, so "we do not have this yet" is a designed
- * destination with a way forward, never a dead end (PANTRY R-06, AC-4.3).
+ * Search and browse (D-061). Query, category, filters and sort live in the URL, so a result page
+ * is shareable, survives a reload and works with the back button. Filtering and ordering happen
+ * on the server; a product that does not declare a filtered fact is counted, never shown as if
+ * it were checked. Phrases the server read from the words ("under 10g sugar", "veg") appear as
+ * chips — dismissing one removes that phrase from the words.
  */
 export function SearchScreen() {
   const [params, setParams] = useSearchParams();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const q = params.get('q') ?? '';
-  const category = params.get('category') ?? '';
-  const sortParam = params.get('sort') ?? '';
-  const sort: SortMode = isSortMode(sortParam) ? sortParam : 'relevance';
+  const filters = useMemo(() => readFilters(params), [params]);
+  const urlSort = readSort(params);
 
   const categories = useQuery({
     queryKey: ['categories'],
@@ -106,148 +80,150 @@ export function SearchScreen() {
     staleTime: 30 * 60 * 1000,
   });
 
-  /**
-   * Paged, not capped.
-   *
-   * This screen previously fetched a single page of 30 and offered no way to
-   * see more, so 96% of the catalogue was unreachable by browsing at all. A
-   * "Load more" button rather than scroll-triggered loading: it is operable by
-   * keyboard and screen reader, it does not fight the back button, and it
-   * leaves the end of the page reachable.
-   */
   const results = useInfiniteQuery({
-    queryKey: ['search', q, category],
+    queryKey: ['search', q, JSON.stringify(filters), urlSort],
     initialPageParam: 0,
-    queryFn: ({ pageParam }) =>
-      searchProducts({ q, category, page: pageParam, size: PAGE_SIZE }),
+    queryFn: ({ pageParam }) => searchProducts({ q, ...filters, sort: urlSort, page: pageParam, size: PAGE_SIZE }),
     getNextPageParam: (lastPage) => {
       const loaded = (lastPage.page + 1) * lastPage.size;
       return loaded < lastPage.total ? lastPage.page + 1 : undefined;
     },
   });
 
-  const categoryName = categories.data?.find((c) => c.code === category)?.name;
+  const firstPage = results.data?.pages[0];
+  const items = useMemo<ProductSummary[]>(() => results.data?.pages.flatMap((p) => p.items) ?? [], [results.data]);
+  const fit = useBatchFit(useMemo(() => items.map((i) => i.id), [items]));
+  const total = firstPage?.total ?? 0;
+  const isEmpty = results.isSuccess && items.length === 0;
+  const shownSort: SearchSort = urlSort !== 'RELEVANCE' ? urlSort : (firstPage?.sort ?? 'RELEVANCE');
+  const anyRated = items.some((i) => i.assessment?.status === 'SCORED');
 
-  const heading = q
-    ? t('search.resultsFor', { query: q })
-    : (categoryName ?? t('search.browseHeading'));
+  const categoryName = (code: string | null | undefined) => categories.data?.find((c) => c.code === code)?.name ?? code ?? '';
+  const heading = q ? t('search.resultsFor', { query: q }) : filters.category ? categoryName(filters.category) : t('search.browseHeading');
+  useDocumentTitle(q ? t('search.resultsFor', { query: q }) : filters.category ? categoryName(filters.category) : t('nav.search'));
 
-  useDocumentTitle(q ? t('search.resultsFor', { query: q }) : (categoryName ?? t('nav.search')));
+  function update(next: URLSearchParams) {
+    setParams(next, { replace: true });
+  }
 
   function toggleCategory(code: string) {
-    const next = new URLSearchParams(params);
-    if (category === code) {
-      next.delete('category');
-    } else {
-      next.set('category', code);
-    }
-    setParams(next, { replace: true });
+    const next: SearchFilters = { ...filters };
+    if (filters.category === code) delete next.category;
+    else next.category = code;
+    update(writeFilters(params, next));
   }
 
-  function setSort(mode: SortMode) {
+  function setSort(sort: SearchSort) {
     const next = new URLSearchParams(params);
-    if (mode === 'relevance') {
-      next.delete('sort');
-    } else {
-      next.set('sort', mode);
-    }
-    setParams(next, { replace: true });
+    if (sort === 'RELEVANCE') next.delete('sort');
+    else next.set('sort', sort);
+    update(next);
   }
 
-  const items = useMemo<ProductSummary[]>(
-    () => results.data?.pages.flatMap((p) => p.items) ?? [],
-    [results.data],
-  );
-  const total = results.data?.pages[0]?.total ?? 0;
-  const isEmpty = results.isSuccess && items.length === 0;
-
-  // Re-orders the pages already in hand; never re-fetches and never invents a
-  // value for a product missing one. Only worth offering once there is more
-  // than one item to reorder.
-  const sortedItems = useMemo<ProductSummary[]>(() => {
-    if (sort === 'relevance') return items;
-
-    if (sort === 'quality') {
-      return [...items].sort((a, b) => qualityRank(a.dataQuality) - qualityRank(b.dataQuality));
+  function removeFilter(key: keyof SearchFilters, allergen?: string) {
+    const next: SearchFilters = { ...filters };
+    if (key === 'excludeAllergens' && allergen) {
+      next.excludeAllergens = (filters.excludeAllergens ?? []).filter((a) => a !== allergen);
+    } else {
+      delete next[key];
     }
+    update(writeFilters(params, next));
+  }
 
-    const nutrientCode = NUTRIENT_SORTS[sort];
-    return [...items].sort((a, b) => {
-      const left = nutrientAmount(a, nutrientCode);
-      const right = nutrientAmount(b, nutrientCode);
-      if (left === null && right === null) return 0;
-      if (left === null) return 1; // unknown is not "best" — it goes last
-      if (right === null) return -1;
-      return left - right;
-    });
-  }, [items, sort]);
+  function removeInterpreted(term: InterpretedTerm) {
+    update(withQuery(params, removePhrase(q, term.source)));
+  }
 
-  const canSort = results.isSuccess && items.length > 1;
+  const filterChips = buildFilterChips(filters, removeFilter);
+  const interpreted = firstPage?.interpreted ?? [];
+  const filterCount = activeFilterCount(filters);
+  const excluded = firstPage?.excludedForMissingData ?? 0;
 
   return (
     <div className="searchpage">
+      <h1 className="sr-only">{t('search.heading')}</h1>
+
+      {/* ---- category filter strip ---- */}
       {categories.isSuccess && categories.data.length > 0 && (
-        <div className="chip-row searchpage__chiprow" role="group" aria-label={t('home.browseCategories')}>
-          {category && (
-            <Chip active onClick={() => toggleCategory(category)}>
-              {t('search.clearFilter')}
+        <div className="searchpage__filters">
+          <div className="chip-row searchpage__chiprow" role="group" aria-label={t('home.browseCategories')}>
+            <Chip active={!filters.category} onClick={() => filters.category && toggleCategory(filters.category)}>
+              {t('search.allCategories')}
             </Chip>
-          )}
-          {categories.data.map((c) => (
-            <Chip
-              key={c.code}
-              active={category === c.code}
-              onClick={() => toggleCategory(c.code)}
-            >
-              {c.name}
-            </Chip>
-          ))}
+            {categories.data.map((c) => (
+              <Chip key={c.code} active={filters.category === c.code} onClick={() => toggleCategory(c.code)}>
+                {c.name}
+              </Chip>
+            ))}
+          </div>
         </div>
       )}
 
       <div className="searchpage__body">
-        {/* The page's own <h1>. This screen previously started at <h2>, leaving
-            the document with no top-level heading at all — the one route in the
-            app where that was true. */}
-        <h1 className="sr-only">{t('search.heading')}</h1>
-
         <div className="searchpage__toolbar">
-          <SectionHeader
-            title={heading}
-            {...(results.isSuccess
-              ? {
-                  subtitle:
-                    items.length < total
-                      ? t('search.showingCount', { shown: items.length, total })
-                      : t('search.resultCount', { count: total }),
-                }
-              : {})}
-          />
+          <div className="searchpage__heading">
+            <h2 className="searchpage__title">{heading}</h2>
+            {results.isSuccess && (
+              <p className="searchpage__count">
+                {items.length < total
+                  ? t('search.showingCount', { shown: items.length, total })
+                  : t('search.resultCount', { count: total })}
+              </p>
+            )}
+          </div>
 
-          {canSort && (
-            <div
-              className="searchpage__sort"
-              role="group"
-              aria-label={t('search.sortLabel')}
-            >
-              {SORT_MODES.map(({ mode, key }) => (
-                <Chip key={mode} active={sort === mode} onClick={() => setSort(mode)}>
-                  {t(key)}
-                </Chip>
-              ))}
-            </div>
-          )}
+          <div className="searchpage__controls">
+            <Button variant="secondary" size="sm" onClick={() => setSheetOpen(true)} aria-haspopup="dialog">
+              <Icon name="settings" size={16} />
+              {filterCount > 0 ? t('search.filtersCount', { count: filterCount }) : t('search.filters')}
+            </Button>
+            <label className="searchpage__sort">
+              <span className="searchpage__sort-label">{t('search.sortLabel')}</span>
+              <select
+                className="searchpage__sort-select"
+                value={shownSort}
+                onChange={(e) => setSort(e.target.value as SearchSort)}
+              >
+                {SEARCH_SORTS.filter((s) => s !== 'SCORE_DESC' || anyRated || shownSort === 'SCORE_DESC').map((s) => (
+                  <option key={s} value={s}>
+                    {t(`search.sort.${s}` as MessageKey)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
-        {results.isError && (
-          <ErrorState error={results.error} onRetry={() => void results.refetch()} />
+        {(filterChips.length > 0 || interpreted.length > 0) && (
+          <div className="searchpage__active" aria-label={t('search.activeFilters')}>
+            {filterChips.map((chip) => (
+              <RemovableChip key={chip.key} label={chip.label} onRemove={chip.onRemove} />
+            ))}
+            {interpreted.length > 0 && <span className="searchpage__understood">{t('search.understood')}</span>}
+            {interpreted.map((term) => (
+              <RemovableChip
+                key={`${term.type}-${term.code ?? ''}-${term.source}`}
+                label={interpretedLabel(term, categoryName)}
+                onRemove={() => removeInterpreted(term)}
+              />
+            ))}
+          </div>
         )}
 
+        {results.isSuccess && excluded > 0 && (
+          <p className="searchpage__excluded" role="note">
+            <Icon name="info" size={16} />
+            {t('search.excludedMissing', { count: excluded })}
+          </p>
+        )}
+
+        {results.isError && <ErrorState error={results.error} onRetry={() => void results.refetch()} />}
+
         {isEmpty ? (
-          <NotFound query={q} />
+          <NotFound query={q} didYouMean={firstPage?.didYouMean} filtered={filterCount > 0 || interpreted.length > 0} />
         ) : (
           <>
-            <ProductGrid loading={results.isPending} products={sortedItems.map(toCardData)} />
+            <ProductGrid loading={results.isPending} products={items.map((p) => toSearchCard(p, fit.get(p.id)))} />
 
             {results.isSuccess && items.length > 0 && (
               <div className="searchpage__more">
@@ -262,8 +238,6 @@ export function SearchScreen() {
                 ) : (
                   <p className="searchpage__more-end">{t('search.allLoaded')}</p>
                 )}
-                {/* Announces the new count to a screen-reader user, who would
-                    otherwise get no signal that more rows arrived below them. */}
                 <p className="sr-only" role="status">
                   {t('search.showingCount', { shown: items.length, total })}
                 </p>
@@ -271,32 +245,119 @@ export function SearchScreen() {
             )}
           </>
         )}
+
+        {firstPage?.related && firstPage.related.betterInCategory.length > 0 && (
+          <section className="searchpage__related">
+            <SectionHeader
+              title={t('search.related.betterIn', { category: categoryName(firstPage.related.categoryCode) })}
+              as="h3"
+            />
+            <ProductRail products={firstPage.related.betterInCategory.map((p) => toSearchCard(p, fit.get(p.id)))} />
+          </section>
+        )}
+        {firstPage?.related && firstPage.related.sameBrand.length > 0 && (
+          <section className="searchpage__related">
+            <SectionHeader title={t('search.related.moreFrom', { brand: firstPage.related.brandName ?? '' })} as="h3" />
+            <ProductRail products={firstPage.related.sameBrand.map((p) => toSearchCard(p, fit.get(p.id)))} />
+          </section>
+        )}
       </div>
+
+      <FilterSheet open={sheetOpen} onClose={() => setSheetOpen(false)} value={filters} onApply={(f) => update(writeFilters(params, f))} />
     </div>
   );
 }
 
-/**
- * The "not found" screen.
- *
- * First-class, not an error state. It offers the two ways forward that actually
- * resolve the situation — photograph the label to get an answer now, and
- * contribute the product — so the failure becomes a contribution rather than an
- * exit.
- */
-function NotFound({ query }: { query: string }) {
+function RemovableChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <button type="button" className="searchpage__chip" onClick={onRemove} aria-label={t('search.removeFilter', { filter: label })}>
+      <span>{label}</span>
+      <Icon name="close" size={14} />
+    </button>
+  );
+}
+
+function buildFilterChips(
+  filters: SearchFilters,
+  remove: (key: keyof SearchFilters, allergen?: string) => void,
+): Array<{ key: string; label: string; onRemove: () => void }> {
+  const chips: Array<{ key: string; label: string; onRemove: () => void }> = [];
+  for (const key of NUMERIC_FILTER_KEYS) {
+    const value = filters[key];
+    if (value == null) continue;
+    chips.push({
+      key,
+      label: t(key.startsWith('min') ? 'search.chip.min' : 'search.chip.max', {
+        nutrient: nutrientName(FILTER_NUTRIENT[key]),
+        value: formatAmount(value),
+        unit: FILTER_UNITS[key],
+      }),
+      onRemove: () => remove(key),
+    });
+  }
+  for (const code of filters.excludeAllergens ?? []) {
+    chips.push({
+      key: `allergen-${code}`,
+      label: t('search.chip.hide', { allergen: t(`allergenCode.${code}` as MessageKey) }),
+      onRemove: () => remove('excludeAllergens', code),
+    });
+  }
+  if (filters.dietary) {
+    chips.push({ key: 'dietary', label: t(`search.chip.diet.${filters.dietary}` as MessageKey), onRemove: () => remove('dietary') });
+  }
+  if (filters.maxNova != null) {
+    chips.push({ key: 'maxNova', label: t('search.chip.maxNova', { value: filters.maxNova }), onRemove: () => remove('maxNova') });
+  }
+  return chips;
+}
+
+function interpretedLabel(term: InterpretedTerm, categoryName: (code: string | null) => string): string {
+  switch (term.type) {
+    case 'CATEGORY':
+      return categoryName(term.code);
+    case 'MAX_NUTRIENT':
+    case 'MIN_NUTRIENT':
+      return t(term.type === 'MIN_NUTRIENT' ? 'search.chip.min' : 'search.chip.max', {
+        nutrient: nutrientName(term.code),
+        value: term.value == null ? '' : formatAmount(term.value),
+        unit: term.unit ?? '',
+      });
+    case 'SORT':
+      return t(`search.sort.${term.code}` as MessageKey);
+    case 'DIET':
+      return t(`search.chip.diet.${term.code}` as MessageKey);
+    case 'EXCLUDE_ALLERGEN':
+      return t('search.chip.hide', { allergen: t(`allergenCode.${term.code}` as MessageKey) });
+    case 'MAX_NOVA':
+      return t('search.chip.maxNova', { value: term.value ?? '' });
+    default:
+      return term.source;
+  }
+}
+
+/** "We don't have this yet" is a destination with a way forward, never a dead end. */
+function NotFound({ query, didYouMean, filtered }: { query: string; didYouMean: string | undefined; filtered: boolean }) {
   return (
     <div className="notfound">
-      <span className="notfound__glyph" aria-hidden="true">⌕</span>
-      <h3 className="notfound__title">{t('search.noResults')}</h3>
+      <span className="notfound__glyph">
+        <Icon name="search" size={28} />
+      </span>
+      <h3 className="notfound__title">{filtered ? t('search.noResultsFiltered') : t('search.noResults')}</h3>
       {query && <p className="notfound__query">“{query}”</p>}
+      {didYouMean && (
+        <p className="notfound__body">
+          <Link to={`/search?q=${encodeURIComponent(didYouMean)}`}>{t('search.didYouMean', { suggestion: didYouMean })}</Link>
+        </p>
+      )}
       <p className="notfound__body">{t('search.noResultsAction')}</p>
       <div className="notfound__actions">
-        <Link to="/scan?mode=label" className="btn btn--primary">
-          {t('capture.heading')}
-        </Link>
-        <Link to="/scan" className="btn btn--secondary">
+        <Link to="/scan" className="btn btn--primary">
+          <Icon name="scan" size={18} />
           {t('scan.heading')}
+        </Link>
+        <Link to="/scan?mode=label" className="btn btn--secondary">
+          <Icon name="camera" size={18} />
+          {t('capture.heading')}
         </Link>
       </div>
     </div>

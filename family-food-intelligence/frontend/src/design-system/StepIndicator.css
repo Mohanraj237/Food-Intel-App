@@ -1,0 +1,31 @@
+.step-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.step-indicator__text {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.step-indicator__dots {
+  display: flex;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.step-indicator__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--border);
+}
+
+.step-indicator__dot--current {
+  background: var(--brand);
+  width: 20px;
+}

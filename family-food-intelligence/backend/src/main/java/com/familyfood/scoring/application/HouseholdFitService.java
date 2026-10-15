@@ -19,4 +19,12 @@ public interface HouseholdFitService {
      *         rather than a lookup failure with a different label.
      */
     HouseholdFitView evaluate(UUID callerAccountId, UUID householdId, ProductAssessmentInput input);
+
+    /**
+     * Household fit for many products (search results, a list) with membership, consent and
+     * profiles read once — never another adult's fit, exactly as {@link #evaluate} (D-002).
+     * Results are in input order.
+     */
+    java.util.List<HouseholdFitView> evaluateMany(UUID callerAccountId, UUID householdId,
+                                                  java.util.List<ProductAssessmentInput> inputs);
 }

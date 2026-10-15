@@ -9,4 +9,8 @@ import java.util.UUID;
 public interface ProductScoreRepository extends JpaRepository<ProductScore, UUID> {
 
     Optional<ProductScore> findByProductVersionIdAndRuleSetId(UUID productVersionId, UUID ruleSetId);
+
+    long countByRuleSetId(UUID ruleSetId);
+
+    long countByRuleSetIdAndStatus(UUID ruleSetId, String status);
 }

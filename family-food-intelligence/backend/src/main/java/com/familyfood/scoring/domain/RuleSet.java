@@ -6,8 +6,11 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -22,8 +25,14 @@ import java.util.UUID;
  * fabricated medical judgment the project forbids. A separate DRAFT row
  * ({@code version = "v1-draft-examples"}) carries illustrative rules used only to prove the
  * rule engine's mechanism in tests. Nothing in this codebase transitions a rule_set's
- * status — activating a reviewed threshold set is a future migration, per D-024's reversal
- * condition, not a runtime action this class or its service ever performs.
+ * status — activating a reviewed threshold set is a migration ({@code V18}, written only
+ * after {@code docs/data/scoring/review.md} is signed — D-025, D-058), not a runtime action
+ * this class or its service ever performs.
+ *
+ * <p>{@link #algorithm} selects how the set's {@code score_component} rows aggregate
+ * (D-059); {@link #algorithmConfig} carries that algorithm's per-set configuration — for
+ * {@link ScoringAlgorithm#POINTS_NET_V2} the transcribed star bands. Both are reviewed
+ * content, written by a migration, never edited at runtime.
  */
 @Entity
 @Table(name = "rule_set")
@@ -38,6 +47,14 @@ public class RuleSet {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RuleSetStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ScoringAlgorithm algorithm;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "algorithm_config", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> algorithmConfig;
 
     @Column(name = "activated_at")
     private Instant activatedAt;
@@ -59,15 +76,24 @@ public class RuleSet {
     }
 
     /**
-     * Builds a new DRAFT rule_set. There is deliberately no {@code activate(...)} method on
-     * this class: nothing in this codebase transitions a rule_set to ACTIVE (D-024) — that is
-     * a future migration once a reviewed threshold set exists, not application behaviour.
+     * Builds a new DRAFT rule_set on the v1 algorithm. There is deliberately no
+     * {@code activate(...)} method on this class: nothing in this codebase transitions a
+     * rule_set to ACTIVE (D-024) — that is a migration once a reviewed threshold set exists,
+     * not application behaviour.
      */
     public static RuleSet draft(String version, String notes, Instant now) {
+        return draft(version, ScoringAlgorithm.WEIGHTED_MEAN_V1, Map.of(), notes, now);
+    }
+
+    /** Builds a new DRAFT rule_set on the given algorithm with its configuration. */
+    public static RuleSet draft(String version, ScoringAlgorithm algorithm,
+                                Map<String, Object> algorithmConfig, String notes, Instant now) {
         RuleSet ruleSet = new RuleSet();
         ruleSet.id = UUID.randomUUID();
         ruleSet.version = version;
         ruleSet.status = RuleSetStatus.DRAFT;
+        ruleSet.algorithm = algorithm;
+        ruleSet.algorithmConfig = algorithmConfig == null ? Map.of() : algorithmConfig;
         ruleSet.notes = notes;
         ruleSet.createdAt = now;
         return ruleSet;
@@ -83,6 +109,14 @@ public class RuleSet {
 
     public RuleSetStatus getStatus() {
         return status;
+    }
+
+    public ScoringAlgorithm getAlgorithm() {
+        return algorithm;
+    }
+
+    public Map<String, Object> getAlgorithmConfig() {
+        return algorithmConfig;
     }
 
     public Instant getActivatedAt() {

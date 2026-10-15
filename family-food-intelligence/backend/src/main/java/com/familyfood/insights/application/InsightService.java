@@ -5,6 +5,8 @@ import com.familyfood.insights.domain.Insight.Availability;
 import com.familyfood.insights.domain.Insight.Evidence;
 import com.familyfood.insights.domain.InsightType;
 import com.familyfood.insights.domain.InsightWindow;
+import com.familyfood.household.application.HouseholdAccess;
+import com.familyfood.household.application.HouseholdAccess.HouseholdInfo;
 import com.familyfood.wellness.application.ObservationView;
 import com.familyfood.wellness.application.WellnessAccess;
 import com.familyfood.wellness.domain.MetricCode;
@@ -16,7 +18,7 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -54,12 +56,42 @@ public class InsightService {
     /** Below this relative change, a movement is noise and is reported as "about the same". */
     private static final BigDecimal MATERIAL_CHANGE_PCT = new BigDecimal("5");
 
+    private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Kolkata");
+
     private final WellnessAccess wellness;
+    private final HouseholdAccess households;
     private final Clock clock;
 
-    public InsightService(WellnessAccess wellness, Clock clock) {
+    public InsightService(WellnessAccess wellness, HouseholdAccess households, Clock clock) {
         this.wellness = wellness;
+        this.households = households;
         this.clock = clock;
+    }
+
+    /**
+     * The window as whole local days ending today, and the same number of days before it
+     * (D-053). The previous window ends one nanosecond before the current one starts: the
+     * observation query is inclusive at both ends, and a reading at exactly midnight must be
+     * counted in one window, not both.
+     */
+    private record Span(Instant currentFrom, Instant currentTo, Instant priorFrom, Instant priorTo) {
+
+        static Span of(InsightWindow window, Instant now, ZoneId zone) {
+            long days = window.length().toDays();
+            LocalDate today = now.atZone(zone).toLocalDate();
+            LocalDate firstDay = today.minusDays(days - 1);
+            Instant currentFrom = firstDay.atStartOfDay(zone).toInstant();
+            Instant priorFrom = firstDay.minusDays(days).atStartOfDay(zone).toInstant();
+            return new Span(currentFrom, now, priorFrom, currentFrom.minusNanos(1));
+        }
+    }
+
+    /** D-053: the subject's household decides where a day starts. */
+    private ZoneId zoneOf(UUID subjectMemberId) {
+        return households.findMember(subjectMemberId)
+                .flatMap(m -> households.findHousehold(m.householdId()))
+                .map(HouseholdInfo::zone)
+                .orElse(DEFAULT_ZONE);
     }
 
     /**
@@ -72,35 +104,39 @@ public class InsightService {
     @Transactional(readOnly = true)
     public List<Insight> forMember(UUID callerAccountId, UUID subjectMemberId, InsightWindow window) {
         Instant now = clock.instant();
-        Instant windowStart = now.minus(window.length());
-        Instant priorStart = windowStart.minus(window.length());
+        ZoneId zone = zoneOf(subjectMemberId);
+        Span span = Span.of(window, now, zone);
 
-        List<ObservationView> current = wellness.window(callerAccountId, subjectMemberId, windowStart, now);
-        List<ObservationView> prior = wellness.window(callerAccountId, subjectMemberId, priorStart, windowStart);
+        List<ObservationView> current = wellness.window(callerAccountId, subjectMemberId, span.currentFrom(), span.currentTo());
+        List<ObservationView> prior = wellness.window(callerAccountId, subjectMemberId, span.priorFrom(), span.priorTo());
 
         if (current.isEmpty()) {
             return List.of(Insight.noData(InsightType.DATA_COVERAGE, subjectMemberId, window,
                     "Nothing recorded in this period yet.", now));
         }
 
+        Trend trend = new Trend(subjectMemberId, window, current, prior, zone, now);
         List<Insight> insights = new ArrayList<>();
-        addTrend(insights, subjectMemberId, window, current, prior, MetricCode.ENERGY_KCAL,
-                InsightType.NUTRITION_TREND, "Energy", now);
-        addTrend(insights, subjectMemberId, window, current, prior, MetricCode.PROTEIN_G,
-                InsightType.NUTRITION_TREND, "Protein", now);
-        addTrend(insights, subjectMemberId, window, current, prior, MetricCode.SODIUM_MG,
-                InsightType.NUTRITION_TREND, "Sodium", now);
-        addTrend(insights, subjectMemberId, window, current, prior, MetricCode.FIBRE_G,
-                InsightType.NUTRITION_TREND, "Fibre", now);
-        addTrend(insights, subjectMemberId, window, current, prior, MetricCode.WATER_ML,
-                InsightType.HYDRATION_TREND, "Water", now);
-        addTrend(insights, subjectMemberId, window, current, prior, MetricCode.STEPS,
-                InsightType.ACTIVITY_TREND, "Steps", now);
+        trend.add(insights, MetricCode.ENERGY_KCAL, InsightType.NUTRITION_TREND, "Energy");
+        trend.add(insights, MetricCode.PROTEIN_G, InsightType.NUTRITION_TREND, "Protein");
+        trend.add(insights, MetricCode.SODIUM_MG, InsightType.NUTRITION_TREND, "Sodium");
+        trend.add(insights, MetricCode.FIBRE_G, InsightType.NUTRITION_TREND, "Fibre");
+        trend.add(insights, MetricCode.WATER_ML, InsightType.HYDRATION_TREND, "Water");
+        trend.add(insights, MetricCode.STEPS, InsightType.ACTIVITY_TREND, "Steps");
 
         if (insights.isEmpty()) {
-            insights.add(coverage(subjectMemberId, window, current, now));
+            insights.add(coverage(subjectMemberId, window, current, zone, now));
         }
         return insights;
+    }
+
+    /** The inputs every trend in one request shares, so each call names only its metric. */
+    private record Trend(UUID subject, InsightWindow window, List<ObservationView> current,
+                         List<ObservationView> prior, ZoneId zone, Instant now) {
+
+        void add(List<Insight> out, MetricCode metric, InsightType type, String label) {
+            addTrend(out, subject, window, current, prior, metric, type, label, zone, now);
+        }
     }
 
     /**
@@ -111,21 +147,22 @@ public class InsightService {
      * no prior period to compare against, or a prior total of zero (where a percentage
      * change is undefined, not infinite).
      */
-    private void addTrend(List<Insight> out,
-                          UUID subject,
-                          InsightWindow window,
-                          List<ObservationView> current,
-                          List<ObservationView> prior,
-                          MetricCode metric,
-                          InsightType type,
-                          String label,
-                          Instant now) {
+    private static void addTrend(List<Insight> out,
+                                 UUID subject,
+                                 InsightWindow window,
+                                 List<ObservationView> current,
+                                 List<ObservationView> prior,
+                                 MetricCode metric,
+                                 InsightType type,
+                                 String label,
+                                 ZoneId zone,
+                                 Instant now) {
         List<ObservationView> currentForMetric = forMetric(current, metric);
         if (currentForMetric.isEmpty()) {
             return;
         }
 
-        int days = distinctDays(currentForMetric);
+        int days = distinctDays(currentForMetric, zone);
         BigDecimal currentTotal = total(currentForMetric);
 
         if (days < window.minimumDays()) {
@@ -158,13 +195,14 @@ public class InsightService {
             return;
         }
 
+        int priorDays = distinctDays(priorForMetric, zone);
         evidence.add(new Evidence("Previous period", priorTotal, metric.canonicalUnit(),
-                metric.category(), distinctDays(priorForMetric)));
+                metric.category(), priorDays));
 
         // Compare daily averages, not totals: an eight-day window against a six-day one
         // would otherwise report a rise that is only a difference in logging.
         BigDecimal currentAvg = average(currentTotal, days);
-        BigDecimal priorAvg = average(priorTotal, distinctDays(priorForMetric));
+        BigDecimal priorAvg = average(priorTotal, priorDays);
         BigDecimal changePct = percentChange(priorAvg, currentAvg);
 
         String headline;
@@ -182,9 +220,9 @@ public class InsightService {
     }
 
     /** What the module knows, when it cannot yet say anything about how it is moving. */
-    private Insight coverage(UUID subject, InsightWindow window,
-                             List<ObservationView> current, Instant now) {
-        int days = distinctDays(current);
+    private static Insight coverage(UUID subject, InsightWindow window,
+                                   List<ObservationView> current, ZoneId zone, Instant now) {
+        int days = distinctDays(current, zone);
         Set<MetricCode> metrics = current.stream()
                 .map(ObservationView::metricCode)
                 .collect(Collectors.toCollection(HashSet::new));
@@ -214,15 +252,16 @@ public class InsightService {
     }
 
     /**
-     * Distinct calendar days with at least one observation.
+     * Distinct calendar days — the household's days (D-053) — with at least one observation.
      *
      * <p>The denominator for every average, so that three weigh-ins on one day do not read
-     * as three days of data.
+     * as three days of data. Counted in UTC before W1, which split an Indian evening across
+     * two "days" at 05:30.
      */
-    private static int distinctDays(List<ObservationView> observations) {
+    private static int distinctDays(List<ObservationView> observations, ZoneId zone) {
         Set<LocalDate> days = new HashSet<>();
         for (ObservationView o : observations) {
-            days.add(o.effectiveAt().atZone(ZoneOffset.UTC).toLocalDate());
+            days.add(o.effectiveAt().atZone(zone).toLocalDate());
         }
         return days.size();
     }

@@ -1,4 +1,4 @@
-/* Application shell: sticky search + bottom nav on mobile, top bar on desktop. */
+/* Application shell: compact header + bottom nav on mobile, one top bar on desktop. */
 
 .shell {
   --page-gutter: var(--space-4);
@@ -11,14 +11,24 @@
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
   border-bottom: 1px solid var(--border);
-  padding: var(--space-3) var(--page-gutter) var(--space-3);
+  padding: var(--space-2) var(--page-gutter) var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  /* Keeps the header clear of a notch in landscape. */
-  padding-top: max(var(--space-3), env(safe-area-inset-top, 0px));
+  gap: var(--space-2);
+  padding-top: max(var(--space-2), env(safe-area-inset-top, 0px));
+}
+
+/* On Home the header is only the brand row; the hero below carries the search. */
+.shell__header--home {
+  border-bottom-color: transparent;
+  background: var(--bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding-bottom: 0;
 }
 
 .shell__brandrow {
@@ -26,70 +36,64 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  min-height: var(--tap-primary);
 }
 
 .wordmark {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  /* The icon+text content is shorter than --tap-min on its own; grow the link's
-     own box so the Home tap target meets the same floor as its row neighbour
-     (.shell__avatar), rather than relying on the row's height to cover for it. */
   min-height: var(--tap-min);
   text-decoration: none;
-  color: var(--brand);
+  color: var(--text);
   font-weight: 800;
-  font-size: 1.0625rem;
-  letter-spacing: -0.01em;
+  font-size: 1.125rem;
+  letter-spacing: -0.03em;
 }
 
-.wordmark__mark {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background: var(--brand);
-  color: var(--on-brand);
-  font-size: 0.75rem;
-}
+.wordmark__text { line-height: 1; }
 
-.shell__avatar {
+.shell__account {
   display: grid;
   place-items: center;
   width: var(--tap-min);
   height: var(--tap-min);
   border-radius: var(--radius-full);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
   text-decoration: none;
-  font-size: 1.125rem;
   flex-shrink: 0;
 }
 
-/* `.searchbar*` now lives in `design-system/SearchBar.css`, imported by the
-   `SearchBar` component itself. */
+.shell__account-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+}
 
 /* ================================ top bar ================================== */
 
 .shell__topbar { display: none; }
 
-.toplinks { display: flex; align-items: center; gap: var(--space-2); }
+.toplinks { display: flex; align-items: center; gap: var(--space-1); }
 
 .toplinks__item {
   display: inline-flex;
   align-items: center;
-  height: var(--tap-min);
+  gap: var(--space-2);
+  height: 42px;
   padding-inline: var(--space-3);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   color: var(--text-secondary);
   text-decoration: none;
   font-weight: 600;
   font-size: var(--text-sm);
   white-space: nowrap;
-  /* Same timing/easing as .btn's state changes (Button.css) so hover across
-     the shell and the rest of the app feels like one interaction language. */
+  border: none;
+  background: transparent;
   transition:
     background var(--dur-fast) var(--ease),
     color var(--dur-fast) var(--ease);
@@ -98,16 +102,22 @@
 .toplinks__item:hover { background: var(--surface); color: var(--text); }
 
 .toplinks__item--active {
-  color: var(--brand);
+  color: var(--brand-hover);
   background: var(--brand-subtle);
 }
 
-/* :hover alone outranks --active on specificity, so without this the "you are
-   here" link would flatten to the generic hover treatment the moment the
-   pointer crossed it — losing the current-page cue exactly when it's being
-   looked at. Keep the active treatment; hovering the current page shouldn't
-   look like leaving it. */
-.toplinks__item--active:hover { background: var(--brand-subtle); color: var(--brand); }
+.toplinks__item--active:hover { background: var(--brand-subtle); color: var(--brand-hover); }
+
+:root[data-theme='dark'] .toplinks__item--active { color: var(--brand); }
+
+.toplinks__item--log {
+  background: var(--brand);
+  color: var(--on-brand);
+  margin-left: var(--space-1);
+  padding-inline: var(--space-4) var(--space-4);
+}
+
+.toplinks__item--log:hover { background: var(--brand-hover); color: var(--on-brand); }
 
 /* ================================== main =================================== */
 
@@ -126,7 +136,9 @@
   z-index: var(--z-bottom-nav);
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  background: var(--card-bg);
+  background: color-mix(in srgb, var(--card-bg) 94%, transparent);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -137,30 +149,28 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
   min-height: var(--bottom-nav-h);
   padding: var(--space-2) var(--space-1);
   color: var(--text-tertiary);
   text-decoration: none;
-  font-size: var(--text-xs);
-  font-weight: 600;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   touch-action: manipulation;
   transition: color var(--dur-fast) var(--ease);
+  background: none;
+  border: none;
 }
 
-/* The five glyphs (⌂ ⌕ ▣ ☖ ⚙) come from different Unicode symbol blocks and
-   have different natural ink height/optical centre at the same font-size —
-   side by side that reads as mismatched placeholder characters rather than an
-   icon set. A fixed, centred box makes every glyph occupy the same visual
-   footprint regardless of its own metrics, without needing real icon assets. */
-.bottom-nav__glyph {
+.bottom-nav__icon {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  font-size: 1.25rem;
-  line-height: 1;
+  width: 44px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  transition: background var(--dur-fast) var(--ease);
 }
 
 .bottom-nav__label {
@@ -170,25 +180,36 @@
   white-space: nowrap;
 }
 
-.bottom-nav__item--active { color: var(--brand); }
+.bottom-nav__item--active { color: var(--brand-hover); }
+.bottom-nav__item--active .bottom-nav__icon { background: var(--brand-subtle); }
+.bottom-nav__item--active .icon { stroke-width: 2.1; }
 
-/* A bar above the active item: a second, non-colour cue for the current tab. */
-.bottom-nav__item--active::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  width: 28px;
-  height: 3px;
-  border-radius: 0 0 var(--radius-full) var(--radius-full);
+:root[data-theme='dark'] .bottom-nav__item--active { color: var(--brand); }
+
+/* The centre Log action: a raised terracotta disc that sits above the bar. */
+.bottom-nav__item--log { color: var(--text-secondary); }
+
+.bottom-nav__fab {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-top: -22px;
+  border-radius: var(--radius-full);
   background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: var(--shadow-float);
+  border: 4px solid var(--bg);
+  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
+
+.bottom-nav__item--log:active .bottom-nav__fab { transform: scale(0.94); }
 
 /* ========================= desktop: 1024px and up ========================== */
 
 @media (min-width: 1024px) {
   .shell { --page-gutter: var(--space-6); }
 
-  /* Mobile header and bottom nav give way to a single top bar. */
   .shell__header,
   .bottom-nav { display: none; }
 
@@ -197,7 +218,9 @@
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
-    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: saturate(160%) blur(14px);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
     border-bottom: 1px solid var(--border);
   }
 
@@ -211,11 +234,8 @@
     gap: var(--space-5);
   }
 
-  .wordmark--top { font-size: 1.125rem; flex-shrink: 0; }
-  .wordmark--top .wordmark__mark { width: 30px; height: 30px; font-size: 0.8125rem; }
+  .wordmark--top { font-size: 1.25rem; flex-shrink: 0; }
 
-  /* Search takes the middle and is generously wide — it is the primary action,
-     and a cramped search box on a 1400px window looks like an afterthought. */
   .shell__topsearch { flex: 1; max-width: 560px; }
 
   .shell__main {

@@ -1,5 +1,6 @@
 package com.familyfood.profile.api;
 
+import com.familyfood.profile.domain.ActivityLevel;
 import com.familyfood.profile.domain.AgeBand;
 import com.familyfood.profile.domain.AllergenCode;
 import com.familyfood.profile.domain.DietaryPreference;
@@ -26,7 +27,10 @@ public record ProfileRequest(
         DietaryPreference dietaryPreference,
         Set<GoalCode> goals,
         Set<AllergenCode> allergens,
-        Set<@NotBlank @Size(max = 60) String> conditions) {
+        Set<@NotBlank @Size(max = 60) String> conditions,
+        /** Self-reported and optional (V14). Omitting it on a PUT clears it, as with every
+         *  other field of this replace-not-patch request. */
+        ActivityLevel activityLevel) {
 
     public ProfileRequest {
         goals = goals == null ? Set.of() : Set.copyOf(goals);

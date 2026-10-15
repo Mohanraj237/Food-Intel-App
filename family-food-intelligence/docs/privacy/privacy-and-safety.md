@@ -1,5 +1,19 @@
 # Privacy and Safety
 
+> **Pivot note, 2026-09-12.** Every rule below still binds, and the wellness platform extends
+> it. Read alongside:
+> - **D-036:** age gate on metrics.
+> - **D-037:** capture vs interpretation of clinical metrics.
+> - **D-044:** one access policy with scopes and levels; household role grants nothing.
+> - **D-045:** caregivers are delegated by the adult; no account-less adults.
+> - **D-048:** wellness-tracking consent purposes; child tracking guardian-entered only.
+> - **D-049:** records and medications behind a release gate.
+>
+> One line is superseded: "NOT a medication management system" (§Medical Safety). The product
+> now keeps medication schedules, reminders and taken/missed logs (D-049). **It still never
+> recommends starting, stopping or changing a medication, never calculates a dose, and never
+> checks interactions.**
+
 **Migrated from the original engineering constitution** (`CLAUDE.md` v1, §11/12/13/31/33/52). Verbatim content, reorganized. Consent/child-processing mechanism decisions: `docs/decisions/decision-log.md` D-001, D-002. Access-control enforcement: `docs/security/security-policy.md`.
 
 ---

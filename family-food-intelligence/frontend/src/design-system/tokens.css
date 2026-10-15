@@ -1,96 +1,109 @@
 /* =============================================================================
    Design tokens — the single source of visual truth.
-   Implements docs/design/design-system.md. Every contrast ratio in the comments
-   is measured, not estimated.
 
-   No component may define a raw colour, size or duration. If a value is needed
-   and is not here, it belongs here first.
+   "Fresh Kitchen" identity (docs/design/design-system.md v2, D-055).
+
+   A consumer food product, not a dashboard: a warm cream ground with white
+   cards lifted off it, a terracotta brand that reads as appetite and warmth,
+   a fresh green accent reserved for positive moments, and warm charcoal
+   text. The verdict ramp, the allergen flag and the danger tone are
+   deliberately untouched — those colours carry meaning that was decided and
+   measured before this identity existed (D-004), and the brand hue was chosen
+   to sit clear of all of them.
+
+   Every contrast ratio in the comments is measured against the surface it
+   is used on. No component may define a raw colour, size or duration. If a
+   value is needed and is not here, it belongs here first.
    ============================================================================= */
 
 :root {
-  /* Light is the primary consumer experience (see docs/design/design-system.md
-     "Light-first"). Dark stays fully supported, but only as an explicit choice
-     — set via `data-theme="dark"` in Settings → Appearance, never inferred from
-     the OS. `color-scheme` therefore tracks the explicit choice, not the OS. */
   color-scheme: light;
 
-  /* ---- surfaces ---- */
-  --bg: #ffffff;
-  --surface: #f7f8f7;
+  /* ---- surfaces ----
+     The page ground is warm off-white, not pure white, so a white card reads
+     as an object sitting on a table rather than a box drawn on a screen. */
+  --bg: #fbf9f5;
+  --surface: #f4f0e8;
   --surface-raised: #ffffff;
-  --surface-sunken: #eef1ef;
-  --overlay: rgb(16 20 18 / 0.48);
+  --surface-sunken: #ece6da;
+  --overlay: rgb(28 25 23 / 0.52);
 
   /* ---- text (ratios on --bg) ---- */
-  --text: #14181a;              /* 17.87:1 */
-  --text-secondary: #4a5257;    /*  7.97:1 */
-  --text-tertiary: #697077;     /*  5.02:1 */
+  --text: #1c1917;              /* 16.4:1 */
+  --text-secondary: #57534e;    /*  7.3:1 */
+  --text-tertiary: #6f6a63;     /*  5.1:1 */
   --text-inverse: #ffffff;
 
   /* ---- borders ----
      --border is DECORATIVE and intentionally low contrast.
-     Any boundary that carries meaning uses --border-interactive (3.4:1). */
-  --border: #e3e7e5;
-  --border-interactive: #7e8884;
-  --border-strong: #4a5257;
+     Any boundary that carries meaning uses --border-interactive (3.7:1). */
+  --border: #ebe5da;
+  --border-interactive: #8a8074;
+  --border-strong: #57534e;
 
-  /* ---- brand ---- */
-  --brand: #0e7c6b;             /*  5.10:1 on --bg */
-  --brand-hover: #0b6558;       /*  6.96:1 */
-  --brand-subtle: #e6f4f1;
-  --on-brand: #ffffff;          /*  5.10:1 on --brand */
-  --focus-ring: #0e7c6b;
+  /* ---- brand: terracotta ---- */
+  --brand: #c2410c;             /*  5.0:1 on --bg, 5.2:1 on white */
+  --brand-hover: #9a3412;       /*  7.6:1 */
+  --brand-subtle: #fdeee4;      /* tint for chips, selected states */
+  --brand-soft: #f9d9c6;        /* stronger tint for hero panels */
+  --on-brand: #ffffff;
+  --focus-ring: #c2410c;
 
-  /* ---- verdicts ------------------------------------------------------------
-     Deliberately NOT a green→red traffic light. The product reports frequency
-     and fit, not virtue, and a safety ramp would moralise food (D-004).
+  /* ---- accent: fresh green — positive moments only (saved, done, fresh) ---- */
+  --accent: #1f7a4d;            /*  5.1:1 on --bg */
+  --accent-subtle: #e3f2e8;
+  --on-accent: #ffffff;
+
+  /* ---- verdicts (D-004) — unchanged: not a traffic light ----
      DOESNT_FIT is violet because it means "conflicts with a preference you
      declared" — a match failure, not a hazard. */
-  --verdict-everyday-fg: #126446;        /* 6.15:1 on its tint */
+  --verdict-everyday-fg: #126446;
   --verdict-everyday-bg: #e4f1ea;
-  --verdict-occasional-fg: #175a85;      /* 6.28:1 */
+  --verdict-occasional-fg: #175a85;
   --verdict-occasional-bg: #e3eef6;
-  --verdict-limit-fg: #7d5100;           /* 6.04:1 */
+  --verdict-limit-fg: #7d5100;
   --verdict-limit-bg: #faefd9;
-  --verdict-doesnt-fit-fg: #54458a;      /* 6.72:1 */
+  --verdict-doesnt-fit-fg: #54458a;
   --verdict-doesnt-fit-bg: #ece8f7;
-  --verdict-insufficient-fg: #525960;    /* 6.16:1 */
+  --verdict-insufficient-fg: #525960;
   --verdict-insufficient-bg: #edeff1;
 
-  /* ---- allergen: its own system, used nowhere else ----
-     Not on the verdict ramp because an allergen is not a verdict. Not red,
-     because red says "this will harm you" — a claim we must never make. */
-  --allergen-fg: #8f1746;                /* 7.40:1 */
+  /* ---- allergen: its own system, used nowhere else ---- */
+  --allergen-fg: #8f1746;
   --allergen-bg: #fae6ed;
   --allergen-border: #d98aab;
 
-  /* ---- feedback ---- */
-  --danger-fg: #9a2020;
-  --danger-bg: #fbe9e9;
+  /* ---- feedback ----
+     Danger is a cool crimson so it never reads as the (warm) brand. */
+  --danger-fg: #a11c2e;
+  --danger-bg: #fbe8ea;
   --success-fg: #126446;
   --success-bg: #e4f1ea;
 
-  /* ---- type ---- */
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans',
-    'Noto Sans Devanagari', Arial, sans-serif;
+  /* ---- type ----
+     Plus Jakarta Sans, self-hosted (public/fonts) — one variable file per
+     script range, swapped in over the system stack so the first paint is
+     never blocked on a font. */
+  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Noto Sans', 'Noto Sans Devanagari', Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  /* Hero: the Home value statement only. Display: page-level titles (product
-     name, screen headings). H1/H2: section titles. Card title has its own
-     token rather than sharing --text-sm, so a card's name and a metadata line
-     can move independently. */
-  --text-hero: 2.25rem;
-  --text-display: 2rem;
+  --text-hero: 2rem;
+  --text-display: 1.75rem;
   --text-h1: 1.5rem;
-  --text-h2: 1.25rem;
+  --text-h2: 1.125rem;
   --text-card-title: 0.9375rem;
   --text-body: 1rem;       /* floor for body copy; also prevents iOS input zoom */
   --text-sm: 0.875rem;
   --text-xs: 0.75rem;
 
-  --leading-tight: 1.2;
+  --leading-tight: 1.15;
   --leading-snug: 1.3;
   --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --tracking-tight: -0.02em;
+  --tracking-caps: 0.06em;
 
   /* ---- space (4px base) ---- */
   --space-1: 0.25rem;
@@ -103,27 +116,46 @@
   --space-8: 4rem;
 
   /* ---- radius ---- */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
   --radius-full: 999px;
 
-  /* ---- elevation ---- */
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
-  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.08);
-  --shadow-lg: 0 -8px 28px rgb(0 0 0 / 0.16);
+  /* ---- elevation — warm, soft, sparse ---- */
+  --shadow-sm: 0 1px 2px rgb(28 25 23 / 0.05), 0 1px 1px rgb(28 25 23 / 0.03);
+  --shadow-md: 0 6px 18px rgb(28 25 23 / 0.08), 0 2px 4px rgb(28 25 23 / 0.04);
+  --shadow-lg: 0 -10px 32px rgb(28 25 23 / 0.16);
+  --shadow-float: 0 8px 24px rgb(194 65 12 / 0.28);
 
   /* ---- motion ---- */
   --dur-fast: 120ms;
   --dur-base: 200ms;
   --dur-slow: 320ms;
   --ease: cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* ---- layout ---- */
-  --tap-min: 44px;          /* WCAG 2.2 AA minimum */
+  --tap-min: 44px;
   --tap-primary: 48px;
-  --content-max: 640px;     /* mobile-first; a wide column hurts scanning */
-  --bottom-nav-h: 56px;
+  --content-max: 640px;
+  --bottom-nav-h: 60px;
+
+  --layout-form-max: 560px;
+  --layout-reading-max: 68ch;
+  --layout-dashboard-max: var(--shell-max);
+  --layout-list-max: 840px;
+
+  /* ---- charts and attention surfaces ---- */
+  --chart-bar: var(--brand);
+  --chart-goal-line: var(--text-secondary);
+  --chart-grid: var(--border);
+  --chart-axis-text: var(--text-tertiary);
+  --pending-bg: var(--surface-sunken);
+  --pending-fg: var(--text-secondary);
+  --attention-bg: var(--brand-subtle);
+  --attention-rule: var(--brand);
 
   /* ---- z ---- */
   --z-sticky: 10;
@@ -132,36 +164,88 @@
   --z-sheet: 31;
   --z-modal: 40;
   --z-toast: 50;
+
+  /* ---- breakpoints (documentation; media queries repeat the literals) ---- */
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+
+  /* Fluid: the app fills the window (minus its gutter) up to a wide cap, rather than
+     sitting in a fixed 1240px column with large dead margins on a 1440-1920px monitor
+     (D-074). `--layout-dashboard-max` (below) tracks this; `--layout-form-max`,
+     `--layout-reading-max` and `--layout-list-max` deliberately do not — a form or a
+     block of prose keeps its own readable measure regardless of window width. */
+  --shell-max: min(100%, 1800px);
+  --topbar-h: 72px;
+
+  /* ---- category identity ----
+     A soft, warm pastel per category, mixed into the card ground by
+     CategoryArt.tsx so the same hue works on light and dark. */
+  --cat-biscuits-a: #f3c98b;      --cat-biscuits-b: #e0a557;
+  --cat-cereal-a: #f6d98b;        --cat-cereal-b: #e6b94a;
+  --cat-namkeen-a: #f6c48f;       --cat-namkeen-b: #e59a55;
+  --cat-beverages-a: #a7d8ea;     --cat-beverages-b: #6cbcd8;
+  --cat-malt-a: #d8bc9f;          --cat-malt-b: #b98c66;
+  --cat-staples-a: #e6d9bd;       --cat-staples-b: #cbb88a;
+  --cat-dairy-a: #dbe7f4;         --cat-dairy-b: #adc7e5;
+  --cat-oil-a: #f2e19c;           --cat-oil-b: #dcc058;
+  --cat-chocolate-a: #d8b9a3;     --cat-chocolate-b: #a97a5c;
+  --cat-noodles-a: #f6d5ab;       --cat-noodles-b: #e0a769;
+  --cat-sauces-a: #f2c0b4;        --cat-sauces-b: #db8b78;
+  --cat-protein-a: #c8e4cc;       --cat-protein-b: #90c59d;
+  --cat-chips-a: #f8dda3;         --cat-chips-b: #e5ba5a;
+  --cat-default-a: #dfdcd3;       --cat-default-b: #b8b3a5;
+  --cat-tile-dim: 1;
+
+  /* Card surfaces sit on the cream ground as white objects. */
+  --card-bg: #ffffff;
+  --card-media-bg: #f6f2ea;
+  --card-border: #ede8df;
+  --rail-fade: #fbf9f5;
+
+  /* Member avatar palette — warm, distinct, all ≥4.5:1 with their ink. */
+  --avatar-1-bg: #fde4d3; --avatar-1-fg: #8a2f08;
+  --avatar-2-bg: #e3f2e8; --avatar-2-fg: #14532d;
+  --avatar-3-bg: #e3eef6; --avatar-3-fg: #1e3a5f;
+  --avatar-4-bg: #f3e8ff; --avatar-4-fg: #4c1d95;
+  --avatar-5-bg: #fdf1c7; --avatar-5-fg: #713f12;
+  --avatar-6-bg: #fce7f3; --avatar-6-fg: #831843;
 }
 
 /* =============================================================================
-   Dark theme. Explicit opt-in only — set via lib/theme.ts (Settings →
-   Appearance), never inferred from `prefers-color-scheme`. Light is the
-   primary consumer experience; a user who has never touched the toggle always
-   gets the light palette regardless of their OS setting.
+   Dark theme — explicit opt-in (Settings → Appearance), never inferred.
+   A warm dark: the same identity at night, not a different product.
    ============================================================================= */
 
 :root[data-theme='dark'] {
-  --bg: #121513;
-  --surface: #1b1f1d;
-  --surface-raised: #232826;
-  --surface-sunken: #0d100e;
-  --overlay: rgb(0 0 0 / 0.64);
+  color-scheme: dark;
 
-  --text: #e8edea;
-  --text-secondary: #a8b2ae;
-  --text-tertiary: #8a9490;
-  --text-inverse: #0a1f1b;
+  --bg: #161311;
+  --surface: #1f1b18;
+  --surface-raised: #262120;
+  --surface-sunken: #110f0d;
+  --overlay: rgb(0 0 0 / 0.66);
 
-  --border: #2a302d;
-  --border-interactive: #6e7873;
-  --border-strong: #a8b2ae;
+  --text: #f3ede6;
+  --text-secondary: #c2b8ad;
+  --text-tertiary: #9b9187;
+  --text-inverse: #1c1917;
 
-  --brand: #4ecfb6;
-  --brand-hover: #3fbfa6;
-  --brand-subtle: #12302a;
-  --on-brand: #0a1f1b;
-  --focus-ring: #4ecfb6;
+  --border: #2f2925;
+  --border-interactive: #746b62;
+  --border-strong: #c2b8ad;
+
+  --brand: #f0894f;             /* 7.3:1 on --bg */
+  --brand-hover: #f5a071;
+  --brand-subtle: #3a2116;
+  --brand-soft: #4a2a1b;
+  --on-brand: #2a1207;
+  --focus-ring: #f0894f;
+
+  --accent: #6fd3a6;
+  --accent-subtle: #16281f;
+  --on-accent: #06251a;
 
   --verdict-everyday-fg: #6fd3a6;
   --verdict-everyday-bg: #16281f;
@@ -178,14 +262,28 @@
   --allergen-bg: #2e1522;
   --allergen-border: #8f1746;
 
-  --danger-fg: #f0a0a0;
-  --danger-bg: #2e1616;
+  --danger-fg: #f0a0a8;
+  --danger-bg: #2e1619;
   --success-fg: #6fd3a6;
   --success-bg: #16281f;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.5);
-  --shadow-lg: 0 -8px 28px rgb(0 0 0 / 0.6);
+  --shadow-md: 0 6px 18px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 -10px 32px rgb(0 0 0 / 0.6);
+  --shadow-float: 0 8px 24px rgb(240 137 79 / 0.3);
+
+  --card-bg: #221e1b;
+  --card-media-bg: #2a2522;
+  --card-border: #322c28;
+  --rail-fade: #161311;
+  --cat-tile-dim: 0.42;
+
+  --avatar-1-bg: #4a2a1b; --avatar-1-fg: #f6c9ad;
+  --avatar-2-bg: #16281f; --avatar-2-fg: #a7e3c4;
+  --avatar-3-bg: #152430; --avatar-3-fg: #a9cdec;
+  --avatar-4-bg: #2a2140; --avatar-4-fg: #d3c4f5;
+  --avatar-5-bg: #33280f; --avatar-5-fg: #f1d98a;
+  --avatar-6-bg: #3a1a2a; --avatar-6-fg: #f4b8d3;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -196,75 +294,27 @@
   }
 }
 
-/* =============================================================================
-   Consumer-commerce layer
-   Added for the Zomato/Blinkit-grade rework. The interaction patterns those apps
-   get right — a sticky search that is always in reach, dense scannable cards,
-   horizontal rails, category tiles with real visual identity — are what make a
-   shopping app feel fast. None of their branding, colour or layout is copied;
-   the palette below is our own and the card anatomy carries our data (verdict
-   and nutrition) where theirs carries price.
-   ============================================================================= */
-
-:root {
-  /* Breakpoints, as documented values. Media queries cannot read custom
-     properties, so these are duplicated literally in the queries — kept here so
-     there is one place that states what the numbers mean. */
-  --bp-sm: 480px;    /* large phone */
-  --bp-md: 768px;    /* tablet */
-  --bp-lg: 1024px;   /* desktop: bottom nav gives way to a top bar */
-  --bp-xl: 1280px;
-
-  --shell-max: 1240px;      /* desktop content width */
-  --topbar-h: 68px;
-
-  /* Category identity.
-     Each category gets a two-stop gradient and a glyph. This is how a rail of
-     tiles reads as a place rather than a list of words — and how a product card
-     has a visual anchor before any photograph exists. Deliberately stylised, so
-     it is never mistaken for a photograph of a real pack. */
-  --cat-biscuits-a: #F5D9A8;      --cat-biscuits-b: #E3B573;
-  --cat-cereal-a: #FBE3A2;        --cat-cereal-b: #E9C25C;
-  --cat-namkeen-a: #F8CFA0;       --cat-namkeen-b: #E5A263;
-  --cat-beverages-a: #A9DCEF;     --cat-beverages-b: #6FBFDD;
-  --cat-malt-a: #D9BFA4;          --cat-malt-b: #B9906B;
-  --cat-staples-a: #E7DCC3;       --cat-staples-b: #CBBB93;
-  --cat-dairy-a: #DCE9F7;         --cat-dairy-b: #AFC9E8;
-  --cat-oil-a: #F3E3A6;           --cat-oil-b: #DCC15F;
-  --cat-chocolate-a: #D9BBA6;     --cat-chocolate-b: #A97C5F;
-  --cat-noodles-a: #F7D8B0;       --cat-noodles-b: #E0A96D;
-  --cat-sauces-a: #F2C3B8;        --cat-sauces-b: #DB8E7C;
-  --cat-protein-a: #C9E5CE;       --cat-protein-b: #92C6A0;
-  --cat-chips-a: #F9DFA6;         --cat-chips-b: #E6BC5E;
-  --cat-default-a: #DCE3E0;       --cat-default-b: #B4C0BB;
-  --cat-tile-dim: 1;              /* dark theme dims these; see below */
-
-  /* Card surfaces sit slightly off the page ground so a grid reads as objects
-     rather than as text blocks. */
-  --card-bg: #ffffff;
-  --card-media-bg: #f2f4f3;
-  --card-border: #eceeed;
-  --rail-fade: #ffffff;
-}
-
-/* Category tints are darkened rather than swapped, in the same explicit-opt-in
-   dark block above: the hue is the category's identity and must survive the
-   theme, but full-strength pastels glare on a dark ground. */
-:root[data-theme='dark'] {
-  --card-bg: #1b1f1d;
-  --card-media-bg: #232826;
-  --card-border: #2a302d;
-  --rail-fade: #121513;
-  --cat-tile-dim: 0.42;
-}
-
 /* Two numeric tokens grow on a larger viewport: the hero only appears on Home,
-   and a card title has more room once cards themselves grow (see ProductCard.css
-   @768px). Every other type token stays fixed across breakpoints on purpose —
-   scanability, not screen real estate, should decide most text sizes. */
+   and a card title has more room once cards themselves grow. */
 @media (min-width: 768px) {
   :root {
-    --text-hero: 2.75rem;
+    --text-hero: 2.5rem;
+    --text-display: 2rem;
     --text-card-title: 1rem;
   }
+}
+
+/* Larger-text mode (Settings → Appearance): a 1.2× scale on the type ramp
+   and roomier tap targets. Offered, never imposed. */
+html[data-text-size='large'] {
+  --text-hero: 2.4rem;
+  --text-display: 2.1rem;
+  --text-h1: 1.8rem;
+  --text-h2: 1.35rem;
+  --text-card-title: 1.125rem;
+  --text-body: 1.2rem;
+  --text-sm: 1.05rem;
+  --text-xs: 0.9rem;
+  --tap-min: 48px;
+  --tap-primary: 56px;
 }

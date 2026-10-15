@@ -7,6 +7,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -17,6 +19,12 @@ import java.util.UUID;
  * row per product is enforced by a partial unique index
  * ({@code uq_product_current_version}) in V4__catalog.sql; this module never needs to
  * enforce that itself.
+ *
+ * <p>The enrichment fields ({@code novaGroup}, {@code dietFlag}, serving size) may be filled
+ * in later on the same version by {@code ProductEnrichmentService} — but only from
+ * {@code null}/{@code UNKNOWN} to a value, never overwritten, and always with their own
+ * {@code product_source} row and a {@code product_change_log} entry (D-014, D-015). The
+ * {@code fill…} methods below refuse to overwrite and return whether they changed anything.
  */
 @Entity
 @Table(name = "product_version")
@@ -91,6 +99,23 @@ public class ProductVersion {
     @Column(name = "freshness_due_at")
     private Instant freshnessDueAt;
 
+    @JdbcTypeCode(SqlTypes.SMALLINT)
+    @Column(name = "nova_group")
+    private Integer novaGroup;
+
+    @Column(name = "nova_source_id")
+    private UUID novaSourceId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "diet_flag", nullable = false)
+    private DietFlag dietFlag;
+
+    @Column(name = "diet_flag_estimated", nullable = false)
+    private boolean dietFlagEstimated;
+
+    @Column(name = "diet_source_id")
+    private UUID dietSourceId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -122,6 +147,8 @@ public class ProductVersion {
         version.capturedByUserId = capturedByUserId;
         version.verificationPass = 0;
         version.dataQuality = dataQuality;
+        version.dietFlag = DietFlag.UNKNOWN;
+        version.dietFlagEstimated = true;
         return version;
     }
 
@@ -137,6 +164,9 @@ public class ProductVersion {
         if (createdAt == null) {
             createdAt = now;
         }
+        if (dietFlag == null) {
+            dietFlag = DietFlag.UNKNOWN;
+        }
     }
 
     /**
@@ -149,6 +179,46 @@ public class ProductVersion {
         this.verifiedAt = now;
         this.verifiedByUserId = verifiedByUserId;
         this.verificationPass = this.verificationPass + 1;
+    }
+
+    // ----------------------------------------------------------------- null → value fills
+
+    /** Sets the NOVA group only when none is recorded. Returns whether anything changed. */
+    public boolean fillNovaGroup(Integer group, UUID sourceId) {
+        if (this.novaGroup != null || group == null) {
+            return false;
+        }
+        if (group < 1 || group > 4) {
+            throw new IllegalArgumentException("nova_group must be 1-4, got " + group);
+        }
+        this.novaGroup = group;
+        this.novaSourceId = sourceId;
+        return true;
+    }
+
+    /** Sets the diet flag only while it is {@code UNKNOWN}. Returns whether anything changed. */
+    public boolean fillDietFlag(DietFlag flag, boolean estimated, UUID sourceId) {
+        if (this.dietFlag != DietFlag.UNKNOWN || flag == null || flag == DietFlag.UNKNOWN) {
+            return false;
+        }
+        this.dietFlag = flag;
+        this.dietFlagEstimated = estimated;
+        this.dietSourceId = sourceId;
+        return true;
+    }
+
+    /** Sets the serving size only when none is recorded. Returns whether anything changed. */
+    public boolean fillServing(BigDecimal sizeG, String declared) {
+        boolean changed = false;
+        if (this.servingSizeG == null && sizeG != null) {
+            this.servingSizeG = sizeG;
+            changed = true;
+        }
+        if (this.servingSizeDeclared == null && declared != null) {
+            this.servingSizeDeclared = declared;
+            changed = true;
+        }
+        return changed;
     }
 
     public UUID getId() {
@@ -237,6 +307,26 @@ public class ProductVersion {
 
     public Instant getFreshnessDueAt() {
         return freshnessDueAt;
+    }
+
+    public Integer getNovaGroup() {
+        return novaGroup;
+    }
+
+    public UUID getNovaSourceId() {
+        return novaSourceId;
+    }
+
+    public DietFlag getDietFlag() {
+        return dietFlag;
+    }
+
+    public boolean isDietFlagEstimated() {
+        return dietFlagEstimated;
+    }
+
+    public UUID getDietSourceId() {
+        return dietSourceId;
     }
 
     public Instant getCreatedAt() {

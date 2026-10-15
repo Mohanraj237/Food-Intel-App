@@ -1,0 +1,185 @@
+/* Goals — a list-archetype screen (plan §5.3): a single readable column, wider than a form but
+   never a dashboard grid, centered up to --layout-list-max on tablet/desktop (closes G-00c for
+   this screen — it no longer carries its own 60ch cap).
+
+   Neutral throughout: a goal above its number is not red and a goal below it is not green,
+   because the product does not judge a person's own target (D-037). The only emphasis is on the
+   one action a row offers. */
+
+.goalspage {
+  max-width: var(--layout-list-max);
+  margin-inline: auto;
+}
+
+.goalspage__lede {
+  margin: 0 0 var(--space-5);
+  color: var(--text-secondary);
+}
+
+.goalspage__note {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.goalspage__success {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--success-bg);
+  color: var(--success-fg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.goalspage__also {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.goalspage__alsoLede {
+  margin: 0 0 var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.goalspage__alsoList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ------------------------------------------------------------------ goals */
+
+.goals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.goal__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.goal__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.goal__metric {
+  font-weight: 700;
+}
+
+.goal__window {
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.goal__target {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.goal__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 600;
+}
+
+.goal__status--none {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.goal__fact {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.goal__bar {
+  height: 6px;
+  margin-top: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.goal__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------------ forms */
+
+/* Single-task form archetype (plan §5.3): stays narrow even on a wide screen — a form does not
+   get better by getting wider, so this deliberately does not follow .goalspage's wider column. */
+.goalform {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+  max-width: var(--layout-form-max);
+}
+
+.goalform__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+}
+
+.goalform__hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.goalform__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

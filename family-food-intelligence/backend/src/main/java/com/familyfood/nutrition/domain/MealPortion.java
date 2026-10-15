@@ -37,6 +37,10 @@ public class MealPortion {
     @Column(name = "portion_fraction", nullable = false, precision = 6, scale = 4)
     private BigDecimal portionFraction;
 
+    /** When this share entered the member's own log; null while it awaits them (D-041). */
+    @Column(name = "derived_at")
+    private Instant derivedAt;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -75,5 +79,18 @@ public class MealPortion {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getDerivedAt() {
+        return derivedAt;
+    }
+
+    /** True once this share is in the member's own log (D-041). */
+    public boolean isInMemberLog() {
+        return derivedAt != null;
+    }
+
+    public void markDerived(Instant now) {
+        this.derivedAt = now;
     }
 }
